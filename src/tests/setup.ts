@@ -12,7 +12,7 @@ afterAll(() => server.close());
 
 // Reset any request handlers that are declared as a part of our tests
 // (i.e. for testing one-time error scenarios)
-afterEach(() => afterEach(() => server.resetHandlers()));
+afterEach(() => server.resetHandlers());
 
 // Automatically unmount and cleanup DOM after the test is finished.
 afterEach(() => cleanup());
