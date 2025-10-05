@@ -3,6 +3,7 @@ import { createServerFn } from "@tanstack/react-start";
 import axios from "redaxios";
 import { serverEnv } from "~/config/env";
 import { notFound } from "@tanstack/react-router";
+import z from "zod";
 
 export type Priority =
   | "urgent_and_important"
@@ -63,4 +64,23 @@ export const taskQueryOptions = (taskId: string) =>
   queryOptions({
     queryKey: ["task", taskId],
     queryFn: () => fetchTask({ data: taskId }),
+  });
+
+export const completeTask = createServerFn({ method: "POST" })
+  .inputValidator(
+    z.object({
+      taskId: z.string().min(1),
+      dateCompleted: z.string().or(z.null()),
+    })
+  )
+  .handler(async ({ data }) => {
+    console.info(`Updating task with id ${data.taskId}...`);
+
+    const taskUrl = serverEnv.API_URL + "/tasks/";
+
+    return axios
+      .patch<Task>(taskUrl + data.taskId, {
+        dateCompleted: data.dateCompleted,
+      })
+      .then((r) => r.data);
   });
