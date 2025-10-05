@@ -1,7 +1,7 @@
 import "@testing-library/jest-dom/matchers";
 import "@testing-library/jest-dom/vitest";
 import { cleanup } from "@testing-library/react";
-import { afterEach } from "vitest";
+import { afterEach, beforeAll, afterAll } from "vitest";
 import { server } from "./mock/node";
 
 // Establish API mocking before all tests.
@@ -12,8 +12,7 @@ afterAll(() => server.close());
 
 // Reset any request handlers that are declared as a part of our tests
 // (i.e. for testing one-time error scenarios)
+afterEach(() => afterEach(() => server.resetHandlers()));
+
 // Automatically unmount and cleanup DOM after the test is finished.
-afterEach(() => {
-  afterEach(() => server.resetHandlers());
-  cleanup();
-});
+afterEach(() => cleanup());
