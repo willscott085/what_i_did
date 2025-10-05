@@ -11,6 +11,7 @@
     "resolveJsonModule": true,
     "skipLibCheck": true,
     "target": "ES2022",
+    "types": ["vitest/globals", "node", "jest", "@testing-library/jest-dom"],
     "allowJs": true,
     "forceConsistentCasingInFileNames": true,
     "baseUrl": ".",
