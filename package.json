@@ -4,7 +4,8 @@
   "sideEffects": false,
   "type": "module",
   "scripts": {
-    "dev": "vite dev",
+    "server": "json-server --watch data/db.json --port 55000",
+    "dev": "vite dev --port 55001",
     "build": "vite build && tsc --noEmit",
     "start": "vite start"
   },
@@ -15,6 +16,7 @@
     "@tanstack/react-router-devtools": "^1.132.37",
     "@tanstack/react-router-ssr-query": "^1.132.37",
     "@tanstack/react-start": "^1.132.38",
+    "json-server": "1.0.0-beta.3",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "redaxios": "^0.5.1",
