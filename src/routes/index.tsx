@@ -50,6 +50,12 @@ function TaskLink(props: Task & { onUpdate?: () => void }) {
   const { onUpdate, ...task } = props;
 
   async function handleTaskComplete(evt: React.ChangeEvent<HTMLInputElement>) {
+    console.log(
+      "handleTaskComplete",
+      evt.target.dataset.taskId,
+      evt.target.checked
+    );
+
     const task = await completeTask({
       data: {
         taskId: evt.target.dataset.taskId!,
