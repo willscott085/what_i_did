@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import axios from "redaxios";
+import { serverEnv } from "~/config/env";
 
 export type Priority =
   | "urgent_and_important"
@@ -21,8 +22,8 @@ export const fetchTasks = createServerFn({ method: "GET" }).handler(
   async () => {
     console.info("Fetching tasks...");
 
-    return axios
-      .get<Array<Task>>("http://localhost:55000/tasks")
-      .then((r) => r.data);
+    const tasksUrl = serverEnv.API_URL + "/tasks";
+
+    return axios.get<Array<Task>>(tasksUrl).then((r) => r.data);
   }
 );
