@@ -1,22 +1,14 @@
-import { render, screen } from "@testing-library/react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { test, expect } from "vitest";
 
-const queryClient = new QueryClient();
+test("requests are mocked", async () => {
+  const response = await fetch("http://localhost:55000/tasks");
 
-function MyComponent() {
-  return <div>My Component</div>;
-}
-
-vi.mock("./myFetchFunction", () => ({
-  myFetchFunction: () => Promise.resolve(["1", "2", "3"]),
-}));
-
-test("MyComponent renders the values returned from myFetchFunction", async () => {
-  render(
-    <QueryClientProvider client={queryClient}>
-      <MyComponent />
-    </QueryClientProvider>
-  );
-
-  expect(await screen.findByText("My Component")).toBeInTheDocument();
+  await expect(response.json()).resolves.toEqual({
+    id: "1",
+    title: "Initialise What I Did task manager project",
+    dateCreated: "2025-10-05T16:05:00Z",
+    dateCompleted: "2025-10-05T19:42:52.209Z",
+    userId: "1",
+    priority: "important",
+  });
 });
