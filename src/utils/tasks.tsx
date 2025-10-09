@@ -28,7 +28,7 @@ export const fetchTasks = createServerFn({ method: "GET" }).handler(
     const tasksUrl = serverEnv.API_URL + "/tasks";
 
     return axios.get<Array<Task>>(tasksUrl).then((r) => r.data);
-  }
+  },
 );
 
 export const tasksQueryOptions = () =>
@@ -71,7 +71,7 @@ export const completeTask = createServerFn({ method: "POST" })
     z.object({
       taskId: z.string().min(1),
       dateCompleted: z.string().or(z.null()),
-    })
+    }),
   )
   .handler(async ({ data }) => {
     console.info(`Updating task with id ${data.taskId}...`);
@@ -81,6 +81,35 @@ export const completeTask = createServerFn({ method: "POST" })
     return axios
       .patch<Task>(taskUrl + data.taskId, {
         dateCompleted: data.dateCompleted,
+      })
+      .then((r) => r.data);
+  });
+
+export const createTask = createServerFn({ method: "POST" })
+  .inputValidator(
+    z.object({
+      title: z.string().min(1).max(255),
+      priority: z
+        .enum([
+          "urgent_and_important",
+          "urgent",
+          "important",
+          "not_urgent_not_important",
+        ])
+        .optional(),
+      notes: z.string().max(1000).optional(),
+    }),
+  )
+  .handler(async ({ data }) => {
+    console.info(`Creating task...`);
+
+    const taskUrl = serverEnv.API_URL + "/tasks/";
+
+    return axios
+      .post<Task>(taskUrl, {
+        ...data,
+        dateCreated: new Date().toISOString(),
+        dateCompleted: null,
       })
       .then((r) => r.data);
   });
