@@ -1,12 +1,12 @@
-import { useSuspenseQuery } from "@tanstack/react-query";
-import { createFileRoute, Link, Outlet } from "@tanstack/react-router";
-import { Suspense, useEffect } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { createFileRoute, Outlet } from "@tanstack/react-router";
 import { completeTask, Task, tasksQueryOptions } from "~/utils/tasks";
 import { clsx } from "clsx";
 
 export const Route = createFileRoute("/")({
   loader: async ({ context }) => {
-    context.queryClient.prefetchQuery(tasksQueryOptions());
+    await context.queryClient.ensureQueryData(tasksQueryOptions());
+    return null;
   },
   head: () => ({
     meta: [{ title: "whatIdid - the task tracker extraordinaire" }],
@@ -15,70 +15,75 @@ export const Route = createFileRoute("/")({
 });
 
 function Home() {
-  return (
-    <div className="p-2 flex gap-2">
-      <ul className="list-disc pl-4">
-        <Suspense
-          fallback={
-            <li key="loading" className="whitespace-nowrap">
-              Loading tasks ...
-            </li>
-          }
-        >
-          <DeferredQuery />
-        </Suspense>
-      </ul>
-      <hr />
-      <Outlet />
-    </div>
-  );
-}
+  const { data: tasks = [] } = useQuery(tasksQueryOptions());
+  const queryClient = useQueryClient();
 
-function DeferredQuery() {
-  const tasksQuery = useSuspenseQuery(tasksQueryOptions());
+  const { mutate, isPending } = useMutation({
+    mutationFn: ({
+      taskId,
+      dateCompleted,
+    }: {
+      taskId: string;
+      dateCompleted: string | null;
+    }) => completeTask({ data: { taskId, dateCompleted } }),
+    onMutate: async ({ taskId, dateCompleted }) => {
+      await queryClient.cancelQueries({
+        queryKey: tasksQueryOptions().queryKey,
+      });
+      const prev = queryClient.getQueryData<Task[]>(
+        tasksQueryOptions().queryKey,
+      );
+      if (prev) {
+        queryClient.setQueryData<Task[]>(
+          tasksQueryOptions().queryKey,
+          prev.map((t) => (t.id === taskId ? { ...t, dateCompleted } : t)),
+        );
+      }
+      return { prev };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.prev) {
+        queryClient.setQueryData(tasksQueryOptions().queryKey, ctx.prev);
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: tasksQueryOptions().queryKey });
+    },
+  });
 
   return (
     <>
-      {tasksQuery.data.map((task) => (
-        <TaskLink key={task.id} {...task} onUpdate={tasksQuery.refetch} />
-      ))}
+      <div className="mx-auto max-w-2xl p-4">
+        {tasks.map((task) => (
+          <label
+            key={task.id}
+            htmlFor={task.id}
+            className={clsx([
+              "flex cursor-pointer items-center gap-2",
+              "origin-left transition-transform duration-150 ease-out",
+              "hover:scale-[1.02]",
+              !!task.dateCompleted && "line-through",
+            ])}
+          >
+            <input
+              type="checkbox"
+              id={task.id}
+              disabled={isPending}
+              onChange={() =>
+                mutate({
+                  taskId: task.id,
+                  dateCompleted: task.dateCompleted
+                    ? null
+                    : new Date().toISOString(),
+                })
+              }
+              defaultChecked={!!task.dateCompleted}
+            />
+            {task.title}
+          </label>
+        ))}
+        <Outlet />
+      </div>
     </>
-  );
-}
-
-function TaskLink(props: Task & { onUpdate?: () => void }) {
-  const { onUpdate, ...task } = props;
-
-  async function handleTaskComplete(evt: React.ChangeEvent<HTMLInputElement>) {
-    console.log(
-      "handleTaskComplete",
-      evt.target.dataset.taskId,
-      evt.target.checked
-    );
-
-    const task = await completeTask({
-      data: {
-        taskId: evt.target.dataset.taskId!,
-        dateCompleted: !!evt.target.checked ? new Date().toISOString() : null,
-      },
-    });
-
-    onUpdate?.();
-  }
-
-  return (
-    <li key={task.id} className="whitespace-nowrap">
-      <label className="flex items-center gap-2">
-        <input
-          type="checkbox"
-          data-task-id={task.id}
-          defaultChecked={!!task.dateCompleted}
-          onChange={handleTaskComplete}
-        />
-        <span className={clsx(!!task.dateCompleted && "line-through")}>
-          {task.title}
-        </span>
-      </label>
-    </li>
   );
 }
