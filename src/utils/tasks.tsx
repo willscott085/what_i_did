@@ -113,3 +113,31 @@ export const createTask = createServerFn({ method: "POST" })
       })
       .then((r) => r.data);
   });
+
+export const updateTask = createServerFn({ method: "POST" })
+  .inputValidator(
+    z.object({
+      title: z.string().min(1).max(255),
+      taskId: z.string().min(1),
+      // priority: z
+      //   .enum([
+      //     "urgent_and_important",
+      //     "urgent",
+      //     "important",
+      //     "not_urgent_not_important",
+      //   ])
+      //   .optional(),
+      // notes: z.string().max(1000).optional(),
+    }),
+  )
+  .handler(async ({ data }) => {
+    console.info(`Updating task...`, data.taskId);
+
+    const taskUrl = serverEnv.API_URL + "/tasks/" + data.taskId;
+
+    return axios
+      .patch<Task>(taskUrl, {
+        ...data,
+      })
+      .then((r) => r.data);
+  });
