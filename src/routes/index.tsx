@@ -7,11 +7,6 @@ import { Checkbox } from "~/components/ui/checkbox";
 import { FieldError } from "~/components/ui/field";
 import { Input } from "~/components/ui/input";
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "~/components/ui/tooltip";
-import {
   completeTask,
   Task,
   tasksQueryOptions,
@@ -190,25 +185,18 @@ function TaskItem({ task }: { task: Task }) {
           children={(field) => {
             return (
               <>
-                <Tooltip delayDuration={300}>
-                  <TooltipTrigger className="grow" asChild>
-                    <Input
-                      type="text"
-                      id={field.name}
-                      name={field.name}
-                      value={field.state.value}
-                      onBlur={field.handleBlur}
-                      onChange={(e) => field.handleChange(e.target.value)}
-                      className={clsx(
-                        "truncate border-0 p-0 focus-visible:ring-0 dark:bg-transparent",
-                        !!task.dateCompleted && "line-through",
-                      )}
-                    />
-                  </TooltipTrigger>
-                  {field.state.value.length > 80 && (
-                    <TooltipContent>{field.state.value}</TooltipContent>
+                <Input
+                  type="text"
+                  id={field.name}
+                  name={field.name}
+                  value={field.state.value}
+                  onBlur={field.handleBlur}
+                  onChange={(e) => field.handleChange(e.target.value)}
+                  className={clsx(
+                    "truncate border-0 p-0 focus-visible:ring-0 dark:bg-transparent",
+                    !!task.dateCompleted && "line-through",
                   )}
-                </Tooltip>
+                />
                 {!field.state.meta.isValid && (
                   <FieldError className="absolute top-2 right-4">
                     {field.state.meta.errors.join(", ")}
