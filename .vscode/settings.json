@@ -8,5 +8,10 @@
   "files.readonlyInclude": {
     "**/routeTree.gen.ts": true
   },
-  "css.customData": [".vscode/tailwind.json"]
+  "css.customData": [".vscode/tailwind.json"],
+  "github.copilot.chat.commitMessageGeneration.instructions": [
+    {
+      "text": "Concise commit message starting with a tl;dr summarising the change. Then, if necessary, a more detailed explanation of the changes, in bullet form, with links to the files in question. Use professional, senior developer language."
+    }
+  ]
 }
