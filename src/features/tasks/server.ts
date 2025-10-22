@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import axios from "redaxios";
 import { serverEnv } from "~/config/env";
 import { Task } from "./types";
-import z from "zod";
+import z, { date } from "zod";
 
 export const fetchTasks = createServerFn({ method: "GET" }).handler(
   async () => {
@@ -35,15 +35,13 @@ export const updateTask = createServerFn({ method: "POST" })
     z.object({
       id: z.string().min(1),
       title: z.string().min(1).max(255),
-      userId: z.string().min(1).optional(),
-      order: z.number(),
-      list: z.enum(["inbox", "upcoming", "completed"]).optional(),
+      dateCompleted: z.string().or(z.null()),
+      userId: z.string().min(1),
+      list: z.enum(["inbox", "upcoming", "completed"]),
     }),
   )
   .handler(async ({ data }) => {
     const taskUrl = serverEnv.API_URL + "/tasks/";
-
-    console.log("updating task", data.id);
 
     return axios
       .patch<Task>(taskUrl + data.id, {

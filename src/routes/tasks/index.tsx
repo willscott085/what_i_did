@@ -1,6 +1,7 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { format } from "date-fns";
+import { useEffect, useState } from "react";
 import { SortableList } from "~/components/SortableList";
 import { TaskItem } from "~/components/TaskItem";
 import { useUpdateListsMutationOptions } from "~/features/lists/mutations";
@@ -34,6 +35,12 @@ function RouteComponent() {
     }),
   );
 
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => setHydrated(true), []);
+
+  const inboxOrder = lists.find((l) => l.id === "inbox")?.order ?? [];
+  const tasksById = new Map(tasks.map((task) => [task.id, task]));
+
   function handleOrderChange(items: string[]) {
     updateInbox({ id: "inbox", order: items });
   }
@@ -46,25 +53,43 @@ function RouteComponent() {
         </h1>
       </header>
       <div className="px-4">
-        <SortableList
-          items={lists.find((l) => l.id === "inbox")?.order ?? []}
-          onOrderChange={handleOrderChange}
-        >
-          {({ id, isDragging }) => {
-            const task = tasks.find((t) => t.id === id);
+        {hydrated ? (
+          <SortableList items={inboxOrder} onOrderChange={handleOrderChange}>
+            {(id, isDragging, dragAttributes, dragListeners) => {
+              const task = tasksById.get(id);
 
-            if (!task) return null;
+              if (!task) return null;
 
-            return (
-              <TaskItem
-                key={task.id}
-                task={task}
-                onUpdate={updateTask}
-                isDragging={isDragging}
-              />
-            );
-          }}
-        </SortableList>
+              return (
+                <TaskItem
+                  key={task.id}
+                  task={task}
+                  onUpdate={updateTask}
+                  isDragging={isDragging}
+                  dragAttributes={dragAttributes}
+                  dragListeners={dragListeners}
+                />
+              );
+            }}
+          </SortableList>
+        ) : (
+          <ul>
+            {inboxOrder.map((id) => {
+              const task = tasksById.get(id);
+
+              if (!task) return null;
+
+              return (
+                <TaskItem
+                  key={task.id}
+                  task={task}
+                  onUpdate={updateTask}
+                  isDragging={false}
+                />
+              );
+            })}
+          </ul>
+        )}
       </div>
     </div>
   );

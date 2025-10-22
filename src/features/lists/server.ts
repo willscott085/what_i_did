@@ -21,8 +21,6 @@ export const updateList = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const listsUrl = serverEnv.API_URL + "/lists/" + data.id;
 
-    console.log(data);
-
     return axios
       .patch<List>(listsUrl, {
         ...data,

@@ -18,14 +18,23 @@ import { CSS } from "@dnd-kit/utilities";
 import { useCallback, useEffect, useState } from "react";
 
 interface SortableListProps {
-  items?: string[];
+  items: string[];
   onOrderChange?: (props: string[]) => void;
-  children: (props: { id: string; isDragging: boolean }) => React.ReactNode;
+  children: (
+    id: string,
+    isDragging: boolean,
+    dragAttributes: any,
+    dragListeners: any,
+  ) => React.ReactNode;
 }
+
 export function SortableList(props: SortableListProps) {
   const { items: defaultItems, onOrderChange, children } = props;
+  const [items, setItems] = useState<string[]>(defaultItems);
 
-  const [items, setItems] = useState<string[]>(defaultItems ?? []);
+  useEffect(() => {
+    setItems(defaultItems);
+  }, [defaultItems]);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -34,23 +43,20 @@ export function SortableList(props: SortableListProps) {
     }),
   );
 
-  const handleDragEnd = useCallback((event: DragEndEvent) => {
-    const { active, over } = event;
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      const { active, over } = event;
+      if (!over || active.id === over.id) return;
 
-    if (!over) return;
-    if (active.id === over.id) return;
+      const oldIndex = items.indexOf(String(active.id));
+      const newIndex = items.indexOf(String(over.id));
+      const newOrder = arrayMove(items, oldIndex, newIndex);
 
-    setItems((i) => {
-      const oldIndex = i.indexOf(String(active.id));
-      const newIndex = i.indexOf(String(over.id));
-
-      return arrayMove(i, oldIndex, newIndex);
-    });
-  }, []);
-
-  useEffect(() => {
-    onOrderChange?.(items);
-  }, [items]);
+      onOrderChange?.(newOrder);
+      setItems(newOrder);
+    },
+    [items, onOrderChange],
+  );
 
   return (
     <DndContext
@@ -61,7 +67,9 @@ export function SortableList(props: SortableListProps) {
       <SortableContext items={items} strategy={verticalListSortingStrategy}>
         {items.map((id) => (
           <SortableItem key={id} id={id}>
-            {({ id, isDragging }) => children({ id, isDragging })}
+            {({ isDragging, attributes, listeners }) =>
+              children(id, isDragging, attributes, listeners)
+            }
           </SortableItem>
         ))}
       </SortableContext>
@@ -71,9 +79,13 @@ export function SortableList(props: SortableListProps) {
 
 interface SortableItemProps {
   id: string;
-  children: (props: { id: string; isDragging: boolean }) => React.ReactNode;
+  children: (props: {
+    isDragging: boolean;
+    attributes: any;
+    listeners: any;
+  }) => React.ReactNode;
 }
-export function SortableItem(props: SortableItemProps) {
+function SortableItem(props: SortableItemProps) {
   const {
     attributes,
     listeners,
@@ -89,8 +101,8 @@ export function SortableItem(props: SortableItemProps) {
   };
 
   return (
-    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
-      {props.children({ id: props.id, isDragging })}
+    <div ref={setNodeRef} style={style}>
+      {props.children({ isDragging, attributes, listeners })}
     </div>
   );
 }
