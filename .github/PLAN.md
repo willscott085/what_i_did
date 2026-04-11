@@ -55,11 +55,11 @@ These are the default seed categories. Users can add/rename/remove later.
   - Install pnpm globally
   - Post-create command: `pnpm install`
   - VS Code extensions: ESLint, Prettier, Tailwind CSS IntelliSense, Tailwind Class Sorter, Playwright Test, Pretty TypeScript Errors, GitHub Copilot Chat, GitHub Actions, GitLens, SQLite Viewer
-  - Port forwarding: 3000 (dev server)
+  - Port forwarding: 55001 (dev server)
   - Set `remoteUser` to `pwuser`
 - [x] Install Playwright: `pnpm add -D @playwright/test`
 - [x] Create `playwright.config.ts`:
-  - Base URL: `http://localhost:3000`
+  - Base URL: `http://localhost:55001`
   - Web server command: `pnpm dev` with auto-wait
   - Projects: Chromium, Firefox, WebKit
   - Reporter: HTML + list

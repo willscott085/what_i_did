@@ -1,8 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import axios from "redaxios";
+import z from "zod";
 import { serverEnv } from "~/config/env.server";
 import { Task } from "./types";
-import z, { date } from "zod";
 
 export const fetchTasks = createServerFn({ method: "GET" }).handler(
   async () => {
