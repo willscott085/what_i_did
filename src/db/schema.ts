@@ -6,6 +6,10 @@ import {
 } from "drizzle-orm/sqlite-core";
 import { relations } from "drizzle-orm";
 
+// =====================
+// Table Declarations
+// =====================
+
 // --- Priority Categories ---
 
 export const priorityCategories = sqliteTable("priority_categories", {
@@ -17,13 +21,6 @@ export const priorityCategories = sqliteTable("priority_categories", {
   userId: text("user_id").notNull(),
 });
 
-export const priorityCategoriesRelations = relations(
-  priorityCategories,
-  ({ many }) => ({
-    tasks: many(tasks),
-  }),
-);
-
 // --- Tags ---
 
 export const tags = sqliteTable("tags", {
@@ -32,10 +29,6 @@ export const tags = sqliteTable("tags", {
   color: text("color"),
   userId: text("user_id").notNull(),
 });
-
-export const tagsRelations = relations(tags, ({ many }) => ({
-  taskTags: many(taskTags),
-}));
 
 // --- Tasks ---
 
@@ -65,6 +58,53 @@ export const tasks = sqliteTable(
   ],
 );
 
+// --- Lists ---
+
+export const lists = sqliteTable("lists", {
+  id: text("id").primaryKey(),
+  title: text("title"),
+  userId: text("user_id").notNull(),
+});
+
+// --- List Items (junction: ordered tasks in lists) ---
+
+export const listItems = sqliteTable("list_items", {
+  id: text("id").primaryKey(),
+  listId: text("list_id")
+    .notNull()
+    .references(() => lists.id, { onDelete: "cascade" }),
+  taskId: text("task_id")
+    .notNull()
+    .references(() => tasks.id, { onDelete: "cascade" }),
+  sortOrder: integer("sort_order").notNull().default(0),
+});
+
+// --- Task Tags (junction) ---
+
+export const taskTags = sqliteTable("task_tags", {
+  taskId: text("task_id")
+    .notNull()
+    .references(() => tasks.id, { onDelete: "cascade" }),
+  tagId: text("tag_id")
+    .notNull()
+    .references(() => tags.id, { onDelete: "cascade" }),
+});
+
+// =====================
+// Relations
+// =====================
+
+export const priorityCategoriesRelations = relations(
+  priorityCategories,
+  ({ many }) => ({
+    tasks: many(tasks),
+  }),
+);
+
+export const tagsRelations = relations(tags, ({ many }) => ({
+  taskTags: many(taskTags),
+}));
+
 export const tasksRelations = relations(tasks, ({ one, many }) => ({
   priorityCategory: one(priorityCategories, {
     fields: [tasks.priorityCategoryId],
@@ -80,30 +120,9 @@ export const tasksRelations = relations(tasks, ({ one, many }) => ({
   listItems: many(listItems),
 }));
 
-// --- Lists ---
-
-export const lists = sqliteTable("lists", {
-  id: text("id").primaryKey(),
-  title: text("title"),
-  userId: text("user_id").notNull(),
-});
-
 export const listsRelations = relations(lists, ({ many }) => ({
   listItems: many(listItems),
 }));
-
-// --- List Items (junction: ordered tasks in lists) ---
-
-export const listItems = sqliteTable("list_items", {
-  id: text("id").primaryKey(),
-  listId: text("list_id")
-    .notNull()
-    .references(() => lists.id, { onDelete: "cascade" }),
-  taskId: text("task_id")
-    .notNull()
-    .references(() => tasks.id, { onDelete: "cascade" }),
-  sortOrder: integer("sort_order").notNull().default(0),
-});
 
 export const listItemsRelations = relations(listItems, ({ one }) => ({
   list: one(lists, {
@@ -115,17 +134,6 @@ export const listItemsRelations = relations(listItems, ({ one }) => ({
     references: [tasks.id],
   }),
 }));
-
-// --- Task Tags (junction) ---
-
-export const taskTags = sqliteTable("task_tags", {
-  taskId: text("task_id")
-    .notNull()
-    .references(() => tasks.id, { onDelete: "cascade" }),
-  tagId: text("tag_id")
-    .notNull()
-    .references(() => tags.id, { onDelete: "cascade" }),
-});
 
 export const taskTagsRelations = relations(taskTags, ({ one }) => ({
   task: one(tasks, {
