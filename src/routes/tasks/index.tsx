@@ -4,7 +4,10 @@ import { format } from "date-fns";
 import { useSyncExternalStore } from "react";
 import { SortableList } from "~/components/SortableList";
 import { TaskItem } from "~/components/TaskItem";
-import { useUpdateTaskMutationOptions } from "~/features/tasks/mutations";
+import {
+  useReorderTasks,
+  useUpdateTaskMutationOptions,
+} from "~/features/tasks/mutations";
 import { fetchInboxTasksQueryOptions } from "~/features/tasks/queries";
 
 export const Route = createFileRoute("/tasks/")({
@@ -30,12 +33,13 @@ function RouteComponent() {
     () => false,
   );
 
+  const { mutate: reorderTasks } = useReorderTasks({ onError: () => {} });
+
   const taskIds = tasks.map((t) => t.id);
   const tasksById = new Map(tasks.map((task) => [task.id, task]));
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  function handleOrderChange(_items: string[]) {
-    // TODO: implement reorder via updateTaskOrder
+  function handleOrderChange(items: string[]) {
+    reorderTasks(items);
   }
 
   return (

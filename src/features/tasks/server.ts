@@ -128,6 +128,28 @@ export const updateTaskOrder = createServerFn({ method: "POST" })
     return result[0];
   });
 
+export const reorderTasks = createServerFn({ method: "POST" })
+  .inputValidator(
+    z.object({
+      taskIds: z.array(z.string().min(1)).min(1),
+      userId: z.string().min(1),
+    }),
+  )
+  .handler(async ({ data }) => {
+    console.info(`Reordering ${data.taskIds.length} tasks...`);
+
+    const rawDb = db.$client;
+    const updateStmt = rawDb.prepare(
+      "UPDATE tasks SET sort_order = ? WHERE id = ? AND user_id = ?",
+    );
+
+    rawDb.transaction(() => {
+      for (let i = 0; i < data.taskIds.length; i++) {
+        updateStmt.run(i, data.taskIds[i], data.userId);
+      }
+    })();
+  });
+
 export const createTask = createServerFn({ method: "POST" })
   .inputValidator(
     z.object({
