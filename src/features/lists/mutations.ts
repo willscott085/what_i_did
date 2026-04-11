@@ -18,21 +18,20 @@ export const useUpdateListOrder = (props: UseUpdateListOrderProps) => {
     onMutate: async (taskIds: string[]) => {
       await queryClient.cancelQueries({ queryKey });
 
-      const previousItems =
-        queryClient.getQueryData<ListItem[]>(queryKey);
+      const previousItems = queryClient.getQueryData<ListItem[]>(queryKey);
 
       if (previousItems) {
+        const itemsByTaskId = new Map(
+          previousItems.map((li) => [li.taskId, li]),
+        );
         queryClient.setQueryData<ListItem[]>(
           queryKey,
-          taskIds.map((taskId, index) => {
-            const existing = previousItems.find((li) => li.taskId === taskId);
-            return {
-              id: existing?.id ?? `temp_${taskId}`,
-              listId: props.listId,
-              taskId,
-              sortOrder: index,
-            };
-          }),
+          taskIds.map((taskId, index) => ({
+            id: itemsByTaskId.get(taskId)?.id ?? `temp_${taskId}`,
+            listId: props.listId,
+            taskId,
+            sortOrder: index,
+          })),
         );
       }
 

@@ -1,20 +1,75 @@
 import { createServerFn } from "@tanstack/react-start";
-import { eq } from "drizzle-orm";
+import { and, asc, eq, gt, isNotNull, isNull, lte, or } from "drizzle-orm";
 import z from "zod";
 import { db } from "~/db";
 import { tasks } from "~/db/schema";
 
-export const fetchTasks = createServerFn({ method: "GET" }).handler(
-  async () => {
-    return db.select().from(tasks).where(eq(tasks.userId, "1"));
-  },
-);
+const userIdInput = z.object({ userId: z.string().min(1) });
+
+const todayEnd = () => {
+  const d = new Date();
+  d.setHours(23, 59, 59, 999);
+  return d.toISOString();
+};
+
+export const fetchTasks = createServerFn({ method: "GET" })
+  .inputValidator(userIdInput)
+  .handler(async ({ data }) => {
+    return db
+      .select()
+      .from(tasks)
+      .where(eq(tasks.userId, data.userId))
+      .orderBy(asc(tasks.sortOrder));
+  });
+
+export const fetchInboxTasks = createServerFn({ method: "GET" })
+  .inputValidator(userIdInput)
+  .handler(async ({ data }) => {
+    return db
+      .select()
+      .from(tasks)
+      .where(
+        and(
+          eq(tasks.userId, data.userId),
+          isNull(tasks.dateCompleted),
+          or(isNull(tasks.dueDate), lte(tasks.dueDate, todayEnd())),
+        ),
+      )
+      .orderBy(asc(tasks.sortOrder));
+  });
+
+export const fetchUpcomingTasks = createServerFn({ method: "GET" })
+  .inputValidator(userIdInput)
+  .handler(async ({ data }) => {
+    return db
+      .select()
+      .from(tasks)
+      .where(
+        and(
+          eq(tasks.userId, data.userId),
+          isNull(tasks.dateCompleted),
+          gt(tasks.dueDate, todayEnd()),
+        ),
+      )
+      .orderBy(asc(tasks.dueDate));
+  });
+
+export const fetchCompletedTasks = createServerFn({ method: "GET" })
+  .inputValidator(userIdInput)
+  .handler(async ({ data }) => {
+    return db
+      .select()
+      .from(tasks)
+      .where(and(eq(tasks.userId, data.userId), isNotNull(tasks.dateCompleted)))
+      .orderBy(asc(tasks.sortOrder));
+  });
 
 export const completeTask = createServerFn({ method: "POST" })
   .inputValidator(
     z.object({
       taskId: z.string().min(1),
       dateCompleted: z.string().or(z.null()),
+      userId: z.string().min(1),
     }),
   )
   .handler(async ({ data }) => {
@@ -23,7 +78,7 @@ export const completeTask = createServerFn({ method: "POST" })
     const result = await db
       .update(tasks)
       .set({ dateCompleted: data.dateCompleted })
-      .where(eq(tasks.id, data.taskId))
+      .where(and(eq(tasks.id, data.taskId), eq(tasks.userId, data.userId)))
       .returning();
 
     return result[0];
@@ -47,7 +102,7 @@ export const updateTask = createServerFn({ method: "POST" })
         title: data.title,
         dateCompleted: data.dateCompleted,
       })
-      .where(eq(tasks.id, data.id))
+      .where(and(eq(tasks.id, data.id), eq(tasks.userId, data.userId)))
       .returning();
 
     return result[0];
@@ -58,6 +113,7 @@ export const updateTaskOrder = createServerFn({ method: "POST" })
     z.object({
       taskId: z.string().min(1),
       order: z.number(),
+      userId: z.string().min(1),
     }),
   )
   .handler(async ({ data }) => {
@@ -66,7 +122,7 @@ export const updateTaskOrder = createServerFn({ method: "POST" })
     const result = await db
       .update(tasks)
       .set({ sortOrder: data.order })
-      .where(eq(tasks.id, data.taskId))
+      .where(and(eq(tasks.id, data.taskId), eq(tasks.userId, data.userId)))
       .returning();
 
     return result[0];
@@ -77,12 +133,13 @@ export const createTask = createServerFn({ method: "POST" })
     z.object({
       title: z.string().min(1).max(255),
       notes: z.string().max(1000).optional(),
+      userId: z.string().min(1),
     }),
   )
   .handler(async ({ data }) => {
     console.info("Creating task...");
 
-    const id = `tsk_${Date.now()}`;
+    const id = `tsk_${crypto.randomUUID()}`;
 
     const result = await db
       .insert(tasks)
@@ -92,7 +149,7 @@ export const createTask = createServerFn({ method: "POST" })
         notes: data.notes ?? null,
         dateCreated: new Date().toISOString(),
         dateCompleted: null,
-        userId: "1",
+        userId: data.userId,
         sortOrder: 0,
       })
       .returning();

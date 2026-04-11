@@ -3,6 +3,8 @@ import {
   text,
   integer,
   foreignKey,
+  uniqueIndex,
+  primaryKey,
 } from "drizzle-orm/sqlite-core";
 import { relations } from "drizzle-orm";
 
@@ -68,27 +70,37 @@ export const lists = sqliteTable("lists", {
 
 // --- List Items (junction: ordered tasks in lists) ---
 
-export const listItems = sqliteTable("list_items", {
-  id: text("id").primaryKey(),
-  listId: text("list_id")
-    .notNull()
-    .references(() => lists.id, { onDelete: "cascade" }),
-  taskId: text("task_id")
-    .notNull()
-    .references(() => tasks.id, { onDelete: "cascade" }),
-  sortOrder: integer("sort_order").notNull().default(0),
-});
+export const listItems = sqliteTable(
+  "list_items",
+  {
+    id: text("id").primaryKey(),
+    listId: text("list_id")
+      .notNull()
+      .references(() => lists.id, { onDelete: "cascade" }),
+    taskId: text("task_id")
+      .notNull()
+      .references(() => tasks.id, { onDelete: "cascade" }),
+    sortOrder: integer("sort_order").notNull().default(0),
+  },
+  (table) => [
+    uniqueIndex("list_items_list_task_unique").on(table.listId, table.taskId),
+  ],
+);
 
 // --- Task Tags (junction) ---
 
-export const taskTags = sqliteTable("task_tags", {
-  taskId: text("task_id")
-    .notNull()
-    .references(() => tasks.id, { onDelete: "cascade" }),
-  tagId: text("tag_id")
-    .notNull()
-    .references(() => tags.id, { onDelete: "cascade" }),
-});
+export const taskTags = sqliteTable(
+  "task_tags",
+  {
+    taskId: text("task_id")
+      .notNull()
+      .references(() => tasks.id, { onDelete: "cascade" }),
+    tagId: text("tag_id")
+      .notNull()
+      .references(() => tags.id, { onDelete: "cascade" }),
+  },
+  (table) => [primaryKey({ columns: [table.taskId, table.tagId] })],
+);
 
 // =====================
 // Relations

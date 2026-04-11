@@ -4,37 +4,25 @@ import { format } from "date-fns";
 import { useSyncExternalStore } from "react";
 import { SortableList } from "~/components/SortableList";
 import { TaskItem } from "~/components/TaskItem";
-import { useUpdateListOrder } from "~/features/lists/mutations";
-import { fetchListItemsQueryOptions } from "~/features/lists/queries";
 import { useUpdateTaskMutationOptions } from "~/features/tasks/mutations";
-import { fetchTasksQueryOptions } from "~/features/tasks/queries";
+import { fetchInboxTasksQueryOptions } from "~/features/tasks/queries";
 
 export const Route = createFileRoute("/tasks/")({
   component: RouteComponent,
   loader: async ({ context }) => {
-    await Promise.all([
-      context.queryClient.ensureQueryData(fetchTasksQueryOptions()),
-      context.queryClient.ensureQueryData(fetchListItemsQueryOptions("inbox")),
-    ]);
+    await context.queryClient.ensureQueryData(fetchInboxTasksQueryOptions());
     return null;
   },
 });
 
 function RouteComponent() {
-  const { data: tasks = [] } = useQuery(fetchTasksQueryOptions());
-  const { data: listItems = [] } = useQuery(
-    fetchListItemsQueryOptions("inbox"),
-  );
+  const { data: tasks = [] } = useQuery(fetchInboxTasksQueryOptions());
 
   const { mutate: updateTask } = useMutation(
     useUpdateTaskMutationOptions({
       onError: () => {},
     }),
   );
-  const { mutate: updateInboxOrder } = useUpdateListOrder({
-    listId: "inbox",
-    onError: () => {},
-  });
 
   const hydrated = useSyncExternalStore(
     () => () => {},
@@ -42,11 +30,12 @@ function RouteComponent() {
     () => false,
   );
 
-  const inboxOrder = listItems.map((li) => li.taskId);
+  const taskIds = tasks.map((t) => t.id);
   const tasksById = new Map(tasks.map((task) => [task.id, task]));
 
-  function handleOrderChange(items: string[]) {
-    updateInboxOrder(items);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  function handleOrderChange(_items: string[]) {
+    // TODO: implement reorder via updateTaskOrder
   }
 
   return (
@@ -58,7 +47,7 @@ function RouteComponent() {
       </header>
       <div className="px-4">
         {hydrated ? (
-          <SortableList items={inboxOrder} onOrderChange={handleOrderChange}>
+          <SortableList items={taskIds} onOrderChange={handleOrderChange}>
             {(id, isDragging, dragAttributes, dragListeners) => {
               const task = tasksById.get(id);
 
@@ -78,7 +67,7 @@ function RouteComponent() {
           </SortableList>
         ) : (
           <ul>
-            {inboxOrder.map((id) => {
+            {taskIds.map((id) => {
               const task = tasksById.get(id);
 
               if (!task) return null;

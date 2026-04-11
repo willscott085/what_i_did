@@ -1,9 +1,32 @@
 import { queryOptions } from "@tanstack/react-query";
-import { tasksQueryKeys } from "./consts";
-import { fetchTasks } from "./server";
+import { DEFAULT_USER_ID, tasksQueryKeys } from "./consts";
+import {
+  fetchCompletedTasks,
+  fetchInboxTasks,
+  fetchTasks,
+  fetchUpcomingTasks,
+} from "./server";
 
 export const fetchTasksQueryOptions = () =>
   queryOptions({
     queryKey: [tasksQueryKeys.all],
-    queryFn: () => fetchTasks(),
+    queryFn: () => fetchTasks({ data: { userId: DEFAULT_USER_ID } }),
+  });
+
+export const fetchInboxTasksQueryOptions = () =>
+  queryOptions({
+    queryKey: [...tasksQueryKeys.all, "inbox"],
+    queryFn: () => fetchInboxTasks({ data: { userId: DEFAULT_USER_ID } }),
+  });
+
+export const fetchUpcomingTasksQueryOptions = () =>
+  queryOptions({
+    queryKey: [...tasksQueryKeys.all, "upcoming"],
+    queryFn: () => fetchUpcomingTasks({ data: { userId: DEFAULT_USER_ID } }),
+  });
+
+export const fetchCompletedTasksQueryOptions = () =>
+  queryOptions({
+    queryKey: [...tasksQueryKeys.all, "completed"],
+    queryFn: () => fetchCompletedTasks({ data: { userId: DEFAULT_USER_ID } }),
   });

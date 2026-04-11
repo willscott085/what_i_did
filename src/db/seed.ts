@@ -56,16 +56,13 @@ db.insert(schema.priorityCategories)
   ])
   .run();
 
-// Seed default lists
-db.insert(schema.lists)
-  .values([
-    { id: "inbox", title: "Inbox", userId: "1" },
-    { id: "upcoming", title: "Upcoming", userId: "1" },
-    { id: "completed", title: "Completed", userId: "1" },
-  ])
-  .run();
+// Seed sample tasks (mix of inbox, upcoming, and completed)
+const today = new Date();
+const tomorrow = new Date(today);
+tomorrow.setDate(tomorrow.getDate() + 1);
+const nextWeek = new Date(today);
+nextWeek.setDate(nextWeek.getDate() + 7);
 
-// Seed sample tasks
 const sampleTasks = [
   {
     id: "tsk_001",
@@ -73,6 +70,7 @@ const sampleTasks = [
     notes: "Outline key deliverables and milestones.",
     dateCreated: "2025-09-25T09:12:03.000Z",
     dateCompleted: null,
+    dueDate: null,
     userId: "1",
     sortOrder: 0,
   },
@@ -82,6 +80,7 @@ const sampleTasks = [
     notes: "Improve readability and add missing tests.",
     dateCreated: "2025-09-20T14:31:10.000Z",
     dateCompleted: null,
+    dueDate: today.toISOString(),
     userId: "1",
     sortOrder: 1,
   },
@@ -91,6 +90,7 @@ const sampleTasks = [
     notes: "Focus on edge cases around completion toggling.",
     dateCreated: "2025-09-29T11:05:47.000Z",
     dateCompleted: null,
+    dueDate: null,
     userId: "1",
     sortOrder: 2,
   },
@@ -100,6 +100,7 @@ const sampleTasks = [
     notes: "Add staging environment notes.",
     dateCreated: "2025-09-18T08:44:55.000Z",
     dateCompleted: null,
+    dueDate: nextWeek.toISOString(),
     userId: "1",
     sortOrder: 3,
   },
@@ -109,6 +110,7 @@ const sampleTasks = [
     notes: "Keep components accessible with proper ARIA.",
     dateCreated: "2025-10-01T10:02:11.000Z",
     dateCompleted: null,
+    dueDate: tomorrow.toISOString(),
     userId: "1",
     sortOrder: 4,
   },
@@ -118,6 +120,7 @@ const sampleTasks = [
     notes: "Occurs when user switches locale mid-session.",
     dateCreated: "2025-09-30T07:22:39.000Z",
     dateCompleted: null,
+    dueDate: null,
     userId: "1",
     sortOrder: 5,
   },
@@ -127,6 +130,7 @@ const sampleTasks = [
     notes: "Cover error states (500, 404).",
     dateCreated: "2025-09-27T15:50:33.000Z",
     dateCompleted: "2025-11-17T17:46:50.189Z",
+    dueDate: null,
     userId: "1",
     sortOrder: 6,
   },
@@ -136,6 +140,7 @@ const sampleTasks = [
     notes: "Investigate code splitting for feature routes.",
     dateCreated: "2025-09-23T09:05:14.000Z",
     dateCompleted: null,
+    dueDate: nextWeek.toISOString(),
     userId: "1",
     sortOrder: 7,
   },
@@ -144,7 +149,8 @@ const sampleTasks = [
     title: "Create productivity tips blog draft",
     notes: "Reference reputable sources.",
     dateCreated: "2025-09-26T12:14:57.000Z",
-    dateCompleted: null,
+    dateCompleted: "2026-04-10T12:00:00.000Z",
+    dueDate: null,
     userId: "1",
     sortOrder: 8,
   },
@@ -154,6 +160,7 @@ const sampleTasks = [
     notes: "Use client-side filtering first pass.",
     dateCreated: "2025-10-03T13:43:22.000Z",
     dateCompleted: null,
+    dueDate: null,
     userId: "1",
     sortOrder: 9,
   },
@@ -161,20 +168,8 @@ const sampleTasks = [
 
 db.insert(schema.tasks).values(sampleTasks).run();
 
-// Seed list items (tasks in inbox)
-const listItemValues = sampleTasks.map((task, index) => ({
-  id: `li_${String(index + 1).padStart(3, "0")}`,
-  listId: "inbox",
-  taskId: task.id,
-  sortOrder: index,
-}));
-
-db.insert(schema.listItems).values(listItemValues).run();
-
 console.info("Database seeded successfully.");
 console.info(`  - ${4} priority categories`);
-console.info(`  - ${3} lists`);
 console.info(`  - ${sampleTasks.length} tasks`);
-console.info(`  - ${listItemValues.length} list items`);
 
 sqlite.close();

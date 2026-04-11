@@ -4,50 +4,49 @@ import {
   rootRouteId,
   useMatch,
   useRouter,
-} from '@tanstack/react-router'
-import type { ErrorComponentProps } from '@tanstack/react-router'
+} from "@tanstack/react-router";
+import type { ErrorComponentProps } from "@tanstack/react-router";
+import { Button } from "./ui/button";
 
 export function DefaultCatchBoundary({ error }: ErrorComponentProps) {
-  const router = useRouter()
+  const router = useRouter();
   const isRoot = useMatch({
     strict: false,
     select: (state) => state.id === rootRouteId,
-  })
+  });
 
-  console.error(error)
+  console.error(error);
 
   return (
-    <div className="min-w-0 flex-1 p-4 flex flex-col items-center justify-center gap-6">
+    <div className="flex min-w-0 flex-1 flex-col items-center justify-center gap-6 p-4">
       <ErrorComponent error={error} />
-      <div className="flex gap-2 items-center flex-wrap">
-        <button
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          size="sm"
           onClick={() => {
-            router.invalidate()
+            router.invalidate();
           }}
-          className={`px-2 py-1 bg-gray-600 dark:bg-gray-700 rounded text-white uppercase font-extrabold`}
         >
           Try Again
-        </button>
+        </Button>
         {isRoot ? (
-          <Link
-            to="/"
-            className={`px-2 py-1 bg-gray-600 dark:bg-gray-700 rounded text-white uppercase font-extrabold`}
-          >
-            Home
-          </Link>
+          <Button size="sm" variant="secondary" asChild>
+            <Link to="/">Home</Link>
+          </Button>
         ) : (
-          <Link
-            to="/"
-            className={`px-2 py-1 bg-gray-600 dark:bg-gray-700 rounded text-white uppercase font-extrabold`}
-            onClick={(e) => {
-              e.preventDefault()
-              window.history.back()
-            }}
-          >
-            Go Back
-          </Link>
+          <Button size="sm" variant="secondary" asChild>
+            <Link
+              to="/"
+              onClick={(e) => {
+                e.preventDefault();
+                window.history.back();
+              }}
+            >
+              Go Back
+            </Link>
+          </Button>
         )}
       </div>
     </div>
-  )
+  );
 }
