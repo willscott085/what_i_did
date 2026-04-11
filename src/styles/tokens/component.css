@@ -1,0 +1,20 @@
+/*
+ * Component Design Tokens
+ *
+ * Optional component-level tokens for complex, multi-element patterns.
+ * These reference semantic tokens and provide a single place to adjust
+ * component-specific styling without touching individual components.
+ *
+ * Only add tokens here when a component has 3+ related style values
+ * that benefit from co-location.
+ */
+
+:root {
+  /* --- Task item --- */
+  --task-drag-handle: var(--muted-foreground);
+  --task-drag-handle-hover: var(--foreground);
+  --task-completed-text: var(--muted-foreground);
+
+  /* --- Dialog overlay --- */
+  --overlay-bg: var(--primitive-black-50);
+}

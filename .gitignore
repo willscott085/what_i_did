@@ -8,6 +8,7 @@ yarn.lock
 .vercel
 .output
 /build/
+/dist/
 /api/
 /server/build
 /public/build# Sentry Config File
