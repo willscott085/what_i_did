@@ -1,5 +1,4 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { fetchTasksQueryOptions } from "~/features/tasks/queries";
 
 export const Route = createFileRoute("/")({
   head: () => ({

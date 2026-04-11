@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import axios from "redaxios";
 import z from "zod";
-import { serverEnv } from "~/config/env";
+import { serverEnv } from "~/config/env.server";
 import { List } from "./types";
 
 export const fetchLists = createServerFn({ method: "GET" }).handler(

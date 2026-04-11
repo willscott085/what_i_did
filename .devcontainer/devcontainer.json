@@ -8,8 +8,8 @@
       "installYarnUsingApt": false
     }
   },
-  "postCreateCommand": "npm install -g pnpm && pnpm install",
-  "forwardPorts": [3000],
+  "postCreateCommand": "git config --global user.name 'Will Scott' && git config --global user.email 'willscott.dev@gmail.com' && npm install -g pnpm && pnpm install && pnpm start",
+  "forwardPorts": [55001],
   "customizations": {
     "vscode": {
       "extensions": [
