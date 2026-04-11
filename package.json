@@ -1,5 +1,5 @@
 {
-  "name": "tanstack-start-example-basic-react-query",
+  "name": "what_i_did",
   "private": true,
   "sideEffects": false,
   "type": "module",
@@ -7,7 +7,7 @@
     "server": "json-server --watch data/db.json --port 55000",
     "dev": "vite dev --port 55001",
     "build": "vite build && tsc --noEmit",
-    "start": "vite start",
+    "start": "json-server --watch data/db.json --port 55000 & vite dev --port 55001",
     "test": "vitest",
     "coverage": "vitest run --coverage"
   },

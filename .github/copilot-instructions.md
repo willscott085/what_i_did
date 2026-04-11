@@ -1,75 +1,128 @@
 # Copilot Instructions for what_i_did
 
+> **Master plan**: See `.github/PLAN.md` for the full iterative implementation plan and current phase status.
+
 ## Context
 
-This application is a task and project management tool built with React and TypeScript and Tanstack Start. The tehch stack includes:
+**whatIdid** is a personal task tracker and AI-powered notes system. Built with React 19, TypeScript, and TanStack Start as a full-stack framework. The app is being developed iteratively — check `.github/PLAN.md` for the current phase.
 
-- React with functional components and hooks
-- TypeScript (strict mode)
-- Tailwind CSS for styling
-- React Query for data fetching and caching and Tanstack Start loaders
-- Vitest and React Testing Library for unit tests
-- React Aria Components for accessible UI components
-
-## General Principles
-
-- Write idiomatic, modern TypeScript and React.
-- Use the TanStack ecosystem where appropriate (Start, React Query, React Router, etc.).
-- Prioritize readability, maintainability, and consistency.
-- Follow the project's established folder structure and naming conventions.
-- Prefer composition over inheritance.
-- Document non-obvious code with concise comments.
-
-## File & Folder Organization
-
-- Place new features in `src/features/` using a flat structure.
-- Shared UI components go in `src/components/`.
-- Utilities and helpers belong in `src/utils/` or `src/hooks/`.
-- Use `public/` for static assets.
-
-## Code Style
-
-- Use 2 spaces for indentation.
-- Use single quotes for strings.
-- Omit semicolons.
-- Prefer `const` and `let` over `var`.
-- Use arrow functions where possible.
-- Use named exports; avoid default exports unless necessary.
-- Use PascalCase for components and enums, camelCase for variables and functions.
-
-## Styling
-
-- Use Tailwind CSS for all styling.
-- Use utility classes and `tailwind-variants` for component variants.
-- Use the `cn` or `twMerge` helpers for class composition.
-- Do not use inline styles unless absolutely necessary.
-
-## Testing
-
-- Write unit tests with Vitest and React Testing Library.
-- Place tests next to the code under test or in `src/tests/`.
-- For E2E, use Playwright (see `playwright/README.md`).
-- Do not use `.only` in tests; the linter will fail the build.
-- Mock network requests with MSW where possible.
-
-## Environment & Configuration
-
-- Use `.env.local` for local environment variables.
-- Never commit secrets or credentials.
-- Document any new environment variables in the README.
-
-## Documentation
-
-- Update `README.md` and relevant docs for new features or changes.
-- Use JSDoc for complex functions or utilities.
-
-## Tech Stack
+### Tech Stack
 
 - **Language:** TypeScript (strict mode)
-- **Framework:** React (functional components, hooks), TanStack Start
-- **Styling:** Tailwind CSS, tailwind-variants
-- **State Management:** React Context, React Query (where needed)
+- **Framework:** React 19 (functional components, hooks), TanStack Start (full-stack)
+- **Routing:** TanStack Router (file-based routes in `src/routes/`)
+- **Data Fetching:** TanStack React Query (queries, mutations, optimistic updates)
+- **Forms:** TanStack React Form
+- **Database:** SQLite via Drizzle ORM (migrating from json-server)
+- **Styling:** Tailwind CSS 4, tailwind-variants
+- **UI Primitives:** Radix UI (headless, accessible components — dialog, select, checkbox, tooltip, etc.)
+- **Drag & Drop:** dnd-kit (core, sortable)
 - **Testing:** Vitest, React Testing Library, MSW (mocking)
 - **Linting/Formatting:** ESLint, Prettier
 - **Build Tooling:** Vite
-- **API:** REST (fetch/axios)
+- **AI:** Provider-agnostic abstraction (OpenAI default, swappable)
+
+## Architecture
+
+### Data Flow
+
+1. **Route loaders** pre-fetch data via `ensureQueryData` with React Query options
+2. **Components** consume data via `useQuery` / `useSuspenseQuery`
+3. **Mutations** use optimistic updates: cancel in-flight queries → update cache → revalidate on settle
+4. **Server functions** (`createServerFn`) handle all data access — these run server-side and call the database directly via Drizzle
+
+### Feature Structure
+
+Each feature domain lives in `src/features/{domain}/` with these files:
+- `types.ts` — TypeScript types and Zod schemas
+- `server.ts` — Server functions (data access layer)
+- `queries.ts` — React Query options (queryKey, queryFn wrapping server functions)
+- `mutations.ts` — React Query mutations with optimistic updates
+- `consts.ts` — Query keys and constants
+
+### Server Functions Pattern
+
+```typescript
+export const myFunction = createServerFn({ method: 'GET' })
+  .inputValidator(z.object({ /* zod schema */ }))
+  .handler(async ({ data }) => {
+    // Direct database access via Drizzle — no HTTP calls
+    return db.select().from(table).where(eq(table.id, data.id))
+  })
+```
+
+### Database Pattern (Drizzle + SQLite)
+
+- Schema defined in `src/db/schema.ts`
+- Drizzle client singleton in `src/db/index.ts`
+- Migrations managed via `drizzle-kit` (`pnpm db:generate`, `pnpm db:migrate`)
+- All tables include `userId` column (multi-user ready, hardcoded '1' for now)
+
+## File & Folder Organization
+
+- `src/features/{domain}/` — Feature modules (tasks, lists, categories, tags, notes, ai)
+- `src/components/` — Shared UI components
+- `src/components/ui/` — Primitive UI components (button, dialog, input, etc.)
+- `src/routes/` — File-based routes (TanStack Router)
+- `src/db/` — Database schema, client, and seed data
+- `src/utils/` — Shared utilities
+- `src/hooks/` — Custom React hooks
+- `src/styles/` — Global CSS and theming
+- `src/tests/` — Test setup and mocks
+- `src/config/` — Environment configuration (server/client split)
+- `public/` — Static assets
+
+## Code Style
+
+- Use 2 spaces for indentation
+- Use single quotes for strings
+- Omit semicolons
+- Prefer `const` and `let` over `var`
+- Use arrow functions where possible
+- Use named exports; avoid default exports unless necessary
+- Use PascalCase for components and enums, camelCase for variables and functions
+- Prefer early returns for guard clauses
+- Keep files focused — one server function group per feature
+- Multiple components per file are fine for local/helper components; extract to a separate file when reused elsewhere
+
+## Styling & Design Tokens
+
+- Use Tailwind CSS for all styling — no inline styles
+- Use utility classes and `tailwind-variants` for component variants
+- Use the `cn` or `twMerge` helpers for class composition
+- Dark mode via `.dark` class selector with OKLCH color theming
+- Responsive design: mobile-first approach
+- **Design tokens**: All colors, spacing, typography, and elevation are defined as CSS custom properties in `src/styles/tokens/`
+  - **Primitives** (`primitive.css`): Raw OKLCH palette values
+  - **Semantic** (`semantic.css`): Role-based aliases (e.g., `--color-surface`, `--color-interactive`)
+  - **Component** (`component.css`): Optional component-level tokens
+- Never use hardcoded color values in components — always reference semantic tokens via Tailwind classes (`bg-background`, `text-foreground`, etc.)
+- To create a new theme, add a new CSS selector (e.g., `.theme-nord`) that remaps semantic tokens to different primitives
+
+## Testing
+
+- **Unit/Integration**: Vitest + React Testing Library, MSW for network mocking
+- Place unit tests next to the code under test or in `src/tests/`
+- **E2E**: Playwright (Chromium, Firefox, WebKit) — tests live in `e2e/`
+- Run unit: `pnpm test`, E2E: `pnpm test:e2e`, E2E UI: `pnpm test:e2e:ui`
+- Do not use `.only` in tests; the linter will fail the build
+- Mock network requests with MSW where possible
+- Test server functions by mocking the Drizzle client
+- Dev container (`.devcontainer/`) provides a reproducible environment with Playwright browsers pre-installed
+
+## Environment & Configuration
+
+- Use `.env.local` for local environment variables
+- Never commit secrets or credentials (especially AI API keys)
+- Server-only env vars in `src/config/env.server.ts` (throws if accessed client-side)
+- Client env vars in `src/config/env.client.ts`
+- Document new environment variables in the README
+
+## Key Conventions
+
+- All data mutations go through server functions — never call the DB from client code
+- Use Zod for input validation on all server functions
+- React Query keys follow the pattern: `{ all: [domain], byId: [domain, id] }`
+- Optimistic updates are the default for mutations affecting UI state
+- Components that need hydration-awareness use `useEffect` state guard
+- Drag-and-drop components use dnd-kit with `useSortable` hook per item
