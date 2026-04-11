@@ -1,0 +1,33 @@
+{
+  "name": "whatIdid",
+  "image": "mcr.microsoft.com/playwright:v1.59.1-noble",
+  "remoteUser": "pwuser",
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "22",
+      "installYarnUsingApt": false
+    }
+  },
+  "postCreateCommand": "npm install -g pnpm && pnpm install",
+  "forwardPorts": [3000],
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "bradlc.vscode-tailwindcss",
+        "ms-playwright.playwright",
+        "yoavbls.pretty-ts-errors",
+        "GitHub.copilot-chat",
+        "GitHub.vscode-github-actions",
+        "eamodio.gitlens",
+        "qwtel.sqlite-viewer",
+        "hbenl.vscode-mocha-test-adapter"
+      ],
+      "settings": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.formatOnSave": true
+      }
+    }
+  }
+}

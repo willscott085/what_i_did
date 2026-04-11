@@ -46,34 +46,34 @@ These are the default seed categories. Users can add/rename/remove later.
 
 ---
 
-## Phase 2: Dev Container & E2E Setup
+## Phase 2: Dev Container & E2E Setup ✅
 
 > Reproducible dev environment with Docker and Playwright E2E testing infrastructure.
 
-- [ ] Create `.devcontainer/devcontainer.json`:
+- [x] Create `.devcontainer/devcontainer.json`:
   - Base image: `mcr.microsoft.com/playwright:v1.52.0-noble` (includes Node.js 22 + Playwright browsers)
   - Install pnpm globally
   - Post-create command: `pnpm install`
   - VS Code extensions: ESLint, Prettier, Tailwind CSS IntelliSense, Tailwind Class Sorter, Playwright Test, Pretty TypeScript Errors, GitHub Copilot Chat, GitHub Actions, GitLens, SQLite Viewer
   - Port forwarding: 3000 (dev server)
   - Set `remoteUser` to `pwuser`
-- [ ] Install Playwright: `pnpm add -D @playwright/test`
-- [ ] Create `playwright.config.ts`:
+- [x] Install Playwright: `pnpm add -D @playwright/test`
+- [x] Create `playwright.config.ts`:
   - Base URL: `http://localhost:3000`
   - Web server command: `pnpm dev` with auto-wait
   - Projects: Chromium, Firefox, WebKit
   - Reporter: HTML + list
   - Test directory: `e2e/`
   - Retries: 1 on CI, 0 locally
-- [ ] Create `e2e/` directory with a smoke test (`e2e/smoke.spec.ts`):
+- [x] Create `e2e/` directory with a smoke test (`e2e/smoke.spec.ts`):
   - Navigate to `/`, verify page loads
   - Basic interaction (e.g., task list renders)
-- [ ] Add scripts to `package.json`: `test:e2e`, `test:e2e:ui`
-- [ ] Add `e2e/test-results/`, `playwright-report/`, `blob-report/` to `.gitignore`
-- [ ] Fix `src/tests/TestUtils.tsx` — add `QueryClientProvider` wrapper for component tests
-- [ ] Audit and update dependencies to known-compatible versions (React 19, TanStack Start/Router/Query, Vite, Tailwind CSS 4, dnd-kit, Vitest, MSW, etc.) — resolve any peer dependency conflicts
-- [ ] **Verify**: `pnpm test` (unit) and `pnpm test:e2e` (E2E) both pass
-- [ ] **Verify**: Dev container builds and runs successfully
+- [x] Add scripts to `package.json`: `test:e2e`, `test:e2e:ui`
+- [x] Add `e2e/test-results/`, `playwright-report/`, `blob-report/` to `.gitignore`
+- [x] Fix `src/tests/TestUtils.tsx` — add `QueryClientProvider` wrapper for component tests
+- [x] Audit and update dependencies to known-compatible versions (React 19, TanStack Start/Router/Query, Vite, Tailwind CSS 4, dnd-kit, Vitest, MSW, etc.) — resolve any peer dependency conflicts
+- [x] **Verify**: `pnpm test` (unit) and `pnpm test:e2e` (E2E) both pass
+- [x] **Verify**: Dev container builds and runs successfully
 
 ### Outputs
 

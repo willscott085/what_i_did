@@ -13,8 +13,10 @@ yarn.lock
 /public/build# Sentry Config File
 .env.sentry-build-plugin
 /test-results/
+e2e/test-results/
 /playwright-report/
 /blob-report/
 /playwright/.cache/
 /data/*
 .vscode/
+.pnpm-store/
