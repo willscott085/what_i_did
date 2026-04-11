@@ -6,6 +6,8 @@ import { FieldError } from "~/components/ui/field";
 import { Input } from "~/components/ui/input";
 import { Task } from "~/features/tasks/types";
 
+type TaskUpdate = Pick<Task, "id" | "title" | "dateCompleted" | "userId">;
+
 export function TaskItem({
   task,
   isDragging,
@@ -15,8 +17,7 @@ export function TaskItem({
 }: {
   task: Task;
   isDragging: boolean;
-  onUpdate: (task: Task) => void;
-  // Add props for dnd-kit listeners and attributes
+  onUpdate: (task: TaskUpdate) => void;
   dragAttributes?: React.HTMLAttributes<HTMLButtonElement>;
   dragListeners?: React.HTMLAttributes<HTMLButtonElement>;
 }) {
@@ -28,7 +29,12 @@ export function TaskItem({
     },
     onSubmit: async ({ value }) => {
       const dateCompleted = value.completed ? new Date().toISOString() : null;
-      onUpdate({ ...task, id: task.id, title: value.title, dateCompleted });
+      onUpdate({
+        id: task.id,
+        title: value.title,
+        dateCompleted,
+        userId: task.userId,
+      });
     },
   });
 

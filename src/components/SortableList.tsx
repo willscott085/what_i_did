@@ -7,6 +7,7 @@ import {
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
+import type { DraggableSyntheticListeners } from "@dnd-kit/core";
 import {
   arrayMove,
   SortableContext,
@@ -23,8 +24,8 @@ interface SortableListProps {
   children: (
     id: string,
     isDragging: boolean,
-    dragAttributes: any,
-    dragListeners: any,
+    dragAttributes: React.HTMLAttributes<HTMLElement>,
+    dragListeners: DraggableSyntheticListeners,
   ) => React.ReactNode;
 }
 
@@ -81,8 +82,8 @@ interface SortableItemProps {
   id: string;
   children: (props: {
     isDragging: boolean;
-    attributes: any;
-    listeners: any;
+    attributes: React.HTMLAttributes<HTMLElement>;
+    listeners: DraggableSyntheticListeners;
   }) => React.ReactNode;
 }
 function SortableItem(props: SortableItemProps) {

@@ -1,48 +1,41 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { format } from "date-fns";
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { SortableList } from "~/components/SortableList";
 import { TaskItem } from "~/components/TaskItem";
-import { useUpdateListsMutationOptions } from "~/features/lists/mutations";
-import { fetchListsQueryOptions } from "~/features/lists/queries";
 import { useUpdateTaskMutationOptions } from "~/features/tasks/mutations";
-import { fetchTasksQueryOptions } from "~/features/tasks/queries";
+import { fetchInboxTasksQueryOptions } from "~/features/tasks/queries";
 
 export const Route = createFileRoute("/tasks/")({
   component: RouteComponent,
   loader: async ({ context }) => {
-    await Promise.all([
-      context.queryClient.ensureQueryData(fetchTasksQueryOptions()),
-      context.queryClient.ensureQueryData(fetchListsQueryOptions()),
-    ]);
+    await context.queryClient.ensureQueryData(fetchInboxTasksQueryOptions());
     return null;
   },
 });
 
 function RouteComponent() {
-  const { data: tasks = [] } = useQuery(fetchTasksQueryOptions());
-  const { data: lists = [] } = useQuery(fetchListsQueryOptions());
+  const { data: tasks = [] } = useQuery(fetchInboxTasksQueryOptions());
 
   const { mutate: updateTask } = useMutation(
     useUpdateTaskMutationOptions({
       onError: () => {},
     }),
   );
-  const { mutate: updateInbox } = useMutation(
-    useUpdateListsMutationOptions({
-      onError: () => {},
-    }),
+
+  const hydrated = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
   );
 
-  const [hydrated, setHydrated] = useState(false);
-  useEffect(() => setHydrated(true), []);
-
-  const inboxOrder = lists.find((l) => l.id === "inbox")?.order ?? [];
+  const taskIds = tasks.map((t) => t.id);
   const tasksById = new Map(tasks.map((task) => [task.id, task]));
 
-  function handleOrderChange(items: string[]) {
-    updateInbox({ id: "inbox", order: items });
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  function handleOrderChange(_items: string[]) {
+    // TODO: implement reorder via updateTaskOrder
   }
 
   return (
@@ -54,7 +47,7 @@ function RouteComponent() {
       </header>
       <div className="px-4">
         {hydrated ? (
-          <SortableList items={inboxOrder} onOrderChange={handleOrderChange}>
+          <SortableList items={taskIds} onOrderChange={handleOrderChange}>
             {(id, isDragging, dragAttributes, dragListeners) => {
               const task = tasksById.get(id);
 
@@ -74,7 +67,7 @@ function RouteComponent() {
           </SortableList>
         ) : (
           <ul>
-            {inboxOrder.map((id) => {
+            {taskIds.map((id) => {
               const task = tasksById.get(id);
 
               if (!task) return null;

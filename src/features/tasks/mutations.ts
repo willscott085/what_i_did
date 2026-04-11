@@ -3,7 +3,7 @@ import {
   useMutation,
   useQueryClient,
 } from "@tanstack/react-query";
-import { tasksQueryKeys } from "./consts";
+import { DEFAULT_USER_ID, tasksQueryKeys } from "./consts";
 import { fetchTasksQueryOptions } from "./queries";
 import { updateTask, updateTaskOrder } from "./server";
 import { Task } from "./types";
@@ -16,7 +16,7 @@ export const useUpdateTaskOrder = ({ onError }: UseUpdateTaskOrderProps) => {
 
   const { mutate: updateTaskOrderMutation, isPending } = useMutation({
     mutationFn: ({ taskId, order }: { taskId: string; order: number }) =>
-      updateTaskOrder({ data: { taskId, order } }),
+      updateTaskOrder({ data: { taskId, order, userId: DEFAULT_USER_ID } }),
     onMutate: async ({ taskId, order }) => {
       await queryClient.cancelQueries({
         queryKey: fetchTasksQueryOptions().queryKey,
@@ -29,7 +29,7 @@ export const useUpdateTaskOrder = ({ onError }: UseUpdateTaskOrderProps) => {
       if (prev) {
         queryClient.setQueryData<Task[]>(
           fetchTasksQueryOptions().queryKey,
-          prev.map((t) => (t.id === taskId ? { ...t, order } : t)),
+          prev.map((t) => (t.id === taskId ? { ...t, sortOrder: order } : t)),
         );
       }
 
@@ -61,7 +61,9 @@ export const useUpdateTaskMutationOptions = (
   const queryClient = useQueryClient();
 
   return mutationOptions({
-    mutationFn: (task: Task) => {
+    mutationFn: (
+      task: Pick<Task, "id" | "title" | "dateCompleted" | "userId">,
+    ) => {
       return updateTask({ data: task });
     },
     onMutate: async (task) => {

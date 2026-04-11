@@ -1,15 +1,13 @@
-export type Priority =
-  | "urgent_and_important"
-  | "urgent"
-  | "important"
-  | "not_urgent_not_important";
-
-export type TaskList = "inbox" | "upcoming" | "completed";
-
 export type Task = {
   id: string;
   title: string;
+  notes: string | null;
+  dateCreated: string;
   dateCompleted: string | null;
+  dueDate: string | null;
   userId: string;
-  list: TaskList;
+  priorityCategoryId: string | null;
+  parentTaskId: string | null;
+  recurrenceRule: string | null;
+  sortOrder: number;
 };
