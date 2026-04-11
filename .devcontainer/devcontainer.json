@@ -1,6 +1,6 @@
 {
   "name": "whatIdid",
-  "image": "mcr.microsoft.com/playwright:v1.52.0-noble",
+  "image": "mcr.microsoft.com/playwright:v1.59.1-noble",
   "remoteUser": "pwuser",
   "features": {
     "ghcr.io/devcontainers/features/node:1": {

@@ -19,3 +19,4 @@ e2e/test-results/
 /playwright/.cache/
 /data/*
 .vscode/
+.pnpm-store/

@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, RenderOptions } from "@testing-library/react";
-import React, { ReactElement } from "react";
+import { ReactElement, ReactNode, useState } from "react";
 
 const createTestQueryClient = () =>
   new QueryClient({
@@ -12,8 +12,8 @@ const createTestQueryClient = () =>
     },
   });
 
-const AllTheProviders = ({ children }: { children: React.ReactNode }) => {
-  const queryClient = createTestQueryClient();
+const AllTheProviders = ({ children }: { children: ReactNode }) => {
+  const [queryClient] = useState(() => createTestQueryClient());
   return (
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   );
