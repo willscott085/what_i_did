@@ -1,7 +1,7 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { format } from "date-fns";
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { SortableList } from "~/components/SortableList";
 import { TaskItem } from "~/components/TaskItem";
 import { useUpdateListOrder } from "~/features/lists/mutations";
@@ -36,8 +36,11 @@ function RouteComponent() {
     onError: () => {},
   });
 
-  const [hydrated, setHydrated] = useState(false);
-  useEffect(() => setHydrated(true), []);
+  const hydrated = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
 
   const inboxOrder = listItems.map((li) => li.taskId);
   const tasksById = new Map(tasks.map((task) => [task.id, task]));
