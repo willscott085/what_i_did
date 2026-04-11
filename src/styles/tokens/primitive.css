@@ -1,0 +1,80 @@
+/*
+ * Primitive Design Tokens
+ *
+ * Raw OKLCH palette values. These should never be referenced directly
+ * by components — use semantic tokens instead.
+ *
+ * Naming: --primitive-{hue}-{shade}
+ * Hue families derived from the current slate-based theme.
+ */
+
+:root {
+  /* --- Slate (Neutral blue-grey, hue ~262) --- */
+  --primitive-slate-50: oklch(0.985 0.002 247.839);
+  --primitive-slate-100: oklch(0.967 0.003 264.542);
+  --primitive-slate-200: oklch(0.928 0.006 264.531);
+  --primitive-slate-300: oklch(0.869 0.012 264.435);
+  --primitive-slate-400: oklch(0.707 0.022 261.325);
+  --primitive-slate-500: oklch(0.551 0.027 264.364);
+  --primitive-slate-600: oklch(0.446 0.03 256.802);
+  --primitive-slate-700: oklch(0.372 0.034 260.031);
+  --primitive-slate-800: oklch(0.278 0.033 256.848);
+  --primitive-slate-900: oklch(0.21 0.034 264.665);
+  --primitive-slate-950: oklch(0.13 0.028 261.692);
+
+  /* --- White / Black --- */
+  --primitive-white: oklch(1 0 0);
+  --primitive-black: oklch(0 0 0);
+
+  /* --- Red (Destructive, hue ~25) --- */
+  --primitive-red-500: oklch(0.577 0.245 27.325);
+  --primitive-red-400: oklch(0.704 0.191 22.216);
+  --primitive-red-600: oklch(0.505 0.213 27.518);
+
+  /* --- Blue (Primary accent, hue ~264) --- */
+  --primitive-blue-500: oklch(0.488 0.243 264.376);
+  --primitive-blue-400: oklch(0.546 0.245 262.881);
+
+  /* --- Green (Success, hue ~163) --- */
+  --primitive-green-500: oklch(0.6 0.118 184.704);
+  --primitive-green-400: oklch(0.696 0.17 162.48);
+
+  /* --- Chart palette --- */
+  --primitive-chart-orange: oklch(0.646 0.222 41.116);
+  --primitive-chart-teal: oklch(0.6 0.118 184.704);
+  --primitive-chart-navy: oklch(0.398 0.07 227.392);
+  --primitive-chart-yellow: oklch(0.828 0.189 84.429);
+  --primitive-chart-amber: oklch(0.769 0.188 70.08);
+  --primitive-chart-purple: oklch(0.627 0.265 303.9);
+  --primitive-chart-rose: oklch(0.645 0.246 16.439);
+
+  /* --- Spacing scale --- */
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.5rem;
+  --spacing-xl: 2rem;
+  --spacing-2xl: 3rem;
+
+  /* --- Typography scale --- */
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-md: 1rem;
+  --font-size-lg: 1.125rem;
+  --font-size-xl: 1.25rem;
+  --font-size-2xl: 1.5rem;
+
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  /* --- Elevation (shadows) --- */
+  --shadow-sm: 0 1px 2px 0 oklch(0 0 0 / 5%);
+  --shadow-md:
+    0 4px 6px -1px oklch(0 0 0 / 10%), 0 2px 4px -2px oklch(0 0 0 / 10%);
+  --shadow-lg:
+    0 10px 15px -3px oklch(0 0 0 / 10%), 0 4px 6px -4px oklch(0 0 0 / 10%);
+  --shadow-xl:
+    0 20px 25px -5px oklch(0 0 0 / 10%), 0 8px 10px -6px oklch(0 0 0 / 10%);
+}

@@ -1,0 +1,102 @@
+/*
+ * Semantic Design Tokens
+ *
+ * Role-based aliases mapping primitives to functional roles.
+ * Components should only reference these tokens (via Tailwind classes
+ * like `bg-background`, `text-foreground`, `border-border`, etc.).
+ *
+ * To create a new theme, add a selector (e.g. `.theme-nord`) that
+ * remaps these variables to different primitive values.
+ */
+
+/* ========================
+   Light theme (default)
+   ======================== */
+:root {
+  --radius: 0.625rem;
+
+  /* Surface */
+  --background: var(--primitive-white);
+  --foreground: var(--primitive-slate-950);
+  --card: var(--primitive-white);
+  --card-foreground: var(--primitive-slate-950);
+  --popover: var(--primitive-white);
+  --popover-foreground: var(--primitive-slate-950);
+
+  /* Interactive */
+  --primary: var(--primitive-slate-900);
+  --primary-foreground: var(--primitive-slate-50);
+  --secondary: var(--primitive-slate-100);
+  --secondary-foreground: var(--primitive-slate-900);
+
+  /* Feedback */
+  --muted: var(--primitive-slate-100);
+  --muted-foreground: var(--primitive-slate-500);
+  --accent: var(--primitive-slate-100);
+  --accent-foreground: var(--primitive-slate-900);
+  --destructive: var(--primitive-red-500);
+
+  /* Chrome */
+  --border: var(--primitive-slate-200);
+  --input: var(--primitive-slate-200);
+  --ring: var(--primitive-slate-400);
+
+  /* Charts */
+  --chart-1: var(--primitive-chart-orange);
+  --chart-2: var(--primitive-chart-teal);
+  --chart-3: var(--primitive-chart-navy);
+  --chart-4: var(--primitive-chart-yellow);
+  --chart-5: var(--primitive-chart-amber);
+
+  /* Sidebar */
+  --sidebar: var(--primitive-slate-50);
+  --sidebar-foreground: var(--primitive-slate-950);
+  --sidebar-primary: var(--primitive-slate-900);
+  --sidebar-primary-foreground: var(--primitive-slate-50);
+  --sidebar-accent: var(--primitive-slate-100);
+  --sidebar-accent-foreground: var(--primitive-slate-900);
+  --sidebar-border: var(--primitive-slate-200);
+  --sidebar-ring: var(--primitive-slate-400);
+}
+
+/* ========================
+   Dark theme
+   ======================== */
+.dark {
+  --background: var(--primitive-slate-950);
+  --foreground: var(--primitive-slate-50);
+  --card: var(--primitive-slate-900);
+  --card-foreground: var(--primitive-slate-50);
+  --popover: var(--primitive-slate-900);
+  --popover-foreground: var(--primitive-slate-50);
+
+  --primary: var(--primitive-slate-200);
+  --primary-foreground: var(--primitive-slate-900);
+  --secondary: var(--primitive-slate-800);
+  --secondary-foreground: var(--primitive-slate-50);
+
+  --muted: var(--primitive-slate-800);
+  --muted-foreground: var(--primitive-slate-400);
+  --accent: var(--primitive-slate-800);
+  --accent-foreground: var(--primitive-slate-50);
+  --destructive: var(--primitive-red-400);
+
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: var(--primitive-slate-500);
+
+  --chart-1: var(--primitive-blue-500);
+  --chart-2: var(--primitive-green-400);
+  --chart-3: var(--primitive-chart-amber);
+  --chart-4: var(--primitive-chart-purple);
+  --chart-5: var(--primitive-chart-rose);
+
+  --sidebar: var(--primitive-slate-900);
+  --sidebar-foreground: var(--primitive-slate-50);
+  --sidebar-primary: var(--primitive-blue-500);
+  --sidebar-primary-foreground: var(--primitive-slate-50);
+  --sidebar-accent: var(--primitive-slate-800);
+  --sidebar-accent-foreground: var(--primitive-slate-50);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: var(--primitive-slate-500);
+}
