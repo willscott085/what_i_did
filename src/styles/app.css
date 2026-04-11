@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "./tokens/primitive.css";
+@import "./tokens/scale.css";
 @import "./tokens/semantic.css";
 @import "./tokens/component.css";
 

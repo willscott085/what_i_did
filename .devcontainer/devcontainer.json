@@ -2,6 +2,9 @@
   "name": "whatIdid",
   "image": "mcr.microsoft.com/playwright:v1.59.1-noble",
   "remoteUser": "pwuser",
+  "remoteEnv": {
+    "PLAYWRIGHT_UI_HOST": "0.0.0.0"
+  },
   "features": {
     "ghcr.io/devcontainers/features/node:1": {
       "version": "22",

@@ -1,11 +1,13 @@
 /*
- * Primitive Design Tokens
+ * Primitive Color Tokens
  *
  * Raw OKLCH palette values. These should never be referenced directly
  * by components — use semantic tokens instead.
  *
  * Naming: --primitive-{hue}-{shade}
  * Hue families derived from the current slate-based theme.
+ *
+ * Non-color scales (spacing, typography, elevation) live in scale.css.
  */
 
 :root {
@@ -25,6 +27,9 @@
   /* --- White / Black --- */
   --primitive-white: oklch(1 0 0);
   --primitive-black: oklch(0 0 0);
+  --primitive-black-50: oklch(0 0 0 / 50%);
+  --primitive-white-10: oklch(1 0 0 / 10%);
+  --primitive-white-15: oklch(1 0 0 / 15%);
 
   /* --- Red (Destructive, hue ~25) --- */
   --primitive-red-500: oklch(0.577 0.245 27.325);
@@ -47,34 +52,4 @@
   --primitive-chart-amber: oklch(0.769 0.188 70.08);
   --primitive-chart-purple: oklch(0.627 0.265 303.9);
   --primitive-chart-rose: oklch(0.645 0.246 16.439);
-
-  /* --- Spacing scale --- */
-  --spacing-xs: 0.25rem;
-  --spacing-sm: 0.5rem;
-  --spacing-md: 1rem;
-  --spacing-lg: 1.5rem;
-  --spacing-xl: 2rem;
-  --spacing-2xl: 3rem;
-
-  /* --- Typography scale --- */
-  --font-size-xs: 0.75rem;
-  --font-size-sm: 0.875rem;
-  --font-size-md: 1rem;
-  --font-size-lg: 1.125rem;
-  --font-size-xl: 1.25rem;
-  --font-size-2xl: 1.5rem;
-
-  --font-weight-normal: 400;
-  --font-weight-medium: 500;
-  --font-weight-semibold: 600;
-  --font-weight-bold: 700;
-
-  /* --- Elevation (shadows) --- */
-  --shadow-sm: 0 1px 2px 0 oklch(0 0 0 / 5%);
-  --shadow-md:
-    0 4px 6px -1px oklch(0 0 0 / 10%), 0 2px 4px -2px oklch(0 0 0 / 10%);
-  --shadow-lg:
-    0 10px 15px -3px oklch(0 0 0 / 10%), 0 4px 6px -4px oklch(0 0 0 / 10%);
-  --shadow-xl:
-    0 20px 25px -5px oklch(0 0 0 / 10%), 0 8px 10px -6px oklch(0 0 0 / 10%);
 }

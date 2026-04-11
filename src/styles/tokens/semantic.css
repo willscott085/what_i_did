@@ -81,8 +81,8 @@
   --accent-foreground: var(--primitive-slate-50);
   --destructive: var(--primitive-red-400);
 
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
+  --border: var(--primitive-white-10);
+  --input: var(--primitive-white-15);
   --ring: var(--primitive-slate-500);
 
   --chart-1: var(--primitive-blue-500);
@@ -97,6 +97,6 @@
   --sidebar-primary-foreground: var(--primitive-slate-50);
   --sidebar-accent: var(--primitive-slate-800);
   --sidebar-accent-foreground: var(--primitive-slate-50);
-  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-border: var(--primitive-white-10);
   --sidebar-ring: var(--primitive-slate-500);
 }

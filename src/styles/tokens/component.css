@@ -16,5 +16,5 @@
   --task-completed-text: var(--muted-foreground);
 
   /* --- Dialog overlay --- */
-  --overlay-bg: oklch(0 0 0 / 50%);
+  --overlay-bg: var(--primitive-black-50);
 }
