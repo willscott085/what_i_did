@@ -59,11 +59,11 @@ git clone git@github.com:TanStack/form.git
 ```sh
 cd tanstack.com
 pnpm i
-# The app will run on https://localhost:3000 by default
+# The app will run on http://localhost:55001 by default
 pnpm dev
 ```
 
-4. Now you can visit http://localhost:3000/form/latest/docs/overview in the browser and see the changes you make in `tanstack/form/docs`.
+4. Now you can visit http://localhost:55001/form/latest/docs/overview in the browser and see the changes you make in `tanstack/form/docs`.
 
 > [!NOTE]
 > The updated pages need to be manually reloaded in the browser.
