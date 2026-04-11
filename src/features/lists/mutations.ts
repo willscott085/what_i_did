@@ -1,52 +1,55 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { fetchListsQueryOptions } from "./queries";
-import { updateList } from "./server";
-import type { List } from "./types";
+import { fetchListItemsQueryOptions } from "./queries";
+import { updateListOrder } from "./server";
+import type { ListItem } from "./types";
 
-interface UseUpdateListsMutationOptionsProps {
+interface UseUpdateListOrderProps {
+  listId: string;
   onError?: () => void;
 }
 
-export const useUpdateListsMutationOptions = (
-  props: UseUpdateListsMutationOptionsProps,
-) => {
+export const useUpdateListOrder = (props: UseUpdateListOrderProps) => {
   const queryClient = useQueryClient();
-  const queryKey = fetchListsQueryOptions().queryKey;
+  const queryKey = fetchListItemsQueryOptions(props.listId).queryKey;
 
-  return {
-    mutationFn: (variables: List) => updateList({ data: variables }),
-    onMutate: async (updatedList: Partial<List>) => {
+  return useMutation({
+    mutationFn: (taskIds: string[]) =>
+      updateListOrder({ data: { listId: props.listId, taskIds } }),
+    onMutate: async (taskIds: string[]) => {
       await queryClient.cancelQueries({ queryKey });
 
-      const previousLists = queryClient.getQueryData<List[]>(queryKey);
+      const previousItems =
+        queryClient.getQueryData<ListItem[]>(queryKey);
 
-      if (previousLists) {
-        queryClient.setQueryData<List[]>(
+      if (previousItems) {
+        queryClient.setQueryData<ListItem[]>(
           queryKey,
-          previousLists.map((list) =>
-            list.id === updatedList.id ? { ...list, ...updatedList } : list,
-          ),
+          taskIds.map((taskId, index) => {
+            const existing = previousItems.find((li) => li.taskId === taskId);
+            return {
+              id: existing?.id ?? `temp_${taskId}`,
+              listId: props.listId,
+              taskId,
+              sortOrder: index,
+            };
+          }),
         );
       }
 
-      return { previousLists };
+      return { previousItems };
     },
     onError: (
       _err: Error,
-      _variables: Partial<List>,
-      context?: { previousLists?: List[] },
+      _variables: string[],
+      context?: { previousItems?: ListItem[] },
     ) => {
-      if (context?.previousLists) {
-        queryClient.setQueryData(queryKey, context.previousLists);
+      if (context?.previousItems) {
+        queryClient.setQueryData(queryKey, context.previousItems);
       }
       props.onError?.();
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey });
     },
-  };
-};
-
-export const useUpdateList = (props: UseUpdateListsMutationOptionsProps) => {
-  return useMutation(useUpdateListsMutationOptions(props));
+  });
 };

@@ -1,7 +1,6 @@
 import { z } from "zod";
 
 const serverSchema = z.object({
-  API_URL: z.string().url("API_URL must be a valid URL"),
   NODE_ENV: z.enum(["development", "production", "test"]),
 });
 

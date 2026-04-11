@@ -84,35 +84,35 @@ These are the default seed categories. Users can add/rename/remove later.
 
 ---
 
-## Phase 3: Backend Migration (Foundation)
+## Phase 3: Backend Migration (Foundation) ✅
 
 > Replace json-server with SQLite + Drizzle ORM. All existing functionality must keep working.
 
-- [ ] Install `drizzle-orm`, `better-sqlite3`, `drizzle-kit`, `@types/better-sqlite3`
-- [ ] Create `drizzle.config.ts` at project root
-- [ ] Create `src/db/schema.ts` — initial tables:
-  - `tasks`: id, title, dateCreated, dateCompleted, dueDate, userId, notes, priorityCategoryId, listId, parentTaskId (subtasks), recurrenceRule, sortOrder
+- [x] Install `drizzle-orm`, `better-sqlite3`, `drizzle-kit`, `@types/better-sqlite3`
+- [x] Create `drizzle.config.ts` at project root
+- [x] Create `src/db/schema.ts` — initial tables:
+  - `tasks`: id, title, dateCreated, dateCompleted, dueDate, userId, notes, priorityCategoryId, parentTaskId (subtasks), recurrenceRule, sortOrder
   - `lists`: id, title, userId
-  - `listItems`: listId, taskId, sortOrder (junction table for ordered tasks in lists)
+  - `listItems`: id, listId, taskId, sortOrder (junction table for ordered tasks in lists)
   - `priorityCategories`: id, name, description, color, sortOrder, userId
   - `tags`: id, name, color, userId
   - `taskTags`: taskId, tagId (junction table)
-- [ ] Create `src/db/index.ts` — Drizzle client singleton
-- [ ] Create `src/db/seed.ts` — seed script (4 default priority categories, default lists: inbox/upcoming/completed, sample tasks)
-- [ ] Add scripts to `package.json`: `db:generate`, `db:migrate`, `db:seed`, `db:studio`
-- [ ] Generate initial migration, run it, seed data
-- [ ] Swap `src/features/tasks/server.ts` — replace axios calls with Drizzle queries
-- [ ] Swap `src/features/lists/server.ts` — replace axios calls with Drizzle queries
-- [ ] Update `src/features/tasks/types.ts` — expand Task type with new fields
-- [ ] Update `src/features/lists/types.ts` — expand List type
-- [ ] Remove `json-server`, `redaxios` from dependencies
-- [ ] Update `start` script in `package.json` (just `vite dev`, no more json-server)
-- [ ] Remove `data/db.json` (no longer needed)
-- [ ] Update `.env.local` — remove API_URL, add DATABASE_URL if needed
-- [ ] Update `src/config/env.server.ts` — remove API_URL reference
-- [ ] Update MSW handlers in `src/tests/mock/handlers.ts` for new data shapes
-- [ ] **Verify**: Existing task list, drag-and-drop, completion toggle all still work
-- [ ] **Verify**: `pnpm test` passes
+- [x] Create `src/db/index.ts` — Drizzle client singleton
+- [x] Create `src/db/seed.ts` — seed script (4 default priority categories, default lists: inbox/upcoming/completed, sample tasks)
+- [x] Create `src/db/migrate.ts` — migration runner script
+- [x] Add scripts to `package.json`: `db:generate`, `db:migrate`, `db:seed`, `db:studio`
+- [x] Generate initial migration, run it, seed data
+- [x] Swap `src/features/tasks/server.ts` — replace axios calls with Drizzle queries
+- [x] Swap `src/features/lists/server.ts` — replace axios calls with Drizzle queries
+- [x] Update `src/features/tasks/types.ts` — expand Task type with new fields
+- [x] Update `src/features/lists/types.ts` — expand List type (+ ListItem type)
+- [x] Remove `json-server`, `redaxios` from dependencies
+- [x] Update `start` script in `package.json` (just `vite dev`, no more json-server)
+- [x] Update `.env` — remove API_URL
+- [x] Update `src/config/env.server.ts` — remove API_URL reference
+- [x] Update MSW handlers in `src/tests/mock/handlers.ts` for new data shapes
+- [x] **Verify**: `pnpm typecheck` passes
+- [x] **Verify**: `pnpm test` passes
 
 ### Outputs
 

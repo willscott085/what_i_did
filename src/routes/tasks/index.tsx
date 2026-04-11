@@ -4,8 +4,8 @@ import { format } from "date-fns";
 import { useEffect, useState } from "react";
 import { SortableList } from "~/components/SortableList";
 import { TaskItem } from "~/components/TaskItem";
-import { useUpdateListsMutationOptions } from "~/features/lists/mutations";
-import { fetchListsQueryOptions } from "~/features/lists/queries";
+import { useUpdateListOrder } from "~/features/lists/mutations";
+import { fetchListItemsQueryOptions } from "~/features/lists/queries";
 import { useUpdateTaskMutationOptions } from "~/features/tasks/mutations";
 import { fetchTasksQueryOptions } from "~/features/tasks/queries";
 
@@ -14,7 +14,7 @@ export const Route = createFileRoute("/tasks/")({
   loader: async ({ context }) => {
     await Promise.all([
       context.queryClient.ensureQueryData(fetchTasksQueryOptions()),
-      context.queryClient.ensureQueryData(fetchListsQueryOptions()),
+      context.queryClient.ensureQueryData(fetchListItemsQueryOptions("inbox")),
     ]);
     return null;
   },
@@ -22,27 +22,28 @@ export const Route = createFileRoute("/tasks/")({
 
 function RouteComponent() {
   const { data: tasks = [] } = useQuery(fetchTasksQueryOptions());
-  const { data: lists = [] } = useQuery(fetchListsQueryOptions());
+  const { data: listItems = [] } = useQuery(
+    fetchListItemsQueryOptions("inbox"),
+  );
 
   const { mutate: updateTask } = useMutation(
     useUpdateTaskMutationOptions({
       onError: () => {},
     }),
   );
-  const { mutate: updateInbox } = useMutation(
-    useUpdateListsMutationOptions({
-      onError: () => {},
-    }),
-  );
+  const { mutate: updateInboxOrder } = useUpdateListOrder({
+    listId: "inbox",
+    onError: () => {},
+  });
 
   const [hydrated, setHydrated] = useState(false);
   useEffect(() => setHydrated(true), []);
 
-  const inboxOrder = lists.find((l) => l.id === "inbox")?.order ?? [];
+  const inboxOrder = listItems.map((li) => li.taskId);
   const tasksById = new Map(tasks.map((task) => [task.id, task]));
 
   function handleOrderChange(items: string[]) {
-    updateInbox({ id: "inbox", order: items });
+    updateInboxOrder(items);
   }
 
   return (

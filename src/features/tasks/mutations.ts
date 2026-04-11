@@ -29,7 +29,9 @@ export const useUpdateTaskOrder = ({ onError }: UseUpdateTaskOrderProps) => {
       if (prev) {
         queryClient.setQueryData<Task[]>(
           fetchTasksQueryOptions().queryKey,
-          prev.map((t) => (t.id === taskId ? { ...t, order } : t)),
+          prev.map((t) =>
+            t.id === taskId ? { ...t, sortOrder: order } : t,
+          ),
         );
       }
 
@@ -61,7 +63,7 @@ export const useUpdateTaskMutationOptions = (
   const queryClient = useQueryClient();
 
   return mutationOptions({
-    mutationFn: (task: Task) => {
+    mutationFn: (task: Pick<Task, "id" | "title" | "dateCompleted" | "userId">) => {
       return updateTask({ data: task });
     },
     onMutate: async (task) => {
