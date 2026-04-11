@@ -1,5 +1,5 @@
 ---
-applyTo: 'src/db/**'
+applyTo: "src/db/**"
 ---
 
 # Database Instructions (Drizzle + SQLite)
@@ -17,12 +17,12 @@ applyTo: 'src/db/**'
 ## Client Singleton (`src/db/index.ts`)
 
 ```typescript
-import Database from 'better-sqlite3'
-import { drizzle } from 'drizzle-orm/better-sqlite3'
-import * as schema from './schema'
+import Database from "better-sqlite3";
+import { drizzle } from "drizzle-orm/better-sqlite3";
+import * as schema from "./schema";
 
-const sqlite = new Database('./data/whatidid.db')
-export const db = drizzle(sqlite, { schema })
+const sqlite = new Database("./data/whatidid.db");
+export const db = drizzle(sqlite, { schema });
 ```
 
 ## Migrations

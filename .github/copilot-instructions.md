@@ -34,6 +34,7 @@
 ### Feature Structure
 
 Each feature domain lives in `src/features/{domain}/` with these files:
+
 - `types.ts` — TypeScript types and Zod schemas
 - `server.ts` — Server functions (data access layer)
 - `queries.ts` — React Query options (queryKey, queryFn wrapping server functions)
@@ -43,12 +44,16 @@ Each feature domain lives in `src/features/{domain}/` with these files:
 ### Server Functions Pattern
 
 ```typescript
-export const myFunction = createServerFn({ method: 'GET' })
-  .inputValidator(z.object({ /* zod schema */ }))
+export const myFunction = createServerFn({ method: "GET" })
+  .inputValidator(
+    z.object({
+      /* zod schema */
+    }),
+  )
   .handler(async ({ data }) => {
     // Direct database access via Drizzle — no HTTP calls
-    return db.select().from(table).where(eq(table.id, data.id))
-  })
+    return db.select().from(table).where(eq(table.id, data.id));
+  });
 ```
 
 ### Database Pattern (Drizzle + SQLite)

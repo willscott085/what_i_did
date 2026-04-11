@@ -4,21 +4,21 @@
 
 ## Key Decisions
 
-| Decision | Choice | Rationale |
-|----------|--------|-----------|
-| Backend | TanStack Start server functions + Drizzle ORM + SQLite | No separate API framework — server functions already exist, just swap data layer |
-| ORM | Drizzle | Lightweight, type-safe, SQL-like syntax |
-| Database | SQLite (local file) | Local-first personal tool, simple deployment |
-| AI Provider | Provider-agnostic abstraction | Start with OpenAI, design to swap to Ollama/Claude |
-| AI Notes | Metadata + semantic search | Auto-tag on save, vector search via sqlite-vec. No full chat UI (can add later) |
-| Auth | Deferred (Phase 9) | userId column baked in from day one, hardcode '1' for now |
-| Priority System | Configurable categories | Seed 4 defaults (Business-Critical, Momentum Builders, Nice-to-Haves, Noise), user can add more |
-| Tags | Separate from categories | Orthogonal organization — a task has one priority category + many tags |
-| Notes Format | Basic rich text / markdown | Tiptap editor recommended |
-| Deployment | Local only for now | SQLite is perfect for this |
-| Codebase | Evolve existing — don't start fresh | Reuse TanStack Start, React Query, dnd-kit, Tailwind foundations |
-| Testing | Vitest (unit/integration) + Playwright (E2E) | Vitest already set up; Playwright pairs well with Vite stack, cross-browser, great TypeScript support |
-| Dev Environment | Dev container (Docker) | Reproducible setup, Playwright browsers pre-installed, Codespaces-ready |
+| Decision        | Choice                                                 | Rationale                                                                                             |
+| --------------- | ------------------------------------------------------ | ----------------------------------------------------------------------------------------------------- |
+| Backend         | TanStack Start server functions + Drizzle ORM + SQLite | No separate API framework — server functions already exist, just swap data layer                      |
+| ORM             | Drizzle                                                | Lightweight, type-safe, SQL-like syntax                                                               |
+| Database        | SQLite (local file)                                    | Local-first personal tool, simple deployment                                                          |
+| AI Provider     | Provider-agnostic abstraction                          | Start with OpenAI, design to swap to Ollama/Claude                                                    |
+| AI Notes        | Metadata + semantic search                             | Auto-tag on save, vector search via sqlite-vec. No full chat UI (can add later)                       |
+| Auth            | Deferred (Phase 9)                                     | userId column baked in from day one, hardcode '1' for now                                             |
+| Priority System | Configurable categories                                | Seed 4 defaults (Business-Critical, Momentum Builders, Nice-to-Haves, Noise), user can add more       |
+| Tags            | Separate from categories                               | Orthogonal organization — a task has one priority category + many tags                                |
+| Notes Format    | Basic rich text / markdown                             | Tiptap editor recommended                                                                             |
+| Deployment      | Local only for now                                     | SQLite is perfect for this                                                                            |
+| Codebase        | Evolve existing — don't start fresh                    | Reuse TanStack Start, React Query, dnd-kit, Tailwind foundations                                      |
+| Testing         | Vitest (unit/integration) + Playwright (E2E)           | Vitest already set up; Playwright pairs well with Vite stack, cross-browser, great TypeScript support |
+| Dev Environment | Dev container (Docker)                                 | Reproducible setup, Playwright browsers pre-installed, Codespaces-ready                               |
 
 ## Priority Category Definitions
 
@@ -76,6 +76,7 @@ These are the default seed categories. Users can add/rename/remove later.
 - [ ] **Verify**: Dev container builds and runs successfully
 
 ### Outputs
+
 - `.devcontainer/devcontainer.json`
 - `playwright.config.ts`
 - `e2e/smoke.spec.ts`
@@ -114,6 +115,7 @@ These are the default seed categories. Users can add/rename/remove later.
 - [ ] **Verify**: `pnpm test` passes
 
 ### Outputs
+
 - `src/db/schema.ts`, `src/db/index.ts`, `src/db/seed.ts`
 - `drizzle.config.ts`
 - Updated server functions (Drizzle instead of axios)
@@ -153,6 +155,7 @@ These are the default seed categories. Users can add/rename/remove later.
 - [ ] **Verify**: No hardcoded color values remain in component files
 
 ### Outputs
+
 - `src/styles/tokens/` — primitive, semantic, and component token files
 - Restructured `src/styles/app.css`
 - `src/styles/README.md` — theming documentation
@@ -191,6 +194,7 @@ These are the default seed categories. Users can add/rename/remove later.
 - [ ] Update `TaskItem.tsx` — show priority color indicator, tag chips, due date, subtask count
 
 ### Outputs
+
 - `src/features/categories/`, `src/features/tags/`
 - `src/components/TaskDialog.tsx`, subtask components
 - Updated `TaskItem.tsx`
@@ -229,6 +233,7 @@ These are the default seed categories. Users can add/rename/remove later.
 - [ ] Decide fate of `/tasks/` route — merge into index or keep as separate view
 
 ### Outputs
+
 - `src/components/PanelLayout.tsx`
 - Updated `src/routes/index.tsx`
 - Responsive panel behavior
@@ -267,6 +272,7 @@ These are the default seed categories. Users can add/rename/remove later.
 - [ ] Optional: Task ↔ Note linking (simple `noteId` FK on tasks)
 
 ### Outputs
+
 - `src/features/notes/`
 - `src/components/QuickNote.tsx`
 - `src/routes/notes/index.tsx`, `src/routes/notes/$noteId.tsx`
@@ -301,6 +307,7 @@ These are the default seed categories. Users can add/rename/remove later.
 - [ ] Graceful degradation: if no AI key configured, skip auto-tagging, use basic text search
 
 ### Outputs
+
 - `src/features/ai/`
 - AI-powered auto-tagging pipeline
 - Semantic search endpoint and UI
@@ -338,20 +345,20 @@ notes ──┬── noteTags ──── tags (shared)
 
 ### Environment Variables
 
-| Variable | Scope | Phase | Description |
-|----------|-------|-------|-------------|
-| `DATABASE_URL` | Server | 3 | Path to SQLite file (default: `./data/whatidid.db`) |
-| `AI_PROVIDER` | Server | 8 | `openai`, `ollama`, `anthropic` |
-| `OPENAI_API_KEY` | Server | 8 | OpenAI API key for auto-tagging + embeddings |
+| Variable         | Scope  | Phase | Description                                         |
+| ---------------- | ------ | ----- | --------------------------------------------------- |
+| `DATABASE_URL`   | Server | 3     | Path to SQLite file (default: `./data/whatidid.db`) |
+| `AI_PROVIDER`    | Server | 8     | `openai`, `ollama`, `anthropic`                     |
+| `OPENAI_API_KEY` | Server | 8     | OpenAI API key for auto-tagging + embeddings        |
 
 ### New npm Packages by Phase
 
-| Phase | Packages |
-|-------|----------|
-| 2 | `@playwright/test` |
-| 3 | `drizzle-orm`, `better-sqlite3`, `drizzle-kit`, `@types/better-sqlite3` |
-| 4 | None (CSS-only — uses existing Tailwind CSS 4 `@theme` system) |
-| 5 | `rrule` |
-| 7 | `@tiptap/react`, `@tiptap/starter-kit`, `@tiptap/extension-markdown` |
-| 8 | `sqlite-vec`, `openai` (or provider SDK) |
-| 9 | TBD (auth library) |
+| Phase | Packages                                                                |
+| ----- | ----------------------------------------------------------------------- |
+| 2     | `@playwright/test`                                                      |
+| 3     | `drizzle-orm`, `better-sqlite3`, `drizzle-kit`, `@types/better-sqlite3` |
+| 4     | None (CSS-only — uses existing Tailwind CSS 4 `@theme` system)          |
+| 5     | `rrule`                                                                 |
+| 7     | `@tiptap/react`, `@tiptap/starter-kit`, `@tiptap/extension-markdown`    |
+| 8     | `sqlite-vec`, `openai` (or provider SDK)                                |
+| 9     | TBD (auth library)                                                      |

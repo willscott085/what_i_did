@@ -1,5 +1,5 @@
 ---
-applyTo: '**/*.test.*'
+applyTo: "**/*.test.*"
 ---
 
 # Testing Instructions

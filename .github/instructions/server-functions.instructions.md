@@ -1,5 +1,5 @@
 ---
-applyTo: '**/server.ts'
+applyTo: "**/server.ts"
 ---
 
 # Server Function Instructions
@@ -9,17 +9,17 @@ applyTo: '**/server.ts'
 Every server function in `src/features/{domain}/server.ts` follows this structure:
 
 ```typescript
-import { createServerFn } from '@tanstack/react-start'
-import { z } from 'zod'
-import { db } from '~/db'
-import { tableName } from '~/db/schema'
-import { eq, and } from 'drizzle-orm'
+import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
+import { db } from "~/db";
+import { tableName } from "~/db/schema";
+import { eq, and } from "drizzle-orm";
 
-export const fetchItems = createServerFn({ method: 'GET' })
+export const fetchItems = createServerFn({ method: "GET" })
   .inputValidator(z.object({ userId: z.string() }))
   .handler(async ({ data }) => {
-    return db.select().from(tableName).where(eq(tableName.userId, data.userId))
-  })
+    return db.select().from(tableName).where(eq(tableName.userId, data.userId));
+  });
 ```
 
 ## Rules

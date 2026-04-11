@@ -1,9 +1,11 @@
 # whatIdid — Cursor Rules
+
 # See .github/PLAN.md for the master implementation plan.
 
 You are working on **whatIdid**, a personal task tracker and AI-powered notes system.
 
 ## Tech Stack
+
 - TypeScript (strict), React 19, TanStack Start (full-stack framework)
 - TanStack Router (file-based routes), TanStack React Query, TanStack React Form
 - Drizzle ORM + SQLite (migrating from json-server)
@@ -13,6 +15,7 @@ You are working on **whatIdid**, a personal task tracker and AI-powered notes sy
 - AI: provider-agnostic abstraction (OpenAI default)
 
 ## Architecture Rules
+
 - All data access goes through TanStack Start server functions (`createServerFn`) → Drizzle ORM → SQLite
 - Never import database code in client components
 - Server functions validate input with Zod schemas
@@ -23,22 +26,29 @@ You are working on **whatIdid**, a personal task tracker and AI-powered notes sy
 - Feature modules live in `src/features/{domain}/` with: types.ts, server.ts, queries.ts, mutations.ts, consts.ts
 
 ## Server Functions Pattern
+
 ```typescript
-export const myFunction = createServerFn({ method: 'GET' })
-  .inputValidator(z.object({ /* zod schema */ }))
+export const myFunction = createServerFn({ method: "GET" })
+  .inputValidator(
+    z.object({
+      /* zod schema */
+    }),
+  )
   .handler(async ({ data }) => {
     // Direct database access via Drizzle — no HTTP calls
-    return db.select().from(table).where(eq(table.id, data.id))
-  })
+    return db.select().from(table).where(eq(table.id, data.id));
+  });
 ```
 
 ## Database Pattern (Drizzle + SQLite)
+
 - Schema defined in `src/db/schema.ts`
 - Drizzle client singleton in `src/db/index.ts`
 - Migrations managed via `drizzle-kit` (`pnpm db:generate`, `pnpm db:migrate`)
 - All tables include `userId` column (multi-user ready, hardcoded '1' for now)
 
 ## Code Style
+
 - 2 spaces, single quotes, no semicolons
 - Prefer `const` and `let` over `var`
 - Arrow functions, named exports, no default exports
@@ -48,6 +58,7 @@ export const myFunction = createServerFn({ method: 'GET' })
 - One server function group per feature domain
 
 ## Styling & Design Tokens
+
 - Tailwind CSS only — no inline styles
 - `tailwind-variants` for component variants, `cn`/`twMerge` for composition
 - Dark mode via `.dark` class, OKLCH color theming
@@ -58,6 +69,7 @@ export const myFunction = createServerFn({ method: 'GET' })
 - New themes = new CSS selector remapping semantic tokens to different primitives
 
 ## Patterns
+
 - Query keys: `{ all: [domain], byId: [domain, id] }`
 - Optimistic updates: cancel queries → update cache → revalidate on settle
 - Server functions: `createServerFn({ method }) → .inputValidator(zod) → .handler()`
@@ -66,6 +78,7 @@ export const myFunction = createServerFn({ method: 'GET' })
 - Components that need hydration-awareness use `useEffect` state guard
 
 ## File Organization
+
 - `src/features/{domain}/` — feature modules (tasks, lists, categories, tags, notes, ai)
 - `src/components/` — shared components, `src/components/ui/` — primitives
 - `src/routes/` — file-based routes (TanStack Router)
@@ -77,6 +90,7 @@ export const myFunction = createServerFn({ method: 'GET' })
 - `public/` — static assets
 
 ## Testing
+
 - Unit/Integration: Vitest + React Testing Library, MSW for mocking
 - E2E: Playwright (Chromium, Firefox, WebKit) — tests in `e2e/`
 - Run: `pnpm test` (unit), `pnpm test:e2e` (E2E), `pnpm test:e2e:ui` (interactive)
@@ -85,6 +99,7 @@ export const myFunction = createServerFn({ method: 'GET' })
 - Dev container (`.devcontainer/`) has Playwright browsers pre-installed
 
 ## Environment & Configuration
+
 - Use `.env.local` for local environment variables
 - Never commit secrets or credentials (especially AI API keys)
 - Server-only env vars in `src/config/env.server.ts` (throws if accessed client-side)

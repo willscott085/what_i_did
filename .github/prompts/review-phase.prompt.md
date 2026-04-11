@@ -1,6 +1,6 @@
 ---
-description: 'Review and verify a completed plan phase'
-mode: 'agent'
+description: "Review and verify a completed plan phase"
+mode: "agent"
 ---
 
 # Review Completed Phase

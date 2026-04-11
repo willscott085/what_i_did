@@ -1,6 +1,6 @@
 ---
-description: 'Implement a phase from the master plan'
-mode: 'agent'
+description: "Implement a phase from the master plan"
+mode: "agent"
 ---
 
 # Implement Plan Phase
@@ -21,6 +21,7 @@ Implement the next incomplete phase (or a specific phase if I name one). Follow 
 ## Conventions
 
 Follow all patterns in `.github/copilot-instructions.md`. Key reminders:
+
 - Server functions use `createServerFn` + Zod validation + Drizzle queries
 - React Query options wrap server functions in `queries.ts`
 - Mutations use optimistic updates in `mutations.ts`

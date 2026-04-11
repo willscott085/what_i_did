@@ -1,6 +1,6 @@
 ---
-description: 'Create a new React component'
-mode: 'agent'
+description: "Create a new React component"
+mode: "agent"
 ---
 
 # Create Component
