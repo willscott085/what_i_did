@@ -94,10 +94,10 @@ Dark/light mode follows the OS system preference. An inline script in `__root.ts
 
 ## File Reference
 
-| File | Purpose |
-|---|---|
-| `tokens/primitive.css` | Raw OKLCH palette values |
-| `tokens/scale.css` | Spacing, typography, elevation |
-| `tokens/semantic.css` | Role-based light/dark theme mappings |
-| `tokens/component.css` | Optional component-level tokens |
-| `app.css` | Imports, `@theme inline` bridge, base styles |
+| File                   | Purpose                                      |
+| ---------------------- | -------------------------------------------- |
+| `tokens/primitive.css` | Raw OKLCH palette values                     |
+| `tokens/scale.css`     | Spacing, typography, elevation               |
+| `tokens/semantic.css`  | Role-based light/dark theme mappings         |
+| `tokens/component.css` | Optional component-level tokens              |
+| `app.css`              | Imports, `@theme inline` bridge, base styles |
