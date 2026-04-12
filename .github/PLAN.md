@@ -123,42 +123,49 @@ These are the default seed categories. Users can add/rename/remove later.
 
 ---
 
-## Phase 4: Design Tokens & Theming
+## Phase 4: Design Tokens & Theming ✅
 
 > Formalize the CSS custom property system into a structured design token architecture so the entire theme can be swapped by changing one set of tokens.
 
-- [ ] Define token taxonomy in `src/styles/tokens/`:
-  - `primitive.css` — Raw OKLCH palette values (e.g., `--color-slate-900`, `--color-blue-500`)
-  - `semantic.css` — Semantic aliases that map primitives to roles (e.g., `--color-surface`, `--color-on-surface`, `--color-interactive`, `--color-interactive-hover`)
-  - `component.css` — Optional component-level tokens for complex patterns (e.g., `--card-bg`, `--card-border`, `--card-shadow`)
-- [ ] Restructure `src/styles/app.css`:
-  - Import token layers in order: primitives → semantic → component
+- [x] Define token taxonomy in `src/styles/tokens/`:
+  - `primitive.css` — Raw OKLCH palette values (e.g., `--primitive-slate-900`, `--primitive-blue-500`)
+  - `semantic.css` — Semantic aliases that map primitives to roles (e.g., `--background`, `--foreground`, `--destructive`, `--destructive-foreground`)
+  - `component.css` — Optional component-level tokens for complex patterns (e.g., `--task-drag-handle`, `--overlay-bg`)
+  - `scale.css` — Non-color foundational scales (spacing, typography, elevation)
+- [x] Restructure `src/styles/app.css`:
+  - Import token layers in order: primitives → scale → semantic → component
   - Move existing `:root` and `.dark` custom properties into token files
-  - Keep `@theme inline` block referencing semantic tokens
-  - Remove any hardcoded OKLCH values from component code
-- [ ] Define light and dark themes as token sets:
+  - `@theme inline` block bridges semantic + scale tokens into Tailwind
+  - No hardcoded OKLCH values in component code
+- [x] Define light and dark themes as token sets:
   - `:root` (light) and `.dark` selectors map semantic tokens to different primitives
+  - System preference detection via inline script — `prefers-color-scheme` toggles `.dark` class on `<html>`
+  - Live updates when OS preference changes (`matchMedia` change listener)
   - Easy to add new themes by creating a new selector (e.g., `.theme-solarized`, `.theme-nord`)
-- [ ] Add spacing, typography, and elevation tokens:
+- [x] Add spacing, typography, and elevation tokens:
   - `--spacing-xs` through `--spacing-2xl` (consistent scale)
   - `--font-size-xs` through `--font-size-2xl`, `--font-weight-normal/medium/semibold/bold`
-  - `--shadow-sm` through `--shadow-xl` (elevation levels)
-  - `--radius` tokens (already partially in place)
-- [ ] Audit all existing components and `app.css`:
-  - Replace any hardcoded color values (e.g., `bg-gray-50`, `text-gray-900`) with token-based classes (`bg-background`, `text-foreground`)
-  - Ensure all UI primitives in `src/components/ui/` reference semantic tokens
-- [ ] Document the token system in `src/styles/README.md`:
-  - Token naming convention
+  - `--shadow-sm` through `--shadow-xl` (elevation levels, bridged into Tailwind)
+  - `--radius` tokens (already in place)
+- [x] Audit all existing components and `app.css`:
+  - No hardcoded color values remain (`bg-gray-50`, `text-white`, etc. all replaced)
+  - All UI primitives in `src/components/ui/` reference semantic tokens
+  - `TaskItem.tsx` uses component tokens (`--task-drag-handle`) instead of direct semantic refs
+  - `button.tsx` destructive variant uses `text-destructive-foreground` (new token)
+- [x] Document the token system in `src/styles/README.md`:
+  - Token naming convention and layer taxonomy
   - How to create a new theme
   - How to add new tokens
-- [ ] **Verify**: Toggle between light/dark mode — all components respect tokens
-- [ ] **Verify**: No hardcoded color values remain in component files
+- [x] **Verify**: Light/dark mode follows system preference — all components respect tokens
+- [x] **Verify**: No hardcoded color values remain in component files (grep audit clean)
+- [x] **Verify**: `pnpm typecheck`, `pnpm test`, `pnpm test:e2e` all pass
 
 ### Outputs
 
-- `src/styles/tokens/` — primitive, semantic, and component token files
-- Restructured `src/styles/app.css`
+- `src/styles/tokens/` — primitive, scale, semantic, and component token files
+- Restructured `src/styles/app.css` with `@theme inline` bridge
 - `src/styles/README.md` — theming documentation
+- System-based dark/light mode in `src/routes/__root.tsx` (inline script, no FOUC)
 - All components use token-based classes
 
 ---

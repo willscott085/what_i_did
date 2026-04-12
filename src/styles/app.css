@@ -5,8 +5,6 @@
 @import "./tokens/semantic.css";
 @import "./tokens/component.css";
 
-@custom-variant dark (&:is(.dark *));
-
 @layer base {
   #root,
   #app {
@@ -38,6 +36,7 @@
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
@@ -54,6 +53,12 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+
+  /* Scale tokens */
+  --shadow-sm: var(--scale-shadow-sm);
+  --shadow-md: var(--scale-shadow-md);
+  --shadow-lg: var(--scale-shadow-lg);
+  --shadow-xl: var(--scale-shadow-xl);
 }
 
 @layer base {

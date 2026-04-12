@@ -51,7 +51,7 @@ export const Route = createRootRouteWithContext<{
         sizes: "16x16",
         href: "/favicon-16x16.png",
       },
-      { rel: "manifest", href: "/site.webmanifest", color: "#fffff" },
+      { rel: "manifest", href: "/site.webmanifest", color: "#ffffff" },
       { rel: "icon", href: "/favicon.ico" },
     ],
   }),
@@ -76,7 +76,7 @@ function RootComponent() {
 
 function RootDocument({ children }: { children: React.ReactNode }) {
   return (
-    <html className="dark font-sans antialiased">
+    <html className="font-sans antialiased">
       <head>
         <HeadContent />
       </head>

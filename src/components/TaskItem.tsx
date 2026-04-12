@@ -51,7 +51,7 @@ export function TaskItem({
         type="button"
         {...dragAttributes}
         {...dragListeners}
-        className="text-muted-foreground -ml-2 cursor-grab touch-none p-2 opacity-0 transition-opacity group-hover:opacity-100"
+        className="-ml-2 cursor-grab touch-none p-2 text-(--task-drag-handle) opacity-0 transition-opacity group-hover:opacity-100 hover:text-(--task-drag-handle-hover)"
         aria-label="Drag to reorder"
       >
         <GripVertical className="size-4" />
