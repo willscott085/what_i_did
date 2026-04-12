@@ -28,10 +28,10 @@ Non-color foundational values: spacing, typography, and elevation.
 ```css
 --spacing-sm: 0.5rem;
 --font-size-lg: 1.125rem;
---shadow-md: 0 4px 6px -1px oklch(0 0 0 / 10%), ...;
+--scale-shadow-md: 0 4px 6px -1px oklch(0 0 0 / 10%), ...;
 ```
 
-Shadow tokens are bridged into Tailwind via `@theme inline` in `app.css` (e.g., `shadow-sm`, `shadow-lg`). Spacing tokens (`--spacing-xs` through `--spacing-2xl`) extend Tailwind's built-in spacing scale.
+Shadow tokens are prefixed `--scale-shadow-*` to avoid name collisions, then aliased to `--shadow-*` in the `@theme inline` block in `app.css` (e.g., `--shadow-sm: var(--scale-shadow-sm)`). This lets Tailwind's `shadow-sm`/`md`/`lg`/`xl` utilities resolve correctly. Spacing tokens (`--spacing-xs` through `--spacing-2xl`) extend Tailwind's built-in spacing scale.
 
 ### 3. Semantic (`tokens/semantic.css`)
 
@@ -85,7 +85,7 @@ That's it — all components automatically pick up the new values.
 ## Adding New Tokens
 
 1. **New color?** Add the raw OKLCH value to `primitive.css`, then create a semantic alias in `semantic.css` (both `:root` and `.dark`), then bridge it in the `@theme inline` block in `app.css`.
-2. **New spacing/typography/shadow?** Add to `scale.css`. Shadow tokens need a corresponding `@theme inline` entry in `app.css`.
+2. **New spacing/typography/shadow?** Add to `scale.css`. Shadow tokens use the `--scale-shadow-*` prefix and need a corresponding `--shadow-*: var(--scale-shadow-*)` entry in the `@theme inline` block in `app.css`.
 3. **New component pattern?** Add to `component.css`, referencing semantic tokens. Consume in components via `text-(--token-name)` or `bg-(--token-name)` Tailwind syntax.
 
 ## Dark Mode

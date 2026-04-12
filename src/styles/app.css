@@ -5,8 +5,6 @@
 @import "./tokens/semantic.css";
 @import "./tokens/component.css";
 
-@custom-variant dark (&:is(.dark *));
-
 @layer base {
   #root,
   #app {
@@ -57,10 +55,10 @@
   --color-sidebar-ring: var(--sidebar-ring);
 
   /* Scale tokens */
-  --shadow-sm: var(--shadow-sm);
-  --shadow-md: var(--shadow-md);
-  --shadow-lg: var(--shadow-lg);
-  --shadow-xl: var(--shadow-xl);
+  --shadow-sm: var(--scale-shadow-sm);
+  --shadow-md: var(--scale-shadow-md);
+  --shadow-lg: var(--scale-shadow-lg);
+  --shadow-xl: var(--scale-shadow-xl);
 }
 
 @layer base {

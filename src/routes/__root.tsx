@@ -74,22 +74,10 @@ function RootComponent() {
   );
 }
 
-const themeScript = `
-  (function() {
-    var mq = window.matchMedia('(prefers-color-scheme: dark)');
-    function apply(dark) {
-      document.documentElement.classList.toggle('dark', dark);
-    }
-    apply(mq.matches);
-    mq.addEventListener('change', function(e) { apply(e.matches); });
-  })();
-`;
-
 function RootDocument({ children }: { children: React.ReactNode }) {
   return (
     <html className="font-sans antialiased">
       <head>
-        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
         <HeadContent />
       </head>
       <body>
