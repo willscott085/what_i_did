@@ -35,6 +35,7 @@
   --accent: var(--primitive-slate-100);
   --accent-foreground: var(--primitive-slate-900);
   --destructive: var(--primitive-red-500);
+  --destructive-foreground: var(--primitive-white);
 
   /* Chrome */
   --border: var(--primitive-slate-200);
@@ -80,6 +81,7 @@
   --accent: var(--primitive-slate-800);
   --accent-foreground: var(--primitive-slate-50);
   --destructive: var(--primitive-red-400);
+  --destructive-foreground: var(--primitive-white);
 
   --border: var(--primitive-white-10);
   --input: var(--primitive-white-15);

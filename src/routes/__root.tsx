@@ -51,7 +51,7 @@ export const Route = createRootRouteWithContext<{
         sizes: "16x16",
         href: "/favicon-16x16.png",
       },
-      { rel: "manifest", href: "/site.webmanifest", color: "#fffff" },
+      { rel: "manifest", href: "/site.webmanifest", color: "#ffffff" },
       { rel: "icon", href: "/favicon.ico" },
     ],
   }),
@@ -74,10 +74,22 @@ function RootComponent() {
   );
 }
 
+const themeScript = `
+  (function() {
+    var mq = window.matchMedia('(prefers-color-scheme: dark)');
+    function apply(dark) {
+      document.documentElement.classList.toggle('dark', dark);
+    }
+    apply(mq.matches);
+    mq.addEventListener('change', function(e) { apply(e.matches); });
+  })();
+`;
+
 function RootDocument({ children }: { children: React.ReactNode }) {
   return (
-    <html className="dark font-sans antialiased">
+    <html className="font-sans antialiased">
       <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
         <HeadContent />
       </head>
       <body>
