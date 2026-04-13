@@ -56,13 +56,19 @@ export function TaskItem({
   const [expanded, setExpanded] = useState(false);
   const overdueTick = useOverdueCheck();
 
-  const { data: subtasks = [] } = useQuery(fetchSubtasksQueryOptions(task.id));
+  const { data: subtasks = [] } = useQuery({
+    ...fetchSubtasksQueryOptions(task.id),
+    enabled: expanded,
+  });
 
   const { mutate: createSubtask } = useCreateTask();
   const { mutate: completeSubtask } = useCompleteTask();
   const { mutate: deleteSubtask } = useDeleteTask();
 
-  const completedSubtasks = subtasks.filter((s) => s.dateCompleted).length;
+  const subtaskCount = expanded ? subtasks.length : (task.subtaskCount ?? 0);
+  const completedSubtasks = expanded
+    ? subtasks.filter((s) => s.dateCompleted).length
+    : (task.completedSubtaskCount ?? 0);
 
   const form = useForm({
     formId: task.id,
@@ -195,13 +201,13 @@ export function TaskItem({
         </form>
 
         {/* Subtask count */}
-        {subtasks.length > 0 && (
+        {subtaskCount > 0 && (
           <button
             type="button"
             onClick={() => setExpanded(!expanded)}
             className="text-muted-foreground hover:bg-accent shrink-0 rounded px-1.5 py-0.5 text-xs"
           >
-            {completedSubtasks}/{subtasks.length}
+            {completedSubtasks}/{subtaskCount}
           </button>
         )}
 

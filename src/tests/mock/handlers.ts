@@ -16,6 +16,8 @@ export const handlers = [
         parentTaskId: null,
         recurrenceRule: null,
         sortOrder: 0,
+        subtaskCount: 0,
+        completedSubtaskCount: 0,
       },
     ]);
   }),

@@ -72,8 +72,8 @@ function buildGroups(
     .filter((t) => !!t.dateCompleted)
     .sort(
       (a, b) =>
-        new Date(a.dateCompleted!).getTime() -
-        new Date(b.dateCompleted!).getTime(),
+        new Date(b.dateCompleted!).getTime() -
+        new Date(a.dateCompleted!).getTime(),
     );
 
   const grouped = new Map<string, Task[]>();

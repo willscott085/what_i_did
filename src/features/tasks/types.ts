@@ -14,6 +14,8 @@ export type Task = {
   parentTaskId: string | null;
   recurrenceRule: string | null;
   sortOrder: number;
+  subtaskCount: number;
+  completedSubtaskCount: number;
 };
 
 export type TaskWithRelations = Task & {

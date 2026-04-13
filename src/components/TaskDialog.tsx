@@ -133,7 +133,10 @@ function TaskDialogForm({
       {
         onSuccess: (newTask) => {
           if (newTask) {
-            setSubtasks((prev) => [...prev, newTask]);
+            setSubtasks((prev) => [
+              ...prev,
+              { ...newTask, subtaskCount: 0, completedSubtaskCount: 0 },
+            ]);
           }
         },
       },
@@ -181,7 +184,10 @@ function TaskDialogForm({
               <button
                 type="button"
                 className="cursor-pointer text-xs text-blue-500 hover:text-blue-600"
-                onClick={() => setDueDate("")}
+                onClick={() => {
+                  setDueDate("");
+                  setDueTime("");
+                }}
               >
                 Clear
               </button>

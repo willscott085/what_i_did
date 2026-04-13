@@ -27,7 +27,28 @@ export const fetchTasks = createServerFn({ method: "GET" })
   .inputValidator(userIdInput)
   .handler(async ({ data }) => {
     return db
-      .select()
+      .select({
+        id: tasks.id,
+        title: tasks.title,
+        notes: tasks.notes,
+        dateCreated: tasks.dateCreated,
+        dateCompleted: tasks.dateCompleted,
+        dueDate: tasks.dueDate,
+        dueTime: tasks.dueTime,
+        userId: tasks.userId,
+        priorityCategoryId: tasks.priorityCategoryId,
+        parentTaskId: tasks.parentTaskId,
+        recurrenceRule: tasks.recurrenceRule,
+        sortOrder: tasks.sortOrder,
+        subtaskCount:
+          sql<number>`(SELECT COUNT(*) FROM tasks st WHERE st.parent_task_id = ${tasks.id})`.as(
+            "subtask_count",
+          ),
+        completedSubtaskCount:
+          sql<number>`(SELECT COUNT(*) FROM tasks st WHERE st.parent_task_id = ${tasks.id} AND st.date_completed IS NOT NULL)`.as(
+            "completed_subtask_count",
+          ),
+      })
       .from(tasks)
       .where(eq(tasks.userId, data.userId))
       .orderBy(asc(tasks.sortOrder));
@@ -50,6 +71,14 @@ export const fetchInboxTasks = createServerFn({ method: "GET" })
         parentTaskId: tasks.parentTaskId,
         recurrenceRule: tasks.recurrenceRule,
         sortOrder: tasks.sortOrder,
+        subtaskCount:
+          sql<number>`(SELECT COUNT(*) FROM tasks st WHERE st.parent_task_id = ${tasks.id})`.as(
+            "subtask_count",
+          ),
+        completedSubtaskCount:
+          sql<number>`(SELECT COUNT(*) FROM tasks st WHERE st.parent_task_id = ${tasks.id} AND st.date_completed IS NOT NULL)`.as(
+            "completed_subtask_count",
+          ),
       })
       .from(tasks)
       .leftJoin(
@@ -79,7 +108,28 @@ export const fetchUpcomingTasks = createServerFn({ method: "GET" })
   .inputValidator(userIdInput)
   .handler(async ({ data }) => {
     return db
-      .select()
+      .select({
+        id: tasks.id,
+        title: tasks.title,
+        notes: tasks.notes,
+        dateCreated: tasks.dateCreated,
+        dateCompleted: tasks.dateCompleted,
+        dueDate: tasks.dueDate,
+        dueTime: tasks.dueTime,
+        userId: tasks.userId,
+        priorityCategoryId: tasks.priorityCategoryId,
+        parentTaskId: tasks.parentTaskId,
+        recurrenceRule: tasks.recurrenceRule,
+        sortOrder: tasks.sortOrder,
+        subtaskCount:
+          sql<number>`(SELECT COUNT(*) FROM tasks st WHERE st.parent_task_id = ${tasks.id})`.as(
+            "subtask_count",
+          ),
+        completedSubtaskCount:
+          sql<number>`(SELECT COUNT(*) FROM tasks st WHERE st.parent_task_id = ${tasks.id} AND st.date_completed IS NOT NULL)`.as(
+            "completed_subtask_count",
+          ),
+      })
       .from(tasks)
       .where(
         and(
@@ -96,7 +146,28 @@ export const fetchCompletedTasks = createServerFn({ method: "GET" })
   .inputValidator(userIdInput)
   .handler(async ({ data }) => {
     return db
-      .select()
+      .select({
+        id: tasks.id,
+        title: tasks.title,
+        notes: tasks.notes,
+        dateCreated: tasks.dateCreated,
+        dateCompleted: tasks.dateCompleted,
+        dueDate: tasks.dueDate,
+        dueTime: tasks.dueTime,
+        userId: tasks.userId,
+        priorityCategoryId: tasks.priorityCategoryId,
+        parentTaskId: tasks.parentTaskId,
+        recurrenceRule: tasks.recurrenceRule,
+        sortOrder: tasks.sortOrder,
+        subtaskCount:
+          sql<number>`(SELECT COUNT(*) FROM tasks st WHERE st.parent_task_id = ${tasks.id})`.as(
+            "subtask_count",
+          ),
+        completedSubtaskCount:
+          sql<number>`(SELECT COUNT(*) FROM tasks st WHERE st.parent_task_id = ${tasks.id} AND st.date_completed IS NOT NULL)`.as(
+            "completed_subtask_count",
+          ),
+      })
       .from(tasks)
       .where(and(eq(tasks.userId, data.userId), isNotNull(tasks.dateCompleted)))
       .orderBy(asc(tasks.sortOrder));
@@ -175,7 +246,11 @@ export const updateTask = createServerFn({ method: "POST" })
       id: z.string().min(1),
       title: z.string().min(1).max(255).optional(),
       notes: z.string().max(1000).or(z.null()).optional(),
-      dueDate: z.string().or(z.null()).optional(),
+      dueDate: z
+        .string()
+        .regex(/^\d{4}-\d{2}-\d{2}$/)
+        .or(z.null())
+        .optional(),
       dueTime: z
         .string()
         .regex(/^\d{2}:\d{2}$/)
@@ -325,7 +400,10 @@ export const createTask = createServerFn({ method: "POST" })
     z.object({
       title: z.string().min(1).max(255),
       notes: z.string().max(1000).optional(),
-      dueDate: z.string().optional(),
+      dueDate: z
+        .string()
+        .regex(/^\d{4}-\d{2}-\d{2}$/)
+        .optional(),
       dueTime: z
         .string()
         .regex(/^\d{2}:\d{2}$/)
@@ -446,7 +524,22 @@ export const fetchSubtasks = createServerFn({ method: "GET" })
   )
   .handler(async ({ data }) => {
     return db
-      .select()
+      .select({
+        id: tasks.id,
+        title: tasks.title,
+        notes: tasks.notes,
+        dateCreated: tasks.dateCreated,
+        dateCompleted: tasks.dateCompleted,
+        dueDate: tasks.dueDate,
+        dueTime: tasks.dueTime,
+        userId: tasks.userId,
+        priorityCategoryId: tasks.priorityCategoryId,
+        parentTaskId: tasks.parentTaskId,
+        recurrenceRule: tasks.recurrenceRule,
+        sortOrder: tasks.sortOrder,
+        subtaskCount: sql<number>`0`.as("subtask_count"),
+        completedSubtaskCount: sql<number>`0`.as("completed_subtask_count"),
+      })
       .from(tasks)
       .where(
         and(
