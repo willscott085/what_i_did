@@ -5,8 +5,17 @@ import {
 } from "@tanstack/react-query";
 import { DEFAULT_USER_ID, tasksQueryKeys } from "./consts";
 import { fetchInboxTasksQueryOptions, fetchTasksQueryOptions } from "./queries";
-import { reorderTasks, updateTask, updateTaskOrder } from "./server";
-import { Task } from "./types";
+import {
+  completeTask,
+  createTask,
+  deleteTask,
+  moveTaskToCategory,
+  reorderTasks,
+  reorderTasksInCategory,
+  updateTask,
+  updateTaskOrder,
+} from "./server";
+import { CreateTaskInput, Task, UpdateTaskInput } from "./types";
 
 interface UseUpdateTaskOrderProps {
   onError?: () => void;
@@ -94,6 +103,58 @@ export const useReorderTasks = ({ onError }: UseReorderTasksProps) => {
   });
 };
 
+interface UseReorderTasksInCategoryProps {
+  onError?: () => void;
+}
+export const useReorderTasksInCategory = ({
+  onError,
+}: UseReorderTasksInCategoryProps) => {
+  const queryClient = useQueryClient();
+  const queryKey = fetchInboxTasksQueryOptions().queryKey;
+
+  return useMutation({
+    mutationFn: ({
+      taskIds,
+      categoryId,
+    }: {
+      taskIds: string[];
+      categoryId: string | null;
+    }) =>
+      reorderTasksInCategory({
+        data: { taskIds, categoryId, userId: DEFAULT_USER_ID },
+      }),
+    onMutate: async ({ taskIds }) => {
+      await queryClient.cancelQueries({ queryKey });
+
+      const prev = queryClient.getQueryData<Task[]>(queryKey);
+
+      if (prev) {
+        const reorderedSet = new Set(taskIds);
+        const reorderedMap = new Map(taskIds.map((id, i) => [id, i]));
+        queryClient.setQueryData<Task[]>(
+          queryKey,
+          prev.map((t) =>
+            reorderedSet.has(t.id)
+              ? { ...t, sortOrder: reorderedMap.get(t.id)! }
+              : t,
+          ),
+        );
+      }
+
+      return { prev };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.prev) {
+        queryClient.setQueryData(queryKey, ctx.prev);
+      }
+      onError?.();
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: tasksQueryKeys.all });
+    },
+  });
+};
+
 interface useUpdateTaskMutationOptionsProps {
   onError?: () => void;
 }
@@ -101,6 +162,7 @@ export const useUpdateTaskMutationOptions = (
   props: useUpdateTaskMutationOptionsProps,
 ) => {
   const queryClient = useQueryClient();
+  const inboxKey = fetchInboxTasksQueryOptions().queryKey;
 
   return mutationOptions({
     mutationFn: (
@@ -113,11 +175,11 @@ export const useUpdateTaskMutationOptions = (
         queryKey: tasksQueryKeys.all,
       });
 
-      const prev = queryClient.getQueryData<Task[]>(tasksQueryKeys.all);
+      const prev = queryClient.getQueryData<Task[]>(inboxKey);
 
       if (prev) {
         queryClient.setQueryData<Task[]>(
-          tasksQueryKeys.all,
+          inboxKey,
           prev.map((t) => (t.id === task.id ? { ...t, ...task } : t)),
         );
       }
@@ -126,7 +188,7 @@ export const useUpdateTaskMutationOptions = (
     },
     onError: (_err, _vars, ctx) => {
       if (ctx?.prev) {
-        queryClient.setQueryData(tasksQueryKeys.all, ctx.prev);
+        queryClient.setQueryData(inboxKey, ctx.prev);
       }
       props.onError?.();
     },
@@ -134,6 +196,174 @@ export const useUpdateTaskMutationOptions = (
       queryClient.invalidateQueries({
         queryKey: tasksQueryKeys.all,
       });
+    },
+  });
+};
+
+export const useCreateTask = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: CreateTaskInput) =>
+      createTask({ data: { ...input, userId: DEFAULT_USER_ID } }),
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: tasksQueryKeys.all });
+    },
+  });
+};
+
+export const useUpdateFullTask = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: UpdateTaskInput) =>
+      updateTask({ data: { ...input, userId: DEFAULT_USER_ID } }),
+    onMutate: async (input) => {
+      await queryClient.cancelQueries({ queryKey: tasksQueryKeys.all });
+
+      const inboxKey = fetchInboxTasksQueryOptions().queryKey;
+      const prev = queryClient.getQueryData<Task[]>(inboxKey);
+
+      if (prev) {
+        queryClient.setQueryData<Task[]>(
+          inboxKey,
+          prev.map((t) => (t.id === input.id ? { ...t, ...input } : t)),
+        );
+      }
+
+      return { prev, inboxKey };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.prev) {
+        queryClient.setQueryData(ctx.inboxKey, ctx.prev);
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: tasksQueryKeys.all });
+    },
+  });
+};
+
+export const useDeleteTask = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (taskId: string) =>
+      deleteTask({ data: { taskId, userId: DEFAULT_USER_ID } }),
+    onMutate: async (taskId) => {
+      await queryClient.cancelQueries({ queryKey: tasksQueryKeys.all });
+
+      const inboxKey = fetchInboxTasksQueryOptions().queryKey;
+      const prev = queryClient.getQueryData<Task[]>(inboxKey);
+
+      if (prev) {
+        queryClient.setQueryData<Task[]>(
+          inboxKey,
+          prev.filter((t) => t.id !== taskId),
+        );
+      }
+
+      return { prev, inboxKey };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.prev) {
+        queryClient.setQueryData(ctx.inboxKey, ctx.prev);
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: tasksQueryKeys.all });
+    },
+  });
+};
+
+export const useMoveTaskToCategory = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: {
+      taskId: string;
+      categoryId: string | null;
+      taskIdsInNewGroup: string[];
+    }) =>
+      moveTaskToCategory({
+        data: { ...input, userId: DEFAULT_USER_ID },
+      }),
+    onMutate: async ({ taskId, categoryId, taskIdsInNewGroup }) => {
+      await queryClient.cancelQueries({ queryKey: tasksQueryKeys.all });
+
+      const inboxKey = fetchInboxTasksQueryOptions().queryKey;
+      const prev = queryClient.getQueryData<Task[]>(inboxKey);
+
+      if (prev) {
+        const orderMap = new Map(taskIdsInNewGroup.map((id, i) => [id, i]));
+        queryClient.setQueryData<Task[]>(
+          inboxKey,
+          prev.map((t) => {
+            if (t.id === taskId) {
+              return {
+                ...t,
+                priorityCategoryId: categoryId,
+                sortOrder: orderMap.get(t.id) ?? t.sortOrder,
+              };
+            }
+            if (orderMap.has(t.id)) {
+              return { ...t, sortOrder: orderMap.get(t.id)! };
+            }
+            return t;
+          }),
+        );
+      }
+
+      return { prev, inboxKey };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.prev) {
+        queryClient.setQueryData(ctx.inboxKey, ctx.prev);
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: tasksQueryKeys.all });
+    },
+  });
+};
+
+export const useCompleteTask = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      taskId,
+      dateCompleted,
+    }: {
+      taskId: string;
+      dateCompleted: string | null;
+    }) =>
+      completeTask({
+        data: { taskId, dateCompleted, userId: DEFAULT_USER_ID },
+      }),
+    onMutate: async ({ taskId, dateCompleted }) => {
+      await queryClient.cancelQueries({ queryKey: tasksQueryKeys.all });
+
+      const inboxKey = fetchInboxTasksQueryOptions().queryKey;
+      const prev = queryClient.getQueryData<Task[]>(inboxKey);
+
+      if (prev) {
+        queryClient.setQueryData<Task[]>(
+          inboxKey,
+          prev.map((t) => (t.id === taskId ? { ...t, dateCompleted } : t)),
+        );
+      }
+
+      return { prev, inboxKey };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.prev) {
+        queryClient.setQueryData(ctx.inboxKey, ctx.prev);
+      }
+    },
+    onSettled: () => {
+      // Invalidate all task queries to pick up recurrence-generated tasks
+      queryClient.invalidateQueries({ queryKey: tasksQueryKeys.all });
     },
   });
 };

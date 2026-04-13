@@ -1,25 +1,36 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { format } from "date-fns";
-import { useSyncExternalStore } from "react";
-import { SortableList } from "~/components/SortableList";
+import { PlusIcon } from "lucide-react";
+import { useState, useSyncExternalStore } from "react";
+import { CategoryGroupedList } from "~/components/CategoryGroupedList";
+import { TaskDialog } from "~/components/TaskDialog";
 import { TaskItem } from "~/components/TaskItem";
+import { Button } from "~/components/ui/button";
+import { fetchCategoriesQueryOptions } from "~/features/categories/queries";
 import {
-  useReorderTasks,
+  useDeleteTask,
+  useMoveTaskToCategory,
+  useReorderTasksInCategory,
   useUpdateTaskMutationOptions,
 } from "~/features/tasks/mutations";
 import { fetchInboxTasksQueryOptions } from "~/features/tasks/queries";
+import { Task, TaskWithRelations } from "~/features/tasks/types";
 
 export const Route = createFileRoute("/tasks/")({
   component: RouteComponent,
   loader: async ({ context }) => {
-    await context.queryClient.ensureQueryData(fetchInboxTasksQueryOptions());
+    await Promise.all([
+      context.queryClient.ensureQueryData(fetchInboxTasksQueryOptions()),
+      context.queryClient.ensureQueryData(fetchCategoriesQueryOptions()),
+    ]);
     return null;
   },
 });
 
 function RouteComponent() {
   const { data: tasks = [] } = useQuery(fetchInboxTasksQueryOptions());
+  const { data: categories = [] } = useQuery(fetchCategoriesQueryOptions());
 
   const { mutate: updateTask } = useMutation(
     useUpdateTaskMutationOptions({
@@ -33,14 +44,47 @@ function RouteComponent() {
     () => false,
   );
 
-  const { mutate: reorderTasks } = useReorderTasks({ onError: () => {} });
+  const { mutate: reorderInCategory } = useReorderTasksInCategory({
+    onError: () => {},
+  });
+  const { mutate: moveToCategory } = useMoveTaskToCategory();
+  const { mutate: deleteTaskMutation } = useDeleteTask();
 
-  const taskIds = tasks.map((t) => t.id);
-  const tasksById = new Map(tasks.map((task) => [task.id, task]));
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState<TaskWithRelations | null>(
+    null,
+  );
 
-  function handleOrderChange(items: string[]) {
-    reorderTasks(items);
+  function handleReorderInCategory(
+    taskIds: string[],
+    categoryId: string | null,
+  ) {
+    reorderInCategory({ taskIds, categoryId });
   }
+
+  function handleMoveToCategory(
+    taskId: string,
+    categoryId: string | null,
+    taskIdsInNewGroup: string[],
+  ) {
+    moveToCategory({ taskId, categoryId, taskIdsInNewGroup });
+  }
+
+  function handleEdit(task: Task) {
+    setEditingTask(task as TaskWithRelations);
+    setDialogOpen(true);
+  }
+
+  function handleDelete(taskId: string) {
+    deleteTaskMutation(taskId);
+  }
+
+  function handleDialogClose(open: boolean) {
+    setDialogOpen(open);
+    if (!open) setEditingTask(null);
+  }
+
+  const todayFormatted = format(new Date(), "yyyy-MM-dd");
 
   return (
     <div className="mx-auto max-w-2xl p-4">
@@ -48,46 +92,77 @@ function RouteComponent() {
         <h1 className="text-3xl font-bold">
           {format(new Date(), "EEEE, MMMM do, yyyy")}
         </h1>
+        <Button
+          size="icon"
+          onClick={() => {
+            setEditingTask(null);
+            setDialogOpen(true);
+          }}
+          aria-label="Add task"
+        >
+          <PlusIcon className="size-5" />
+        </Button>
       </header>
       <div className="px-4">
         {hydrated ? (
-          <SortableList items={taskIds} onOrderChange={handleOrderChange}>
-            {(id, isDragging, dragAttributes, dragListeners) => {
-              const task = tasksById.get(id);
-
-              if (!task) return null;
-
-              return (
-                <TaskItem
-                  key={task.id}
-                  task={task}
-                  onUpdate={updateTask}
-                  isDragging={isDragging}
-                  dragAttributes={dragAttributes}
-                  dragListeners={dragListeners}
-                />
-              );
-            }}
-          </SortableList>
+          <CategoryGroupedList
+            tasks={tasks}
+            categories={categories}
+            onReorderInCategory={handleReorderInCategory}
+            onMoveToCategory={handleMoveToCategory}
+            completedChildren={(task) => (
+              <TaskItem
+                key={task.id}
+                task={task}
+                onUpdate={updateTask}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+                isDragging={false}
+              />
+            )}
+          >
+            {(
+              task,
+              isDragging,
+              dragAttributes,
+              dragListeners,
+              categoryColor,
+            ) => (
+              <TaskItem
+                key={task.id}
+                task={task}
+                onUpdate={updateTask}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+                isDragging={isDragging}
+                categoryColor={categoryColor}
+                dragAttributes={dragAttributes}
+                dragListeners={dragListeners}
+              />
+            )}
+          </CategoryGroupedList>
         ) : (
           <ul>
-            {taskIds.map((id) => {
-              const task = tasksById.get(id);
-
-              if (!task) return null;
-
-              return (
-                <TaskItem
-                  key={task.id}
-                  task={task}
-                  onUpdate={updateTask}
-                  isDragging={false}
-                />
-              );
-            })}
+            {tasks.map((task) => (
+              <TaskItem
+                key={task.id}
+                task={task}
+                onUpdate={updateTask}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+                isDragging={false}
+              />
+            ))}
           </ul>
         )}
       </div>
+
+      <TaskDialog
+        open={dialogOpen}
+        onOpenChange={handleDialogClose}
+        task={editingTask}
+        defaultDueDate={todayFormatted}
+      />
     </div>
   );
 }

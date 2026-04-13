@@ -19,6 +19,9 @@ export default defineConfig({
     viteReact(),
     tailwindcss(),
   ],
+  optimizeDeps: {
+    include: ["rrule"],
+  },
   test: {
     globals: true,
     environment: "jsdom",

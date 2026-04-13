@@ -31,7 +31,7 @@ db.insert(schema.priorityCategories)
     },
     {
       id: "cat_002",
-      name: "Momentum Builders",
+      name: "Momentum Builder",
       description: "Unblocks or supports critical work & progress",
       color: "#f97316",
       sortOrder: 1,
@@ -39,7 +39,7 @@ db.insert(schema.priorityCategories)
     },
     {
       id: "cat_003",
-      name: "Nice-to-Haves",
+      name: "Nice-to-Have",
       description: "Good ideas, but not tied to impact or timing",
       color: "#3b82f6",
       sortOrder: 2,
@@ -71,6 +71,7 @@ const sampleTasks = [
     dateCreated: "2025-09-25T09:12:03.000Z",
     dateCompleted: null,
     dueDate: null,
+    priorityCategoryId: "cat_001",
     userId: "1",
     sortOrder: 0,
   },
@@ -81,6 +82,7 @@ const sampleTasks = [
     dateCreated: "2025-09-20T14:31:10.000Z",
     dateCompleted: null,
     dueDate: today.toISOString(),
+    priorityCategoryId: "cat_001",
     userId: "1",
     sortOrder: 1,
   },
@@ -91,6 +93,7 @@ const sampleTasks = [
     dateCreated: "2025-09-29T11:05:47.000Z",
     dateCompleted: null,
     dueDate: null,
+    priorityCategoryId: "cat_002",
     userId: "1",
     sortOrder: 2,
   },
@@ -101,6 +104,7 @@ const sampleTasks = [
     dateCreated: "2025-09-18T08:44:55.000Z",
     dateCompleted: null,
     dueDate: nextWeek.toISOString(),
+    priorityCategoryId: "cat_003",
     userId: "1",
     sortOrder: 3,
   },
@@ -111,6 +115,7 @@ const sampleTasks = [
     dateCreated: "2025-10-01T10:02:11.000Z",
     dateCompleted: null,
     dueDate: tomorrow.toISOString(),
+    priorityCategoryId: "cat_002",
     userId: "1",
     sortOrder: 4,
   },
@@ -121,6 +126,7 @@ const sampleTasks = [
     dateCreated: "2025-09-30T07:22:39.000Z",
     dateCompleted: null,
     dueDate: null,
+    priorityCategoryId: "cat_004",
     userId: "1",
     sortOrder: 5,
   },
@@ -141,6 +147,7 @@ const sampleTasks = [
     dateCreated: "2025-09-23T09:05:14.000Z",
     dateCompleted: null,
     dueDate: nextWeek.toISOString(),
+    priorityCategoryId: "cat_003",
     userId: "1",
     sortOrder: 7,
   },
@@ -164,12 +171,78 @@ const sampleTasks = [
     userId: "1",
     sortOrder: 9,
   },
+  // Daily standup — recurring task
+  {
+    id: "tsk_011",
+    title: "Daily standup",
+    notes: "Share blockers and progress with the team.",
+    dateCreated: "2025-10-01T08:00:00.000Z",
+    dateCompleted: null,
+    dueDate: today.toISOString(),
+    priorityCategoryId: "cat_002",
+    recurrenceRule:
+      "DTSTART:20251001T080000Z\nRRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR",
+    userId: "1",
+    sortOrder: 10,
+  },
+  // Subtasks of tsk_001
+  {
+    id: "tsk_012",
+    title: "Gather team input on priorities",
+    notes: null,
+    dateCreated: "2025-09-25T09:15:00.000Z",
+    dateCompleted: null,
+    dueDate: null,
+    parentTaskId: "tsk_001",
+    userId: "1",
+    sortOrder: 0,
+  },
+  {
+    id: "tsk_013",
+    title: "Draft milestone timeline",
+    notes: null,
+    dateCreated: "2025-09-25T09:16:00.000Z",
+    dateCompleted: "2025-10-02T11:00:00.000Z",
+    dueDate: null,
+    parentTaskId: "tsk_001",
+    userId: "1",
+    sortOrder: 1,
+  },
 ];
 
 db.insert(schema.tasks).values(sampleTasks).run();
 
+// Seed tags
+db.insert(schema.tags)
+  .values([
+    { id: "tag_001", name: "frontend", color: "#3b82f6", userId: "1" },
+    { id: "tag_002", name: "backend", color: "#22c55e", userId: "1" },
+    { id: "tag_003", name: "urgent", color: "#ef4444", userId: "1" },
+    { id: "tag_004", name: "review", color: "#8b5cf6", userId: "1" },
+  ])
+  .run();
+
+// Seed task-tag relationships
+db.insert(schema.taskTags)
+  .values([
+    { taskId: "tsk_001", tagId: "tag_002" },
+    { taskId: "tsk_002", tagId: "tag_002" },
+    { taskId: "tsk_002", tagId: "tag_003" },
+    { taskId: "tsk_003", tagId: "tag_001" },
+    { taskId: "tsk_005", tagId: "tag_001" },
+    { taskId: "tsk_005", tagId: "tag_004" },
+    { taskId: "tsk_006", tagId: "tag_001" },
+    { taskId: "tsk_006", tagId: "tag_003" },
+    { taskId: "tsk_008", tagId: "tag_001" },
+  ])
+  .run();
+
 console.info("Database seeded successfully.");
 console.info(`  - ${4} priority categories`);
-console.info(`  - ${sampleTasks.length} tasks`);
+console.info(
+  `  - ${sampleTasks.length} tasks (including ${2} subtasks, ${1} recurring)`,
+);
+console.info(`  - ${4} tags`);
+console.info(`  - ${9} task-tag relationships`);
 
 sqlite.close();

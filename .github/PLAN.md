@@ -170,80 +170,151 @@ These are the default seed categories. Users can add/rename/remove later.
 
 ---
 
-## Phase 5: Task System Core
+## Phase 5: Task System Core ✅
 
 > CRUD for tasks, priority categories, tags, subtasks, and recurrence.
 
-- [ ] Create `src/features/categories/` — types, server, queries, mutations, consts
+- [x] Create `src/features/categories/` — types, server, queries, mutations, consts
   - CRUD server functions for priority categories
-  - Category management UI (settings page or inline)
-- [ ] Create `src/features/tags/` — types, server, queries, mutations, consts
+  - Category management UI (inline in task dialog — CategorySelect component)
+- [x] Create `src/features/tags/` — types, server, queries, mutations, consts
   - CRUD server functions for tags
-  - Tag creation inline (type-to-create in multi-select)
-- [ ] Expand task server functions:
-  - `createTask` — full creation with all fields
-  - `updateTask` — full update
-  - `deleteTask` — soft delete or hard delete (decide)
-  - `getTasksByDate` — filter by dueDate for panels
-  - `getCompletedTasks` — filter by dateCompleted
-- [ ] Implement recurrence engine (`src/utils/recurrence.ts`):
-  - Use `rrule` npm package for RRULE-compatible strings
-  - Apple Reminders-style: daily, weekly, biweekly, monthly, yearly, custom
-  - Custom: every Nth day/week/month, specific weekdays, end date / count
-  - Auto-generate next occurrence when recurring task is completed
-- [ ] Build **Create/Edit Task Dialog** (`src/components/TaskDialog.tsx`):
-  - Apple Reminders-like form layout
-  - Fields: title, due date, priority category (dropdown), tags (multi-select), notes (textarea), recurrence picker
-  - Subtasks list (inline add/remove/check)
-  - `@tanstack/react-form` for form state
-  - Radix Dialog (already installed)
-- [ ] Build **Subtask** component — inline checkable list within task detail
-- [ ] Update `TaskItem.tsx` — show priority color indicator, tag chips, due date, subtask count
+  - Tag creation inline (type-to-create in multi-select — TagMultiSelect component)
+- [x] Expand task server functions:
+  - `createTask` — full creation with all fields (tags, priority, recurrence, subtasks)
+  - `updateTask` — full update with tag sync (delete + re-insert in transaction)
+  - `deleteTask` — hard delete (subtasks deleted first, FK cascade handles junctions)
+  - `fetchTaskWithRelations` — single task with priority category, tags, subtasks
+  - `fetchSubtasks` — direct children by parentTaskId
+  - Inbox/upcoming queries now exclude subtasks (filter `parentTaskId IS NULL`)
+- [x] Implement recurrence engine (`src/utils/recurrence.ts`):
+  - Uses `rrule` npm package for RRULE-compatible strings
+  - Presets: daily, weekdays, weekly, biweekly, monthly, yearly
+  - Custom: every Nth day/week/month/year, specific weekdays
+  - Auto-generate next occurrence when recurring task is completed (in `completeTask` handler)
+  - `detectPreset()` for round-tripping RRULE → UI preset selection
+- [x] Build **Create/Edit Task Dialog** (`src/components/TaskDialog.tsx`):
+  - Fields: title, due date, priority category (CategorySelect), tags (TagMultiSelect), notes (textarea), recurrence (RecurrencePicker)
+  - Subtasks list (inline add/complete/delete — SubtaskList component, edit mode only)
+  - Radix Dialog wrapper
+- [x] Build **SubtaskList** component — single-level only (subtasks cannot have subtasks)
+- [x] Build **RecurrencePicker** component — preset buttons + custom builder
+- [x] Build **CategorySelect** component — inline CRUD (add/edit/delete categories from dropdown)
+- [x] Build **TagMultiSelect** component — multi-select with inline tag creation
+- [x] Update `TaskItem.tsx`:
+  - Priority category color indicator (colored bar)
+  - Due date badge (overdue=red, today=amber, future=muted)
+  - Subtask count badge with expand/collapse
+  - Inline SubtaskList on expand
+  - Edit button → opens TaskDialog; Delete button → hard delete
+- [x] Update `/tasks/` route — "+" button opens TaskDialog, edit/delete wired up
+- [x] Update seed data — tags, task-tag relationships, category assignments, subtasks, recurring task
+- [x] **Verify**: `pnpm typecheck` passes — zero errors
+- [x] **Verify**: `pnpm test` passes — existing unit tests still green
+- [x] **Verify**: `pnpm db:seed` runs successfully
+
+### Decisions
+
+- **Task deletion**: Hard delete (no soft delete)
+- **Subtask depth**: Single level only (subtasks cannot have subtasks)
+- **Recurrence**: Full `rrule` implementation with auto-generation on completion
+- **Category management**: Inline in the task dialog (CategorySelect with add/edit/delete)
 
 ### Outputs
 
-- `src/features/categories/`, `src/features/tags/`
-- `src/components/TaskDialog.tsx`, subtask components
-- Updated `TaskItem.tsx`
-- Recurrence utility
+- `src/features/categories/` (types, consts, server, queries, mutations)
+- `src/features/tags/` (types, consts, server, queries, mutations)
+- `src/utils/recurrence.ts`
+- `src/components/TaskDialog.tsx`, `RecurrencePicker.tsx`, `SubtaskList.tsx`, `TagMultiSelect.tsx`, `CategorySelect.tsx`
+- Updated `src/components/TaskItem.tsx`, `src/routes/tasks/index.tsx`, `src/db/seed.ts`
+- Updated `src/features/tasks/` (types, server, consts, queries, mutations)
 
 ---
 
-## Phase 6: 3-Panel Layout UI
+## Phase 6: Calendar + Day View UI
 
-> The main app interface — three scrollable panels for completed, today, and future tasks.
+> The main app interface — a 3-month mini calendar sidebar with a scrollable day view.
 
-- [ ] Build `src/components/PanelLayout.tsx` — 3-panel container:
-  - **Top (25%)**: Completed tasks (today's completions)
-  - **Center (50%)**: Today's tasks — titled with today's date
-  - **Bottom (25%)**: Future-dated tasks
-- [ ] Panel interaction:
-  - All 3 always visible and independently scrollable
-  - On interact/focus: active panel expands to 50%, others shrink to 25%
-  - Smooth CSS transitions (`transition-all duration-300`)
-- [ ] Replace `<>Yolo</>` in `src/routes/index.tsx` with PanelLayout
-- [ ] Today's panel:
-  - Title: formatted date (e.g., "Thursday, 10 April 2026")
-  - "+" button to the right of title — opens TaskDialog with today's date pre-filled
-  - Tasks grouped by priority category with color coding
-  - Drag-and-drop reordering within categories (reuse SortableList)
-- [ ] Completed panel:
-  - Shows tasks completed today
-  - Strikethrough styling, muted colors
-- [ ] Future panel:
-  - Shows tasks with dueDate > today
-  - Grouped by date
-- [ ] Quick filter chips above each panel (by tag, by priority category)
-- [ ] Responsive layout:
-  - Desktop: 3-panel vertical stack
-  - Mobile: stacked panels, swipe or tab navigation between them
-- [ ] Decide fate of `/tasks/` route — merge into index or keep as separate view
+### Layout
+
+- **Left sidebar** (fixed ~240px, hidden on mobile): 3-month stacked mini calendar (prev/current/next month)
+- **Right main area** (flex-1): Day view for the selected date with 3 vertical sections:
+  - **Top**: Recently completed tasks from previous days (grouped by date, muted/read-only)
+  - **Middle**: Active day panel — current `/tasks/` style with category-grouped tasks, drag-drop, inline completions
+  - **Bottom**: Upcoming tasks from future days (grouped by due date, read-only)
+
+### 6A: Server Functions & Queries
+
+- [ ] Add `fetchTasksForDate` server function — tasks where `dueDate` falls on a given calendar day
+  - Reuses `fetchInboxTasks` ordering logic (incomplete first, category sort, completed last)
+- [ ] Add `fetchRecentCompletedTasks` server function — tasks completed _before_ the selected date
+  - Input: `{ userId, beforeDate, limit? }`, ordered by `dateCompleted DESC`, excludes subtasks
+- [ ] Add `fetchUpcomingTasksFromDate` server function — incomplete tasks with `dueDate > selectedDate`
+  - Input: `{ userId, afterDate, limit? }`, ordered by `dueDate ASC`, excludes subtasks
+- [ ] Add `fetchDaysWithTasks` server function — distinct dates with tasks in a date range (for calendar dot indicators)
+  - Input: `{ userId, startDate, endDate }`, returns `string[]` of date strings
+- [ ] Add corresponding query options in `src/features/tasks/queries.ts`
+- [ ] Add new query keys in `src/features/tasks/consts.ts` (`byDate`, `recentCompleted`, `upcomingFrom`, `daysWithTasks`)
+
+### 6B: Calendar Component
+
+- [ ] Build `src/components/MiniCalendar.tsx` — custom CSS grid, no external dependencies
+  - Props: `selectedDate`, `onSelectDate`, `today`, `daysWithTasks: Set<string>`
+  - 3 stacked `MonthGrid` sub-components (prev month, current month, next month)
+  - Indicators: **today** (highlighted bg/ring), **selected day** (distinct ring), **days with tasks** (small dot)
+  - Calendar centers on the selected date's month (shifts as user navigates to different months)
+  - Click a day cell → calls `onSelectDate(dateString)`
+
+### 6C: Day View Panels
+
+- [ ] Build `src/components/DayView.tsx` — scrollable container with 3 vertical sections
+- [ ] Build `ActiveDayPanel` (middle section):
+  - Reuses `CategoryGroupedList`, `TaskItem`, drag-drop, mutations from current `/tasks/` route
+  - Header: formatted date (e.g., "Thursday, 10 April 2026") + "+" button → `TaskDialog` with selected date pre-filled
+  - Completed tasks for _that day_ appear inline (same as current behavior)
+- [ ] Build `RecentCompletedPanel` (top section):
+  - Tasks completed before the selected date, grouped by completion date (e.g., "Yesterday", "April 8")
+  - Strikethrough/muted styling, compact read-only items (no drag-drop, no edit/delete inline)
+- [ ] Build `UpcomingPanel` (bottom section):
+  - Incomplete tasks with future due dates, grouped by due date
+  - Read-only list with task title + due date + priority indicator
+  - Clicking a task's date navigates to that day
+
+### 6D: Scroll-to-Navigate
+
+- [ ] Implement scroll boundary navigation in `DayView.tsx`:
+  - Sentinel elements at top and bottom of the scroll container
+  - `IntersectionObserver` detects when sentinels enter viewport
+  - Scroll to top → decrement `selectedDate` by 1 day; scroll to bottom → increment by 1 day
+  - Debounce to prevent rapid-fire day changes
+  - Calendar selection updates to match
+
+### 6E: Route Wiring & Cleanup
+
+- [ ] Update `src/routes/index.tsx` — replace `<>Yolo</>` with calendar + day view layout
+  - Side-by-side: `MiniCalendar` (left) + `DayView` (right)
+  - `selectedDate` state lifted here, passed to both components
+  - Route loader pre-fetches today's data (tasks for date, recent completed, upcoming, days with tasks for 3 months)
+- [ ] Remove or redirect `/tasks/` route to `/`
+  - Move reusable logic (mutations, dialog state) into shared hooks if needed
+- [ ] Responsive: calendar wrapper `hidden lg:block`, day view full width on mobile
+
+### Decisions
+
+- **No external calendar library** — custom CSS grid keeps bundle small, fully styled with design tokens
+- **Calendar centers on selected date's month** — shifts as user navigates, not locked to today's month
+- **Recently completed** = completed _before_ selected date; that day's completions stay inline in middle panel
+- **`/tasks/` route removed** — all task management moves to home page (`/`)
+- **Quick filter chips deferred** — not in this phase
+- **Mobile calendar toggle deferred** — hidden on mobile for now
 
 ### Outputs
 
-- `src/components/PanelLayout.tsx`
+- `src/components/MiniCalendar.tsx`
+- `src/components/DayView.tsx` (with `ActiveDayPanel`, `RecentCompletedPanel`, `UpcomingPanel`)
 - Updated `src/routes/index.tsx`
-- Responsive panel behavior
+- 4 new server functions + query options in `src/features/tasks/`
+- Responsive layout (calendar hidden on mobile)
 
 ---
 
