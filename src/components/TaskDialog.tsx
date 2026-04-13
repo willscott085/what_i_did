@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { format } from "date-fns";
 import {
   Dialog,
   DialogContent,
@@ -37,13 +38,40 @@ export function TaskDialog({
   defaultDueDate,
   defaultParentTaskId,
 }: TaskDialogProps) {
+  const formKey = `${open}-${task?.id ?? "new"}`;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-xl">
+        <TaskDialogForm
+          key={formKey}
+          task={task}
+          defaultDueDate={defaultDueDate}
+          defaultParentTaskId={defaultParentTaskId}
+          onOpenChange={onOpenChange}
+        />
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function TaskDialogForm({
+  task,
+  defaultDueDate,
+  defaultParentTaskId,
+  onOpenChange,
+}: {
+  task?: TaskWithRelations | null;
+  defaultDueDate?: string;
+  defaultParentTaskId?: string;
+  onOpenChange: (open: boolean) => void;
+}) {
   const isEditing = !!task;
 
   const [title, setTitle] = useState(task?.title ?? "");
   const [notes, setNotes] = useState(task?.notes ?? "");
-  const [dueDate, setDueDate] = useState(
-    task?.dueDate?.split("T")[0] ?? defaultDueDate ?? "",
-  );
+  const [dueDate, setDueDate] = useState(task?.dueDate ?? defaultDueDate ?? "");
+  const [dueTime, setDueTime] = useState(task?.dueTime ?? "");
   const [priorityCategoryId, setPriorityCategoryId] = useState<string | null>(
     task?.priorityCategoryId ?? null,
   );
@@ -54,19 +82,6 @@ export function TaskDialog({
     task?.recurrenceRule ?? null,
   );
   const [subtasks, setSubtasks] = useState<Task[]>(task?.subtasks ?? []);
-
-  // Reset form state when task prop changes or dialog opens
-  useEffect(() => {
-    if (open) {
-      setTitle(task?.title ?? "");
-      setNotes(task?.notes ?? "");
-      setDueDate(task?.dueDate?.split("T")[0] ?? defaultDueDate ?? "");
-      setPriorityCategoryId(task?.priorityCategoryId ?? null);
-      setTagIds(task?.tags?.map((t) => t.id) ?? []);
-      setRecurrenceRule(task?.recurrenceRule ?? null);
-      setSubtasks(task?.subtasks ?? []);
-    }
-  }, [open, task]);
 
   const { mutateAsync: createTask, isPending: isCreating } = useCreateTask();
   const { mutateAsync: updateFullTask, isPending: isUpdating } =
@@ -81,16 +96,15 @@ export function TaskDialog({
     e.preventDefault();
     if (!title.trim()) return;
 
-    const dueDateIso = dueDate
-      ? new Date(dueDate + "T00:00:00").toISOString()
-      : undefined;
+    const dueTimeValue = dueTime || undefined;
 
     if (isEditing && task) {
       await updateFullTask({
         id: task.id,
         title: title.trim(),
         notes: notes || null,
-        dueDate: dueDateIso ?? null,
+        dueDate: dueDate || null,
+        dueTime: dueTimeValue ?? null,
         priorityCategoryId,
         recurrenceRule,
         tagIds,
@@ -99,7 +113,8 @@ export function TaskDialog({
       await createTask({
         title: title.trim(),
         notes: notes || undefined,
-        dueDate: dueDateIso,
+        dueDate: dueDate || undefined,
+        dueTime: dueTimeValue,
         priorityCategoryId: priorityCategoryId ?? undefined,
         parentTaskId: defaultParentTaskId,
         recurrenceRule: recurrenceRule ?? undefined,
@@ -118,7 +133,10 @@ export function TaskDialog({
       {
         onSuccess: (newTask) => {
           if (newTask) {
-            setSubtasks((prev) => [...prev, newTask]);
+            setSubtasks((prev) => [
+              ...prev,
+              { ...newTask, subtaskCount: 0, completedSubtaskCount: 0 },
+            ]);
           }
         },
       },
@@ -139,99 +157,141 @@ export function TaskDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-xl">
-        <DialogHeader>
-          <DialogTitle>{isEditing ? "Edit Task" : "New Task"}</DialogTitle>
-        </DialogHeader>
+    <>
+      <DialogHeader>
+        <DialogTitle>{isEditing ? "Edit Task" : "New Task"}</DialogTitle>
+      </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Title */}
-          <div className="space-y-1.5">
-            <Label htmlFor="task-title">Title</Label>
-            <Input
-              id="task-title"
-              type="text"
-              placeholder="What needs to be done?"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              autoFocus
-            />
-          </div>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Title */}
+        <div className="space-y-1.5">
+          <Label htmlFor="task-title">Title</Label>
+          <Input
+            id="task-title"
+            type="text"
+            placeholder="What needs to be done?"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            autoFocus
+          />
+        </div>
 
-          {/* Due Date */}
-          <div className="space-y-1.5">
+        {/* Due Date */}
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between">
             <Label htmlFor="task-due-date">Due Date</Label>
-            <Input
-              id="task-due-date"
-              type="date"
-              value={dueDate}
-              onChange={(e) => setDueDate(e.target.value)}
+            {dueDate && (
+              <button
+                type="button"
+                className="cursor-pointer text-xs text-blue-500 hover:text-blue-600"
+                onClick={() => {
+                  setDueDate("");
+                  setDueTime("");
+                }}
+              >
+                Clear
+              </button>
+            )}
+          </div>
+          <Input
+            id="task-due-date"
+            type="date"
+            value={dueDate}
+            onChange={(e) => setDueDate(e.target.value)}
+          />
+        </div>
+
+        {/* Due Time */}
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between">
+            <Label htmlFor="task-due-time">Time</Label>
+            {dueTime && (
+              <button
+                type="button"
+                className="cursor-pointer text-xs text-blue-500 hover:text-blue-600"
+                onClick={() => {
+                  setDueTime("");
+                  setDueDate("");
+                }}
+              >
+                Clear
+              </button>
+            )}
+          </div>
+          <Input
+            id="task-due-time"
+            type="time"
+            value={dueTime}
+            onChange={(e) => {
+              setDueTime(e.target.value);
+              if (e.target.value && !dueDate) {
+                setDueDate(format(new Date(), "yyyy-MM-dd"));
+              }
+            }}
+          />
+        </div>
+
+        {/* Priority Category */}
+        <div className="space-y-1.5">
+          <Label>Priority</Label>
+          <CategorySelect
+            value={priorityCategoryId}
+            onChange={setPriorityCategoryId}
+          />
+        </div>
+
+        {/* Tags */}
+        <div className="space-y-1.5">
+          <Label>Tags</Label>
+          <TagMultiSelect selectedTagIds={tagIds} onChange={setTagIds} />
+        </div>
+
+        {/* Notes */}
+        <div className="space-y-1.5">
+          <Label htmlFor="task-notes">Notes</Label>
+          <Textarea
+            id="task-notes"
+            placeholder="Add notes…"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+          />
+        </div>
+
+        {/* Recurrence */}
+        <div className="space-y-1.5">
+          <Label>Recurrence</Label>
+          <RecurrencePicker
+            value={recurrenceRule}
+            onChange={setRecurrenceRule}
+          />
+        </div>
+
+        {/* Subtasks (only in edit mode) */}
+        {isEditing && (
+          <div className="space-y-1.5">
+            <Label>Subtasks</Label>
+            <SubtaskList
+              subtasks={subtasks}
+              onAdd={handleAddSubtask}
+              onComplete={handleCompleteSubtask}
+              onDelete={handleDeleteSubtask}
             />
           </div>
+        )}
 
-          {/* Priority Category */}
-          <div className="space-y-1.5">
-            <Label>Priority</Label>
-            <CategorySelect
-              value={priorityCategoryId}
-              onChange={setPriorityCategoryId}
-            />
-          </div>
-
-          {/* Tags */}
-          <div className="space-y-1.5">
-            <Label>Tags</Label>
-            <TagMultiSelect selectedTagIds={tagIds} onChange={setTagIds} />
-          </div>
-
-          {/* Notes */}
-          <div className="space-y-1.5">
-            <Label htmlFor="task-notes">Notes</Label>
-            <Textarea
-              id="task-notes"
-              placeholder="Add notes…"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-            />
-          </div>
-
-          {/* Recurrence */}
-          <div className="space-y-1.5">
-            <Label>Recurrence</Label>
-            <RecurrencePicker
-              value={recurrenceRule}
-              onChange={setRecurrenceRule}
-            />
-          </div>
-
-          {/* Subtasks (only in edit mode) */}
-          {isEditing && (
-            <div className="space-y-1.5">
-              <Label>Subtasks</Label>
-              <SubtaskList
-                subtasks={subtasks}
-                onAdd={handleAddSubtask}
-                onComplete={handleCompleteSubtask}
-                onDelete={handleDeleteSubtask}
-              />
-            </div>
-          )}
-
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" disabled={isPending || !title.trim()}>
-              {isEditing ? "Save" : "Create"}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+        <DialogFooter>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+          >
+            Cancel
+          </Button>
+          <Button type="submit" disabled={isPending || !title.trim()}>
+            {isEditing ? "Save" : "Create"}
+          </Button>
+        </DialogFooter>
+      </form>
+    </>
   );
 }

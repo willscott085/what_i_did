@@ -84,15 +84,14 @@ function RouteComponent() {
     if (!open) setEditingTask(null);
   }
 
-  const todayFormatted = format(new Date(), "yyyy-MM-dd");
-
   return (
     <div className="mx-auto max-w-2xl p-4">
-      <header className="mb-2 flex items-center justify-between">
-        <h1 className="text-3xl font-bold">
+      <header className="flex items-center justify-between">
+        <h1 className="pl-8 text-lg">
           {format(new Date(), "EEEE, MMMM do, yyyy")}
         </h1>
         <Button
+          variant="ghost"
           size="icon"
           onClick={() => {
             setEditingTask(null);
@@ -103,7 +102,7 @@ function RouteComponent() {
           <PlusIcon className="size-5" />
         </Button>
       </header>
-      <div className="px-4">
+      <div>
         {hydrated ? (
           <CategoryGroupedList
             tasks={tasks}
@@ -161,7 +160,6 @@ function RouteComponent() {
         open={dialogOpen}
         onOpenChange={handleDialogClose}
         task={editingTask}
-        defaultDueDate={todayFormatted}
       />
     </div>
   );

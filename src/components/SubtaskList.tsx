@@ -11,6 +11,7 @@ interface SubtaskListProps {
   onAdd: (title: string) => void;
   onComplete: (taskId: string, completed: boolean) => void;
   onDelete: (taskId: string) => void;
+  readOnly?: boolean;
 }
 
 export function SubtaskList({
@@ -18,6 +19,7 @@ export function SubtaskList({
   onAdd,
   onComplete,
   onDelete,
+  readOnly,
 }: SubtaskListProps) {
   const [newTitle, setNewTitle] = useState("");
 
@@ -80,29 +82,31 @@ export function SubtaskList({
         ))}
       </ul>
 
-      <div className="flex items-center gap-2">
-        <PlusIcon className="text-muted-foreground size-4" />
-        <Input
-          type="text"
-          placeholder="Add subtask…"
-          value={newTitle}
-          onChange={(e) => setNewTitle(e.target.value)}
-          onKeyDown={handleKeyDown}
-          className="h-7 border-0 p-0 text-sm shadow-none focus-visible:ring-0"
-        />
-        {newTitle.trim() && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            className="size-6"
-            onClick={handleAdd}
-            aria-label="Add subtask"
-          >
-            <CheckIcon className="size-3" />
-          </Button>
-        )}
-      </div>
+      {!readOnly && (
+        <div className="flex items-center gap-2">
+          <PlusIcon className="text-muted-foreground size-4" />
+          <Input
+            type="text"
+            placeholder="Add subtask…"
+            value={newTitle}
+            onChange={(e) => setNewTitle(e.target.value)}
+            onKeyDown={handleKeyDown}
+            className="h-7 border-0 p-0 text-sm shadow-none focus-visible:ring-0"
+          />
+          {newTitle.trim() && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              className="size-6"
+              onClick={handleAdd}
+              aria-label="Add subtask"
+            >
+              <CheckIcon className="size-3" />
+            </Button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

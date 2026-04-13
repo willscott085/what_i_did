@@ -1,13 +1,12 @@
-import { useRef, useState } from "react";
-import { CheckIcon, PlusIcon, XIcon } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { cn } from "~/utils/utils";
-import { Button } from "~/components/ui/button";
-import { Input } from "~/components/ui/input";
+import { PlusIcon, XIcon } from "lucide-react";
+import { useRef, useState } from "react";
 import { Checkbox } from "~/components/ui/checkbox";
-import { fetchTagsQueryOptions } from "~/features/tags/queries";
+import { Input } from "~/components/ui/input";
 import { useCreateTag } from "~/features/tags/mutations";
+import { fetchTagsQueryOptions } from "~/features/tags/queries";
 import { Tag } from "~/features/tags/types";
+import { cn } from "~/utils/utils";
 
 interface TagMultiSelectProps {
   selectedTagIds: string[];

@@ -43,6 +43,7 @@ export const tasks = sqliteTable(
     dateCreated: text("date_created").notNull(),
     dateCompleted: text("date_completed"),
     dueDate: text("due_date"),
+    dueTime: text("due_time"),
     userId: text("user_id").notNull(),
     priorityCategoryId: text("priority_category_id").references(
       () => priorityCategories.id,
