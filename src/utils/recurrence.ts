@@ -2,9 +2,9 @@ import * as rruleModule from "rrule";
 // CJS/ESM interop: namespace import may have RRule at top level or nested under .default
 const RRule = (
   "default" in rruleModule
-    ? ((rruleModule as Record<string, any>).default.RRule ??
-      (rruleModule as Record<string, any>).default)
-    : (rruleModule as Record<string, any>).RRule
+    ? ((rruleModule as Record<string, unknown>).default as Record<string, unknown>).RRule ??
+      (rruleModule as Record<string, unknown>).default
+    : (rruleModule as Record<string, unknown>).RRule
 ) as typeof import("rrule").RRule;
 
 export enum RecurrencePreset {
