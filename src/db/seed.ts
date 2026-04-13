@@ -57,11 +57,18 @@ db.insert(schema.priorityCategories)
   .run();
 
 // Seed sample tasks (mix of inbox, upcoming, and completed)
+const formatDate = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
 const today = new Date();
 const tomorrow = new Date(today);
 tomorrow.setDate(tomorrow.getDate() + 1);
 const nextWeek = new Date(today);
 nextWeek.setDate(nextWeek.getDate() + 7);
+
+const todayStr = formatDate(today);
+const tomorrowStr = formatDate(tomorrow);
+const nextWeekStr = formatDate(nextWeek);
 
 const sampleTasks = [
   {
@@ -81,7 +88,8 @@ const sampleTasks = [
     notes: "Improve readability and add missing tests.",
     dateCreated: "2025-09-20T14:31:10.000Z",
     dateCompleted: null,
-    dueDate: today.toISOString(),
+    dueDate: todayStr,
+    dueTime: "14:30",
     priorityCategoryId: "cat_001",
     userId: "1",
     sortOrder: 1,
@@ -103,7 +111,7 @@ const sampleTasks = [
     notes: "Add staging environment notes.",
     dateCreated: "2025-09-18T08:44:55.000Z",
     dateCompleted: null,
-    dueDate: nextWeek.toISOString(),
+    dueDate: nextWeekStr,
     priorityCategoryId: "cat_003",
     userId: "1",
     sortOrder: 3,
@@ -114,7 +122,8 @@ const sampleTasks = [
     notes: "Keep components accessible with proper ARIA.",
     dateCreated: "2025-10-01T10:02:11.000Z",
     dateCompleted: null,
-    dueDate: tomorrow.toISOString(),
+    dueDate: tomorrowStr,
+    dueTime: "09:00",
     priorityCategoryId: "cat_002",
     userId: "1",
     sortOrder: 4,
@@ -146,7 +155,7 @@ const sampleTasks = [
     notes: "Investigate code splitting for feature routes.",
     dateCreated: "2025-09-23T09:05:14.000Z",
     dateCompleted: null,
-    dueDate: nextWeek.toISOString(),
+    dueDate: nextWeekStr,
     priorityCategoryId: "cat_003",
     userId: "1",
     sortOrder: 7,
@@ -178,7 +187,7 @@ const sampleTasks = [
     notes: "Share blockers and progress with the team.",
     dateCreated: "2025-10-01T08:00:00.000Z",
     dateCompleted: null,
-    dueDate: today.toISOString(),
+    dueDate: todayStr,
     priorityCategoryId: "cat_002",
     recurrenceRule:
       "DTSTART:20251001T080000Z\nRRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR",

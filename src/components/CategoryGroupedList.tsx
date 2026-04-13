@@ -389,10 +389,7 @@ export function CategoryGroupedList({
 
       {/* Completed section — not sortable */}
       {completedTasks.length > 0 && (
-        <div className="mt-6">
-          <h3 className="text-muted-foreground mb-2 text-xs font-medium tracking-wider uppercase">
-            Completed
-          </h3>
+        <div className="pl-4">
           {completedTasks.map((task) =>
             completedChildren ? (
               completedChildren(task)
