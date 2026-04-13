@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { format } from "date-fns";
 import {
   Dialog,
   DialogContent,
@@ -41,9 +42,8 @@ export function TaskDialog({
 
   const [title, setTitle] = useState(task?.title ?? "");
   const [notes, setNotes] = useState(task?.notes ?? "");
-  const [dueDate, setDueDate] = useState(
-    task?.dueDate?.split("T")[0] ?? defaultDueDate ?? "",
-  );
+  const [dueDate, setDueDate] = useState(task?.dueDate ?? defaultDueDate ?? "");
+  const [dueTime, setDueTime] = useState(task?.dueTime ?? "");
   const [priorityCategoryId, setPriorityCategoryId] = useState<string | null>(
     task?.priorityCategoryId ?? null,
   );
@@ -60,7 +60,8 @@ export function TaskDialog({
     if (open) {
       setTitle(task?.title ?? "");
       setNotes(task?.notes ?? "");
-      setDueDate(task?.dueDate?.split("T")[0] ?? defaultDueDate ?? "");
+      setDueDate(task?.dueDate ?? defaultDueDate ?? "");
+      setDueTime(task?.dueTime ?? "");
       setPriorityCategoryId(task?.priorityCategoryId ?? null);
       setTagIds(task?.tags?.map((t) => t.id) ?? []);
       setRecurrenceRule(task?.recurrenceRule ?? null);
@@ -81,16 +82,15 @@ export function TaskDialog({
     e.preventDefault();
     if (!title.trim()) return;
 
-    const dueDateIso = dueDate
-      ? new Date(dueDate + "T00:00:00").toISOString()
-      : undefined;
+    const dueTimeValue = dueTime || undefined;
 
     if (isEditing && task) {
       await updateFullTask({
         id: task.id,
         title: title.trim(),
         notes: notes || null,
-        dueDate: dueDateIso ?? null,
+        dueDate: dueDate || null,
+        dueTime: dueTimeValue ?? null,
         priorityCategoryId,
         recurrenceRule,
         tagIds,
@@ -99,7 +99,8 @@ export function TaskDialog({
       await createTask({
         title: title.trim(),
         notes: notes || undefined,
-        dueDate: dueDateIso,
+        dueDate: dueDate || undefined,
+        dueTime: dueTimeValue,
         priorityCategoryId: priorityCategoryId ?? undefined,
         parentTaskId: defaultParentTaskId,
         recurrenceRule: recurrenceRule ?? undefined,
@@ -161,12 +162,53 @@ export function TaskDialog({
 
           {/* Due Date */}
           <div className="space-y-1.5">
-            <Label htmlFor="task-due-date">Due Date</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="task-due-date">Due Date</Label>
+              {dueDate && (
+                <button
+                  type="button"
+                  className="cursor-pointer text-xs text-blue-500 hover:text-blue-600"
+                  onClick={() => setDueDate("")}
+                >
+                  Clear
+                </button>
+              )}
+            </div>
             <Input
               id="task-due-date"
               type="date"
               value={dueDate}
               onChange={(e) => setDueDate(e.target.value)}
+            />
+          </div>
+
+          {/* Due Time */}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="task-due-time">Time</Label>
+              {dueTime && (
+                <button
+                  type="button"
+                  className="cursor-pointer text-xs text-blue-500 hover:text-blue-600"
+                  onClick={() => {
+                    setDueTime("");
+                    setDueDate("");
+                  }}
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+            <Input
+              id="task-due-time"
+              type="time"
+              value={dueTime}
+              onChange={(e) => {
+                setDueTime(e.target.value);
+                if (e.target.value && !dueDate) {
+                  setDueDate(format(new Date(), "yyyy-MM-dd"));
+                }
+              }}
             />
           </div>
 

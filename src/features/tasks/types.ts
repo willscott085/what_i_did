@@ -8,6 +8,7 @@ export type Task = {
   dateCreated: string;
   dateCompleted: string | null;
   dueDate: string | null;
+  dueTime: string | null;
   userId: string;
   priorityCategoryId: string | null;
   parentTaskId: string | null;
@@ -25,6 +26,7 @@ export type CreateTaskInput = {
   title: string;
   notes?: string;
   dueDate?: string;
+  dueTime?: string;
   priorityCategoryId?: string;
   parentTaskId?: string;
   recurrenceRule?: string;
@@ -36,6 +38,7 @@ export type UpdateTaskInput = {
   title?: string;
   notes?: string | null;
   dueDate?: string | null;
+  dueTime?: string | null;
   dateCompleted?: string | null;
   priorityCategoryId?: string | null;
   parentTaskId?: string | null;

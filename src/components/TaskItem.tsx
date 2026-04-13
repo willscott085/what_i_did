@@ -1,7 +1,7 @@
 import { useForm } from "@tanstack/react-form";
 import { useQuery } from "@tanstack/react-query";
 import { clsx } from "clsx";
-import { isPast, isToday } from "date-fns";
+import { format, isPast } from "date-fns";
 import {
   CalendarIcon,
   ChevronDownIcon,
@@ -11,18 +11,24 @@ import {
   Trash2Icon,
 } from "lucide-react";
 import { useState } from "react";
+import { SubtaskList } from "~/components/SubtaskList";
+import { Button } from "~/components/ui/button";
 import { Checkbox } from "~/components/ui/checkbox";
 import { FieldError } from "~/components/ui/field";
 import { Input } from "~/components/ui/input";
-import { Button } from "~/components/ui/button";
-import { SubtaskList } from "~/components/SubtaskList";
-import { Task } from "~/features/tasks/types";
-import { fetchSubtasksQueryOptions } from "~/features/tasks/queries";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "~/components/ui/tooltip";
 import {
   useCompleteTask,
   useCreateTask,
   useDeleteTask,
 } from "~/features/tasks/mutations";
+import { fetchSubtasksQueryOptions } from "~/features/tasks/queries";
+import { Task } from "~/features/tasks/types";
+import { useOverdueCheck } from "~/hooks/useOverdueCheck";
 
 type TaskUpdate = Pick<Task, "id" | "title" | "dateCompleted" | "userId">;
 
@@ -48,18 +54,15 @@ export function TaskItem({
   dragListeners = {},
 }: TaskItemProps) {
   const [expanded, setExpanded] = useState(false);
+  const overdueTick = useOverdueCheck();
 
-  const { data: subtasks = [] } = useQuery({
-    ...fetchSubtasksQueryOptions(task.id),
-    enabled: expanded,
-  });
+  const { data: subtasks = [] } = useQuery(fetchSubtasksQueryOptions(task.id));
 
   const { mutate: createSubtask } = useCreateTask();
   const { mutate: completeSubtask } = useCompleteTask();
   const { mutate: deleteSubtask } = useDeleteTask();
 
   const completedSubtasks = subtasks.filter((s) => s.dateCompleted).length;
-  const hasSubtasks = subtasks.length > 0 || expanded;
 
   const form = useForm({
     formId: task.id,
@@ -103,15 +106,19 @@ export function TaskItem({
     >
       <div className="flex min-w-0 items-center gap-2">
         {/* Drag Handle */}
-        <button
-          type="button"
-          {...dragAttributes}
-          {...dragListeners}
-          className="-ml-2 cursor-grab touch-none p-2 text-(--task-drag-handle) opacity-0 transition-opacity group-hover/task:opacity-100 hover:text-(--task-drag-handle-hover)"
-          aria-label="Drag to reorder"
-        >
-          <GripVertical className="size-4" />
-        </button>
+        {task.dateCompleted ? (
+          <span className="-ml-2 size-8 shrink-0" aria-hidden="true" />
+        ) : (
+          <button
+            type="button"
+            {...dragAttributes}
+            {...dragListeners}
+            className="-ml-2 cursor-grab touch-none p-2 text-(--task-drag-handle) opacity-0 transition-opacity group-hover/task:opacity-100 hover:text-(--task-drag-handle-hover)"
+            aria-label="Drag to reorder"
+          >
+            <GripVertical className="size-4" />
+          </button>
+        )}
 
         {/* Category color dot */}
         {categoryColor && (
@@ -143,9 +150,23 @@ export function TaskItem({
               />
             )}
           />
+
+          {/* Due date badge */}
+          {task.dueDate && !task.dateCompleted && (
+            <DueDateBadge
+              dueDate={task.dueDate}
+              dueTime={task.dueTime}
+              tick={overdueTick}
+            />
+          )}
+
           <form.Field
             name="title"
-            listeners={{ onBlur: form.handleSubmit }}
+            listeners={{
+              onBlur: ({ value }) => {
+                if (value !== task.title) form.handleSubmit();
+              },
+            }}
             children={(field) => (
               <div className="relative flex-grow">
                 <Input
@@ -154,9 +175,13 @@ export function TaskItem({
                   value={field.state.value}
                   onBlur={field.handleBlur}
                   onChange={(e) => field.handleChange(e.target.value)}
+                  autoComplete="off"
+                  readOnly={!!task.dateCompleted}
+                  tabIndex={task.dateCompleted ? -1 : undefined}
                   className={clsx(
                     "w-full truncate border-0 p-0 shadow-none focus-visible:ring-0 dark:bg-transparent",
-                    form.state.values.completed && "line-through",
+                    form.state.values.completed &&
+                      "text-muted-foreground cursor-default line-through",
                   )}
                 />
                 {!field.state.meta.isValid && (
@@ -168,11 +193,6 @@ export function TaskItem({
             )}
           />
         </form>
-
-        {/* Due date badge */}
-        {task.dueDate && !task.dateCompleted && (
-          <DueDateBadge dueDate={task.dueDate} />
-        )}
 
         {/* Subtask count */}
         {subtasks.length > 0 && (
@@ -228,12 +248,13 @@ export function TaskItem({
 
       {/* Expanded subtasks area */}
       {expanded && (
-        <div className="mt-1 ml-10 border-l pl-3">
+        <div className="mt-1 ml-9 border-l pl-3.5">
           <SubtaskList
             subtasks={subtasks}
             onAdd={handleAddSubtask}
             onComplete={handleCompleteSubtask}
             onDelete={handleDeleteSubtask}
+            readOnly={!!task.dateCompleted}
           />
         </div>
       )}
@@ -241,16 +262,49 @@ export function TaskItem({
   );
 }
 
-function DueDateBadge({ dueDate }: { dueDate: string }) {
-  const date = new Date(dueDate);
-  const overdue = isPast(date) && !isToday(date);
+function DueDateBadge({
+  dueDate,
+  dueTime,
+  tick,
+}: {
+  dueDate: string;
+  dueTime: string | null;
+  tick: number;
+}) {
+  // Use tick to ensure re-evaluation each interval
+  void tick;
+
+  // dueDate is stored as YYYY-MM-DD
+  const [year, month, day] = dueDate.split("-").map(Number);
+  const date = new Date(year, month - 1, day);
+
+  let overdue: boolean;
+
+  if (dueTime) {
+    // Overdue at the start of the next minute after the due minute
+    const [hours, minutes] = dueTime.split(":").map(Number);
+    const deadline = new Date(year, month - 1, day, hours, minutes + 1);
+    overdue = isPast(deadline);
+  } else {
+    // Date-only: overdue after end of that day
+    const endOfDay = new Date(year, month - 1, day, 23, 59, 59, 999);
+    overdue = isPast(endOfDay);
+  }
 
   if (!overdue) return null;
 
+  const tooltipText = dueTime
+    ? `${format(date, "MMM d, yyyy")} at ${dueTime}`
+    : `${format(date, "MMM d, yyyy")}`;
+
   return (
-    <span className="bg-destructive/10 text-destructive inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-xs">
-      <CalendarIcon className="size-3" />
-      Overdue
-    </span>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className="bg-destructive/10 text-destructive inline-flex shrink-0 animate-[alarm-shake_3s_ease-in-out] items-center gap-1 rounded-full px-2 py-0.5 text-xs">
+          <CalendarIcon className="size-3" />!
+        </span>
+      </TooltipTrigger>
+      <TooltipContent>{tooltipText}</TooltipContent>
+    </Tooltip>
   );
 }

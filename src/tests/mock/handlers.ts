@@ -10,6 +10,7 @@ export const handlers = [
         dateCreated: "2025-10-05T16:05:00Z",
         dateCompleted: "2025-10-05T19:42:52.209Z",
         dueDate: null,
+        dueTime: null,
         userId: "1",
         priorityCategoryId: null,
         parentTaskId: null,
