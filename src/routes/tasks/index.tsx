@@ -3,15 +3,13 @@ import { createFileRoute } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { PlusIcon } from "lucide-react";
 import { useState, useSyncExternalStore } from "react";
-import { CategoryGroupedList } from "~/components/CategoryGroupedList";
+import { SortableTaskList } from "~/components/SortableTaskList";
 import { TaskDialog } from "~/components/TaskDialog";
 import { TaskItem } from "~/components/TaskItem";
 import { Button } from "~/components/ui/button";
-import { fetchCategoriesQueryOptions } from "~/features/categories/queries";
 import {
   useDeleteTask,
-  useMoveTaskToCategory,
-  useReorderTasksInCategory,
+  useReorderTasks,
   useUpdateTaskMutationOptions,
 } from "~/features/tasks/mutations";
 import { fetchInboxTasksQueryOptions } from "~/features/tasks/queries";
@@ -20,17 +18,13 @@ import { Task, TaskWithRelations } from "~/features/tasks/types";
 export const Route = createFileRoute("/tasks/")({
   component: RouteComponent,
   loader: async ({ context }) => {
-    await Promise.all([
-      context.queryClient.ensureQueryData(fetchInboxTasksQueryOptions()),
-      context.queryClient.ensureQueryData(fetchCategoriesQueryOptions()),
-    ]);
+    await context.queryClient.ensureQueryData(fetchInboxTasksQueryOptions());
     return null;
   },
 });
 
 function RouteComponent() {
   const { data: tasks = [] } = useQuery(fetchInboxTasksQueryOptions());
-  const { data: categories = [] } = useQuery(fetchCategoriesQueryOptions());
 
   const { mutate: updateTask } = useMutation(
     useUpdateTaskMutationOptions({
@@ -44,31 +38,13 @@ function RouteComponent() {
     () => false,
   );
 
-  const { mutate: reorderInCategory } = useReorderTasksInCategory({
-    onError: () => {},
-  });
-  const { mutate: moveToCategory } = useMoveTaskToCategory();
+  const { mutate: reorderTasks } = useReorderTasks({ onError: () => {} });
   const { mutate: deleteTaskMutation } = useDeleteTask();
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<TaskWithRelations | null>(
     null,
   );
-
-  function handleReorderInCategory(
-    taskIds: string[],
-    categoryId: string | null,
-  ) {
-    reorderInCategory({ taskIds, categoryId });
-  }
-
-  function handleMoveToCategory(
-    taskId: string,
-    categoryId: string | null,
-    taskIdsInNewGroup: string[],
-  ) {
-    moveToCategory({ taskId, categoryId, taskIdsInNewGroup });
-  }
 
   function handleEdit(task: Task) {
     setEditingTask(task as TaskWithRelations);
@@ -104,11 +80,9 @@ function RouteComponent() {
       </header>
       <div>
         {hydrated ? (
-          <CategoryGroupedList
+          <SortableTaskList
             tasks={tasks}
-            categories={categories}
-            onReorderInCategory={handleReorderInCategory}
-            onMoveToCategory={handleMoveToCategory}
+            onReorder={(taskIds) => reorderTasks(taskIds)}
             completedChildren={(task) => (
               <TaskItem
                 key={task.id}
@@ -120,13 +94,7 @@ function RouteComponent() {
               />
             )}
           >
-            {(
-              task,
-              isDragging,
-              dragAttributes,
-              dragListeners,
-              categoryColor,
-            ) => (
+            {(task, isDragging, dragAttributes, dragListeners) => (
               <TaskItem
                 key={task.id}
                 task={task}
@@ -134,12 +102,11 @@ function RouteComponent() {
                 onEdit={handleEdit}
                 onDelete={handleDelete}
                 isDragging={isDragging}
-                categoryColor={categoryColor}
                 dragAttributes={dragAttributes}
                 dragListeners={dragListeners}
               />
             )}
-          </CategoryGroupedList>
+          </SortableTaskList>
         ) : (
           <ul>
             {tasks.map((task) => (

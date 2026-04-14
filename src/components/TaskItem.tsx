@@ -1,9 +1,7 @@
 import { useForm } from "@tanstack/react-form";
 import { useQuery } from "@tanstack/react-query";
 import { clsx } from "clsx";
-import { format, isPast } from "date-fns";
 import {
-  CalendarIcon,
   ChevronDownIcon,
   ChevronRightIcon,
   GripVertical,
@@ -17,20 +15,20 @@ import { Checkbox } from "~/components/ui/checkbox";
 import { FieldError } from "~/components/ui/field";
 import { Input } from "~/components/ui/input";
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "~/components/ui/tooltip";
-import {
   useCompleteTask,
   useCreateTask,
   useDeleteTask,
 } from "~/features/tasks/mutations";
 import { fetchSubtasksQueryOptions } from "~/features/tasks/queries";
 import { Task } from "~/features/tasks/types";
-import { useOverdueCheck } from "~/hooks/useOverdueCheck";
 
 type TaskUpdate = Pick<Task, "id" | "title" | "dateCompleted" | "userId">;
+
+function isCompletedToday(dateCompleted: string | null): boolean {
+  if (!dateCompleted) return false;
+  const today = new Date().toISOString().slice(0, 10);
+  return dateCompleted.slice(0, 10) === today;
+}
 
 interface TaskItemProps {
   task: Task;
@@ -38,7 +36,6 @@ interface TaskItemProps {
   onUpdate: (task: TaskUpdate) => void;
   onEdit?: (task: Task) => void;
   onDelete?: (taskId: string) => void;
-  categoryColor?: string | null;
   dragAttributes?: React.HTMLAttributes<HTMLButtonElement>;
   dragListeners?: React.HTMLAttributes<HTMLButtonElement>;
 }
@@ -49,12 +46,10 @@ export function TaskItem({
   onUpdate,
   onEdit,
   onDelete,
-  categoryColor,
   dragAttributes = {},
   dragListeners = {},
 }: TaskItemProps) {
   const [expanded, setExpanded] = useState(false);
-  const overdueTick = useOverdueCheck();
 
   const { data: subtasks = [] } = useQuery({
     ...fetchSubtasksQueryOptions(task.id),
@@ -128,18 +123,6 @@ export function TaskItem({
           </div>
         )}
 
-        {/* Category color dot */}
-        <div className="flex h-9 items-center">
-          <span
-            className="size-2 shrink-0 rounded-full"
-            style={{
-              backgroundColor: !task.dateCompleted
-                ? categoryColor || "var(--color-muted)"
-                : "transparent",
-            }}
-          />
-        </div>
-
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -175,15 +158,6 @@ export function TaskItem({
             children={(field) => (
               <div className="relative flex min-w-0 grow flex-col">
                 <div className="flex items-center gap-2">
-                  {/* Due date badge */}
-                  {task.dueDate && !task.dateCompleted && (
-                    <DueDateBadge
-                      dueDate={task.dueDate}
-                      dueTime={task.dueTime}
-                      tick={overdueTick}
-                    />
-                  )}
-
                   <Input
                     type="text"
                     id={`${task.id}-title`}
@@ -196,7 +170,8 @@ export function TaskItem({
                     className={clsx(
                       "w-full truncate border-0 p-0 shadow-none focus-visible:ring-0 dark:bg-transparent",
                       form.state.values.completed &&
-                        "text-muted-foreground cursor-default line-through",
+                        "text-muted-foreground cursor-default",
+                      isCompletedToday(task.dateCompleted) && "line-through",
                     )}
                   />
                   {!field.state.meta.isValid && (
@@ -290,53 +265,6 @@ export function TaskItem({
         )}
       </div>
     </div>
-  );
-}
-
-function DueDateBadge({
-  dueDate,
-  dueTime,
-  tick,
-}: {
-  dueDate: string;
-  dueTime: string | null;
-  tick: number;
-}) {
-  // Use tick to ensure re-evaluation each interval
-  void tick;
-
-  // dueDate is stored as YYYY-MM-DD
-  const [year, month, day] = dueDate.split("-").map(Number);
-  const date = new Date(year, month - 1, day);
-
-  let overdue: boolean;
-
-  if (dueTime) {
-    // Overdue at the start of the next minute after the due minute
-    const [hours, minutes] = dueTime.split(":").map(Number);
-    const deadline = new Date(year, month - 1, day, hours, minutes + 1);
-    overdue = isPast(deadline);
-  } else {
-    // Date-only: overdue after end of that day
-    const endOfDay = new Date(year, month - 1, day, 23, 59, 59, 999);
-    overdue = isPast(endOfDay);
-  }
-
-  if (!overdue) return null;
-
-  const tooltipText = dueTime
-    ? `${format(date, "MMM d, yyyy")} at ${dueTime}`
-    : `${format(date, "MMM d, yyyy")}`;
-
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <span className="bg-destructive/10 text-destructive inline-flex shrink-0 animate-[alarm-shake_3s_ease-in-out] items-center gap-1 rounded-full px-2 py-0.5 text-xs">
-          <CalendarIcon className="size-3" />!
-        </span>
-      </TooltipTrigger>
-      <TooltipContent>{tooltipText}</TooltipContent>
-    </Tooltip>
   );
 }
 

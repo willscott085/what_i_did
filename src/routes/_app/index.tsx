@@ -20,13 +20,17 @@ export const Route = createFileRoute("/_app/")({
 });
 
 function Home() {
-  const { selectedDate, setDragOverDate, setDefaultDueDate, handleOpenDialog } =
-    useAppLayout();
+  const {
+    selectedDate,
+    setDragOverDate,
+    setDefaultStartDate,
+    handleOpenDialog,
+  } = useAppLayout();
   const dateStr = format(selectedDate, "yyyy-MM-dd");
 
   useEffect(() => {
-    setDefaultDueDate(dateStr);
-  }, [dateStr, setDefaultDueDate]);
+    setDefaultStartDate(dateStr);
+  }, [dateStr, setDefaultStartDate]);
 
   return (
     <DayView

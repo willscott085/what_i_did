@@ -4,14 +4,12 @@ import { PlusIcon } from "lucide-react";
 import { useSyncExternalStore } from "react";
 import { useEffect } from "react";
 import { useAppLayout } from "~/components/AppLayoutContext";
-import { CategoryGroupedList } from "~/components/CategoryGroupedList";
+import { SortableTaskList } from "~/components/SortableTaskList";
 import { TaskItem } from "~/components/TaskItem";
 import { Button } from "~/components/ui/button";
-import { fetchCategoriesQueryOptions } from "~/features/categories/queries";
 import {
   useDeleteTask,
-  useMoveTaskToCategory,
-  useReorderTasksInCategory,
+  useReorderTasks,
   useUpdateFullTask,
   useUpdateTaskMutationOptions,
 } from "~/features/tasks/mutations";
@@ -30,15 +28,14 @@ export const Route = createFileRoute("/_app/backlog")({
 });
 
 function Backlog() {
-  const { setDragOverDate, setDefaultDueDate, handleOpenDialog } =
+  const { setDragOverDate, setDefaultStartDate, handleOpenDialog } =
     useAppLayout();
 
   useEffect(() => {
-    setDefaultDueDate(undefined);
-  }, [setDefaultDueDate]);
+    setDefaultStartDate(undefined);
+  }, [setDefaultStartDate]);
 
   const { data: tasks = [] } = useQuery(fetchBacklogTasksQueryOptions());
-  const { data: categories = [] } = useQuery(fetchCategoriesQueryOptions());
 
   const { mutate: updateTask } = useMutation(
     useUpdateTaskMutationOptions({ onError: () => {} }),
@@ -51,10 +48,7 @@ function Backlog() {
     () => false,
   );
 
-  const { mutate: reorderInCategory } = useReorderTasksInCategory({
-    onError: () => {},
-  });
-  const { mutate: moveToCategory } = useMoveTaskToCategory();
+  const { mutate: reorderTasks } = useReorderTasks({ onError: () => {} });
   const { mutate: deleteTaskMutation } = useDeleteTask();
 
   function handleEdit(task: Task) {
@@ -66,7 +60,7 @@ function Backlog() {
   }
 
   function handleDropOnDate(taskId: string, date: string) {
-    updateFullTask({ id: taskId, dueDate: date });
+    updateFullTask({ id: taskId, startDate: date });
   }
 
   return (
@@ -85,15 +79,9 @@ function Backlog() {
         </header>
         <div>
           {hydrated ? (
-            <CategoryGroupedList
+            <SortableTaskList
               tasks={tasks}
-              categories={categories}
-              onReorderInCategory={(taskIds, categoryId) =>
-                reorderInCategory({ taskIds, categoryId })
-              }
-              onMoveToCategory={(taskId, categoryId, taskIdsInNewGroup) =>
-                moveToCategory({ taskId, categoryId, taskIdsInNewGroup })
-              }
+              onReorder={(taskIds) => reorderTasks(taskIds)}
               onDropOnDate={handleDropOnDate}
               onDragOverDate={setDragOverDate}
               completedChildren={(task) => (
@@ -107,13 +95,7 @@ function Backlog() {
                 />
               )}
             >
-              {(
-                task,
-                isDragging,
-                dragAttributes,
-                dragListeners,
-                categoryColor,
-              ) => (
+              {(task, isDragging, dragAttributes, dragListeners) => (
                 <TaskItem
                   key={task.id}
                   task={task}
@@ -121,12 +103,11 @@ function Backlog() {
                   onEdit={handleEdit}
                   onDelete={handleDelete}
                   isDragging={isDragging}
-                  categoryColor={categoryColor}
                   dragAttributes={dragAttributes}
                   dragListeners={dragListeners}
                 />
               )}
-            </CategoryGroupedList>
+            </SortableTaskList>
           ) : (
             <ul>
               {tasks.map((task) => (

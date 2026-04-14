@@ -2,14 +2,12 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { PlusIcon } from "lucide-react";
 import { useSyncExternalStore } from "react";
-import { CategoryGroupedList } from "~/components/CategoryGroupedList";
+import { SortableTaskList } from "~/components/SortableTaskList";
 import { TaskItem } from "~/components/TaskItem";
 import { Button } from "~/components/ui/button";
-import { fetchCategoriesQueryOptions } from "~/features/categories/queries";
 import {
   useDeleteTask,
-  useMoveTaskToCategory,
-  useReorderTasksInCategory,
+  useReorderTasks,
   useUpdateFullTask,
   useUpdateTaskMutationOptions,
 } from "~/features/tasks/mutations";
@@ -31,7 +29,6 @@ export function DayView({
 }: DayViewProps) {
   const dateStr = format(selectedDate, "yyyy-MM-dd");
   const { data: tasks = [] } = useQuery(fetchTasksForDateQueryOptions(dateStr));
-  const { data: categories = [] } = useQuery(fetchCategoriesQueryOptions());
 
   const { mutate: updateTask } = useMutation(
     useUpdateTaskMutationOptions({ onError: () => {} }),
@@ -44,10 +41,7 @@ export function DayView({
     () => false,
   );
 
-  const { mutate: reorderInCategory } = useReorderTasksInCategory({
-    onError: () => {},
-  });
-  const { mutate: moveToCategory } = useMoveTaskToCategory();
+  const { mutate: reorderTasks } = useReorderTasks({ onError: () => {} });
   const { mutate: deleteTaskMutation } = useDeleteTask();
 
   function handleEdit(task: Task) {
@@ -59,7 +53,7 @@ export function DayView({
   }
 
   function handleDropOnDate(taskId: string, date: string) {
-    updateFullTask({ id: taskId, dueDate: date });
+    updateFullTask({ id: taskId, startDate: date });
   }
 
   return (
@@ -80,15 +74,9 @@ export function DayView({
         </header>
         <div>
           {hydrated ? (
-            <CategoryGroupedList
+            <SortableTaskList
               tasks={tasks}
-              categories={categories}
-              onReorderInCategory={(taskIds, categoryId) =>
-                reorderInCategory({ taskIds, categoryId })
-              }
-              onMoveToCategory={(taskId, categoryId, taskIdsInNewGroup) =>
-                moveToCategory({ taskId, categoryId, taskIdsInNewGroup })
-              }
+              onReorder={(taskIds) => reorderTasks(taskIds)}
               onDragActiveChange={onDragActiveChange}
               onDropOnDate={handleDropOnDate}
               onDragOverDate={onDragOverDate}
@@ -103,13 +91,7 @@ export function DayView({
                 />
               )}
             >
-              {(
-                task,
-                isDragging,
-                dragAttributes,
-                dragListeners,
-                categoryColor,
-              ) => (
+              {(task, isDragging, dragAttributes, dragListeners) => (
                 <TaskItem
                   key={task.id}
                   task={task}
@@ -117,12 +99,11 @@ export function DayView({
                   onEdit={handleEdit}
                   onDelete={handleDelete}
                   isDragging={isDragging}
-                  categoryColor={categoryColor}
                   dragAttributes={dragAttributes}
                   dragListeners={dragListeners}
                 />
               )}
-            </CategoryGroupedList>
+            </SortableTaskList>
           ) : (
             <ul>
               {tasks.map((task) => (

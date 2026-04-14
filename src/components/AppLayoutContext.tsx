@@ -6,8 +6,8 @@ interface AppLayoutContextValue {
   setSelectedDate: (date: Date) => void;
   dragOverDate: string | null;
   setDragOverDate: (date: string | null) => void;
-  defaultDueDate: string | undefined;
-  setDefaultDueDate: (date: string | undefined) => void;
+  defaultStartDate: string | undefined;
+  setDefaultStartDate: (date: string | undefined) => void;
   handleOpenDialog: (task?: TaskWithRelations | null) => void;
 }
 

@@ -16,7 +16,6 @@ import { useMemo, useState } from "react";
 import { AppLayoutProvider } from "~/components/AppLayoutContext";
 import { MiniCalendar } from "~/components/MiniCalendar";
 import { TaskDialog } from "~/components/TaskDialog";
-import { fetchCategoriesQueryOptions } from "~/features/categories/queries";
 import { fetchDaysWithTasksQueryOptions } from "~/features/tasks/queries";
 import { TaskWithRelations } from "~/features/tasks/types";
 
@@ -30,12 +29,9 @@ export const Route = createFileRoute("/_app")({
   loader: async ({ context }) => {
     const { start, end } = getCalendarRange(new Date());
 
-    await Promise.all([
-      context.queryClient.ensureQueryData(fetchCategoriesQueryOptions()),
-      context.queryClient.ensureQueryData(
-        fetchDaysWithTasksQueryOptions(start, end),
-      ),
-    ]);
+    await context.queryClient.ensureQueryData(
+      fetchDaysWithTasksQueryOptions(start, end),
+    );
     return null;
   },
   component: AppLayout,
@@ -62,8 +58,8 @@ function AppLayout() {
   // ─── Drag state ──────────────────────────────────────────────────
   const [dragOverDate, setDragOverDate] = useState<string | null>(null);
 
-  // ─── Default due date (child routes set this) ────────────────────
-  const [defaultDueDate, setDefaultDueDate] = useState<string | undefined>(
+  // ─── Default start date (child routes set this) ──────────────────
+  const [defaultStartDate, setDefaultStartDate] = useState<string | undefined>(
     dateStr,
   );
 
@@ -89,11 +85,11 @@ function AppLayout() {
       setSelectedDate,
       dragOverDate,
       setDragOverDate,
-      defaultDueDate,
-      setDefaultDueDate,
+      defaultStartDate,
+      setDefaultStartDate,
       handleOpenDialog,
     }),
-    [selectedDate, dragOverDate, defaultDueDate],
+    [selectedDate, dragOverDate, defaultStartDate],
   );
 
   return (
@@ -137,7 +133,7 @@ function AppLayout() {
           open={dialogOpen}
           onOpenChange={handleDialogClose}
           task={editingTask}
-          defaultDueDate={defaultDueDate}
+          defaultStartDate={defaultStartDate}
         />
       </div>
     </AppLayoutProvider>

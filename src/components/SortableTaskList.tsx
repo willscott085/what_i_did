@@ -1,0 +1,261 @@
+import {
+  DndContext,
+  DragEndEvent,
+  DragOverlay,
+  DragStartEvent,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import type { DraggableSyntheticListeners } from "@dnd-kit/core";
+import {
+  arrayMove,
+  defaultAnimateLayoutChanges,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { useCallback, useMemo, useRef, useState } from "react";
+import { Task } from "~/features/tasks/types";
+
+// ─── Types ───────────────────────────────────────────────────────────
+
+interface SortableTaskListProps {
+  tasks: Task[];
+  onReorder: (taskIds: string[]) => void;
+  onDragActiveChange?: (taskId: string | null) => void;
+  onDropOnDate?: (taskId: string, date: string) => void;
+  onDragOverDate?: (date: string | null) => void;
+  children: (
+    task: Task,
+    isDragging: boolean,
+    dragAttributes: React.HTMLAttributes<HTMLElement>,
+    dragListeners: DraggableSyntheticListeners,
+  ) => React.ReactNode;
+  completedChildren?: (task: Task) => React.ReactNode;
+}
+
+// ─── Component ───────────────────────────────────────────────────────
+
+export function SortableTaskList({
+  tasks: allTasks,
+  onReorder,
+  onDragActiveChange,
+  onDropOnDate,
+  onDragOverDate,
+  children,
+  completedChildren,
+}: SortableTaskListProps) {
+  const incompleteTasks = useMemo(
+    () =>
+      allTasks
+        .filter((t) => !t.dateCompleted)
+        .sort((a, b) => a.sortOrder - b.sortOrder),
+    [allTasks],
+  );
+  const completedTasks = useMemo(
+    () =>
+      allTasks
+        .filter((t) => !!t.dateCompleted)
+        .sort(
+          (a, b) =>
+            new Date(a.dateCompleted!).getTime() -
+            new Date(b.dateCompleted!).getTime(),
+        ),
+    [allTasks],
+  );
+
+  // Local override for ordering — set synchronously during drag
+  const [localIds, setLocalIds] = useState<string[] | null>(null);
+  const serverIds = useMemo(
+    () => incompleteTasks.map((t) => t.id),
+    [incompleteTasks],
+  );
+  const ids = localIds ?? serverIds;
+
+  // Reset local override when server data catches up
+  const prevServerIdsRef = useRef(serverIds);
+  if (prevServerIdsRef.current !== serverIds) {
+    prevServerIdsRef.current = serverIds;
+    if (localIds) setLocalIds(null);
+  }
+
+  const taskMap = useMemo(
+    () => new Map(allTasks.map((t) => [t.id, t])),
+    [allTasks],
+  );
+
+  const [activeId, setActiveId] = useState<string | null>(null);
+
+  // Track pointer position during drag for drop-on-calendar detection
+  const pointerRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const hoveredDateRef = useRef<string | null>(null);
+  const pointerHandler = useCallback(
+    (e: PointerEvent) => {
+      pointerRef.current = { x: e.clientX, y: e.clientY };
+
+      const elements = document.elementsFromPoint(e.clientX, e.clientY);
+      const calEl = elements.find((el) => el.closest("[data-calendar-date]"));
+      const date =
+        calEl?.closest<HTMLElement>("[data-calendar-date]")?.dataset
+          .calendarDate ?? null;
+
+      if (date !== hoveredDateRef.current) {
+        hoveredDateRef.current = date;
+        onDragOverDate?.(date);
+      }
+    },
+    [onDragOverDate],
+  );
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
+  );
+
+  const handleDragStart = useCallback(
+    (event: DragStartEvent) => {
+      const id = String(event.active.id);
+      setActiveId(id);
+      onDragActiveChange?.(id);
+      document.addEventListener("pointermove", pointerHandler);
+    },
+    [onDragActiveChange, pointerHandler],
+  );
+
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      const draggedId = activeId;
+      const calDate = hoveredDateRef.current;
+
+      setActiveId(null);
+      onDragActiveChange?.(null);
+      onDragOverDate?.(null);
+      hoveredDateRef.current = null;
+      document.removeEventListener("pointermove", pointerHandler);
+
+      const { active, over } = event;
+
+      // Drop on calendar date
+      if (calDate && draggedId) {
+        setLocalIds(ids.filter((id) => id !== draggedId));
+        onDropOnDate?.(draggedId, calDate);
+        return;
+      }
+
+      if (!over || active.id === over.id) {
+        setLocalIds(null);
+        return;
+      }
+
+      const oldIndex = ids.indexOf(String(active.id));
+      const newIndex = ids.indexOf(String(over.id));
+
+      if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
+        const newOrder = arrayMove(ids, oldIndex, newIndex);
+        setLocalIds(newOrder);
+        onReorder(newOrder);
+      }
+    },
+    [
+      activeId,
+      ids,
+      onReorder,
+      onDragActiveChange,
+      onDropOnDate,
+      onDragOverDate,
+      pointerHandler,
+    ],
+  );
+
+  const activeTask = activeId ? taskMap.get(activeId) : null;
+
+  return (
+    <DndContext
+      sensors={sensors}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+    >
+      <SortableContext items={ids} strategy={verticalListSortingStrategy}>
+        {ids.map((id) => {
+          const task = taskMap.get(id);
+          if (!task) return null;
+          return (
+            <SortableItem key={id} id={id}>
+              {({ isDragging, attributes, listeners }) =>
+                children(
+                  task,
+                  isDragging || task.id === activeId,
+                  attributes,
+                  listeners,
+                )
+              }
+            </SortableItem>
+          );
+        })}
+      </SortableContext>
+
+      <DragOverlay dropAnimation={null}>
+        {activeTask ? children(activeTask, true, {}, undefined) : null}
+      </DragOverlay>
+
+      {/* Completed section — not sortable */}
+      {completedTasks.length > 0 && (
+        <div>
+          {completedTasks.map((task) =>
+            completedChildren ? (
+              completedChildren(task)
+            ) : (
+              <div key={task.id}>{children(task, false, {}, undefined)}</div>
+            ),
+          )}
+        </div>
+      )}
+    </DndContext>
+  );
+}
+
+// ─── Sortable Item Wrapper ───────────────────────────────────────────
+
+interface SortableItemProps {
+  id: string;
+  children: (props: {
+    isDragging: boolean;
+    attributes: React.HTMLAttributes<HTMLElement>;
+    listeners: DraggableSyntheticListeners;
+  }) => React.ReactNode;
+}
+
+function SortableItem({ id, children }: SortableItemProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id,
+    animateLayoutChanges: ({ wasDragging, ...rest }) =>
+      wasDragging
+        ? false
+        : defaultAnimateLayoutChanges({ wasDragging, ...rest }),
+  });
+
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0 : undefined,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style}>
+      {children({ isDragging, attributes, listeners })}
+    </div>
+  );
+}

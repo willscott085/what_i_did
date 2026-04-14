@@ -5,13 +5,10 @@ import {
   fetchCompletedTasks,
   fetchDaysWithTasks,
   fetchInboxTasks,
-  fetchRecentCompletedTasks,
   fetchSubtasks,
   fetchTasks,
   fetchTasksForDate,
   fetchTaskWithRelations,
-  fetchUpcomingTasks,
-  fetchUpcomingTasksFromDate,
 } from "./server";
 
 export const fetchTasksQueryOptions = () =>
@@ -24,12 +21,6 @@ export const fetchInboxTasksQueryOptions = () =>
   queryOptions({
     queryKey: [...tasksQueryKeys.all, "inbox"],
     queryFn: () => fetchInboxTasks({ data: { userId: DEFAULT_USER_ID } }),
-  });
-
-export const fetchUpcomingTasksQueryOptions = () =>
-  queryOptions({
-    queryKey: [...tasksQueryKeys.all, "upcoming"],
-    queryFn: () => fetchUpcomingTasks({ data: { userId: DEFAULT_USER_ID } }),
   });
 
 export const fetchCompletedTasksQueryOptions = () =>
@@ -61,24 +52,6 @@ export const fetchTasksForDateQueryOptions = (date: string) =>
     queryKey: tasksQueryKeys.byDate(date),
     queryFn: () =>
       fetchTasksForDate({ data: { userId: DEFAULT_USER_ID, date } }),
-  });
-
-export const fetchRecentCompletedQueryOptions = (beforeDate: string) =>
-  queryOptions({
-    queryKey: tasksQueryKeys.recentCompleted(beforeDate),
-    queryFn: () =>
-      fetchRecentCompletedTasks({
-        data: { userId: DEFAULT_USER_ID, beforeDate },
-      }),
-  });
-
-export const fetchUpcomingFromDateQueryOptions = (afterDate: string) =>
-  queryOptions({
-    queryKey: tasksQueryKeys.upcomingFrom(afterDate),
-    queryFn: () =>
-      fetchUpcomingTasksFromDate({
-        data: { userId: DEFAULT_USER_ID, afterDate },
-      }),
   });
 
 export const fetchDaysWithTasksQueryOptions = (
