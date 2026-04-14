@@ -23,7 +23,9 @@ test.describe("Task Management", () => {
     await expect(dialog).not.toBeVisible();
 
     // New task should appear in the list
-    await expect(page.getByDisplayValue("E2E test task")).toBeVisible();
+    await expect(
+      page.getByRole("textbox", { name: "E2E test task" }),
+    ).toBeVisible();
   });
 
   test("should complete and uncomplete a task", async ({ page }) => {
@@ -42,19 +44,21 @@ test.describe("Task Management", () => {
     await expect(checkbox).not.toBeChecked();
   });
 
-  test("should create a task with a due date", async ({ page }) => {
+  test("should create a task with a start date", async ({ page }) => {
     await page.goto("/tasks");
 
     await page.getByRole("button", { name: "Add task" }).click();
     const dialog = page.getByRole("dialog");
 
-    await dialog.getByLabel("Title").fill("Task with due date");
-    await dialog.getByLabel("Due Date").fill("2026-12-31");
+    await dialog.getByLabel("Title").fill("Task with start date");
+    await dialog.getByLabel("Start Date").fill("2026-12-31");
 
     await dialog.getByRole("button", { name: "Create" }).click();
     await expect(dialog).not.toBeVisible();
 
-    await expect(page.getByDisplayValue("Task with due date")).toBeVisible();
+    await expect(
+      page.getByRole("textbox", { name: "Task with start date" }),
+    ).toBeVisible();
   });
 
   test("should delete a task", async ({ page }) => {
@@ -68,7 +72,7 @@ test.describe("Task Management", () => {
     await expect(dialog).not.toBeVisible();
 
     // Find the task and hover to reveal the delete button
-    const taskInput = page.getByDisplayValue("Task to delete");
+    const taskInput = page.getByRole("textbox", { name: "Task to delete" });
     const taskRow = taskInput.locator("ancestor::.group\\/task");
     await taskRow.hover();
 
