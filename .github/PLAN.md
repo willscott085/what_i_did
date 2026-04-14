@@ -207,6 +207,9 @@ These are the default seed categories. Users can add/rename/remove later.
   - Subtask count badge with expand/collapse
   - Inline SubtaskList on expand
   - Edit button → opens TaskDialog; Delete button → hard delete
+  - Notes preview below task title (max 3 lines, `line-clamp-3`, `break-all` for long URLs)
+  - URLs in notes auto-linkified (clickable `<a>` tags via `Linkify` component)
+  - Notes hidden for completed tasks
 - [x] Update `/tasks/` route — "+" button opens TaskDialog, edit/delete wired up
 - [x] Update seed data — tags, task-tag relationships, category assignments, subtasks, recurring task
 - [x] **Verify**: `pnpm typecheck` passes — zero errors

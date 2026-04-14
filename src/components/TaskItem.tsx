@@ -110,28 +110,32 @@ export function TaskItem({
         isDragging && "z-10 scale-105 opacity-80",
       )}
     >
-      <div className="flex min-w-0 items-center gap-2">
+      <div className="flex min-w-0 items-start gap-2">
         {/* Drag Handle */}
         {task.dateCompleted ? (
           <span className="-ml-2 size-8 shrink-0" aria-hidden="true" />
         ) : (
-          <button
-            type="button"
-            {...dragAttributes}
-            {...dragListeners}
-            className="-ml-2 cursor-grab touch-none p-2 text-(--task-drag-handle) opacity-0 transition-opacity group-hover/task:opacity-100 hover:text-(--task-drag-handle-hover)"
-            aria-label="Drag to reorder"
-          >
-            <GripVertical className="size-4" />
-          </button>
+          <div className="flex h-9 items-center">
+            <button
+              type="button"
+              {...dragAttributes}
+              {...dragListeners}
+              className="-ml-2 cursor-grab touch-none p-2 text-(--task-drag-handle) opacity-0 transition-opacity group-hover/task:opacity-100 hover:text-(--task-drag-handle-hover)"
+              aria-label="Drag to reorder"
+            >
+              <GripVertical className="size-4" />
+            </button>
+          </div>
         )}
 
         {/* Category color dot */}
         {categoryColor && (
-          <span
-            className="size-2 shrink-0 rounded-full"
-            style={{ backgroundColor: categoryColor }}
-          />
+          <div className="flex h-9 items-center">
+            <span
+              className="size-2 shrink-0 rounded-full"
+              style={{ backgroundColor: categoryColor }}
+            />
+          </div>
         )}
 
         <form
@@ -140,31 +144,24 @@ export function TaskItem({
             e.stopPropagation();
             form.handleSubmit();
           }}
-          className="flex flex-grow items-center gap-2"
+          className="flex min-w-0 grow items-start gap-2"
         >
           <form.Field
             name="completed"
             children={(field) => (
-              <Checkbox
-                id={`${task.id}-completed`}
-                checked={field.state.value}
-                onCheckedChange={(checked) => {
-                  field.handleChange(checked === true);
-                  form.handleSubmit();
-                }}
-                className="size-5"
-              />
+              <div className="flex h-9 items-center">
+                <Checkbox
+                  id={`${task.id}-completed`}
+                  checked={field.state.value}
+                  onCheckedChange={(checked) => {
+                    field.handleChange(checked === true);
+                    form.handleSubmit();
+                  }}
+                  className="size-5"
+                />
+              </div>
             )}
           />
-
-          {/* Due date badge */}
-          {task.dueDate && !task.dateCompleted && (
-            <DueDateBadge
-              dueDate={task.dueDate}
-              dueTime={task.dueTime}
-              tick={overdueTick}
-            />
-          )}
 
           <form.Field
             name="title"
@@ -174,26 +171,57 @@ export function TaskItem({
               },
             }}
             children={(field) => (
-              <div className="relative flex-grow">
-                <Input
-                  type="text"
-                  id={`${task.id}-title`}
-                  value={field.state.value}
-                  onBlur={field.handleBlur}
-                  onChange={(e) => field.handleChange(e.target.value)}
-                  autoComplete="off"
-                  readOnly={!!task.dateCompleted}
-                  tabIndex={task.dateCompleted ? -1 : undefined}
-                  className={clsx(
-                    "w-full truncate border-0 p-0 shadow-none focus-visible:ring-0 dark:bg-transparent",
-                    form.state.values.completed &&
-                      "text-muted-foreground cursor-default line-through",
+              <div className="relative flex min-w-0 grow flex-col">
+                <div className="flex items-center gap-2">
+                  {/* Due date badge */}
+                  {task.dueDate && !task.dateCompleted && (
+                    <DueDateBadge
+                      dueDate={task.dueDate}
+                      dueTime={task.dueTime}
+                      tick={overdueTick}
+                    />
                   )}
-                />
-                {!field.state.meta.isValid && (
-                  <FieldError className="absolute top-2 right-4">
-                    {field.state.meta.errors.join(", ")}
-                  </FieldError>
+
+                  <Input
+                    type="text"
+                    id={`${task.id}-title`}
+                    value={field.state.value}
+                    onBlur={field.handleBlur}
+                    onChange={(e) => field.handleChange(e.target.value)}
+                    autoComplete="off"
+                    readOnly={!!task.dateCompleted}
+                    tabIndex={task.dateCompleted ? -1 : undefined}
+                    className={clsx(
+                      "w-full truncate border-0 p-0 shadow-none focus-visible:ring-0 dark:bg-transparent",
+                      form.state.values.completed &&
+                        "text-muted-foreground cursor-default line-through",
+                    )}
+                  />
+                  {!field.state.meta.isValid && (
+                    <FieldError className="absolute top-2 right-4">
+                      {field.state.meta.errors.join(", ")}
+                    </FieldError>
+                  )}
+                </div>
+
+                {/* Notes */}
+                {task.notes && !task.dateCompleted && (
+                  <p className="text-muted-foreground line-clamp-3 text-xs leading-normal break-all">
+                    <Linkify text={task.notes} />
+                  </p>
+                )}
+
+                {/* Expanded subtasks area */}
+                {expanded && (
+                  <div className="my-2">
+                    <SubtaskList
+                      subtasks={subtasks}
+                      onAdd={handleAddSubtask}
+                      onComplete={handleCompleteSubtask}
+                      onDelete={handleDeleteSubtask}
+                      readOnly={!!task.dateCompleted}
+                    />
+                  </div>
                 )}
               </div>
             )}
@@ -202,68 +230,63 @@ export function TaskItem({
 
         {/* Subtask count */}
         {subtaskCount > 0 && (
-          <button
-            type="button"
-            onClick={() => setExpanded(!expanded)}
-            className="text-muted-foreground hover:bg-accent shrink-0 rounded px-1.5 py-0.5 text-xs"
-          >
-            {completedSubtasks}/{subtaskCount}
-          </button>
+          <div className="flex h-9 items-center">
+            <button
+              type="button"
+              onClick={() => setExpanded(!expanded)}
+              className="text-muted-foreground hover:bg-accent shrink-0 rounded px-1.5 py-0.5 text-xs"
+            >
+              {completedSubtasks}/{subtaskCount}
+            </button>
+          </div>
         )}
 
         {/* Expand/collapse toggle */}
-        <button
-          type="button"
-          onClick={() => setExpanded(!expanded)}
-          className="text-muted-foreground hover:text-foreground shrink-0 p-1 opacity-0 transition-opacity group-hover/task:opacity-100"
-          aria-label={expanded ? "Collapse subtasks" : "Expand subtasks"}
-        >
-          {expanded ? (
-            <ChevronDownIcon className="size-4" />
-          ) : (
-            <ChevronRightIcon className="size-4" />
-          )}
-        </button>
+        <div className="flex h-9 items-center">
+          <button
+            type="button"
+            onClick={() => setExpanded(!expanded)}
+            className="text-muted-foreground hover:text-foreground shrink-0 p-1 opacity-0 transition-opacity group-hover/task:opacity-100"
+            aria-label={expanded ? "Collapse subtasks" : "Expand subtasks"}
+          >
+            {expanded ? (
+              <ChevronDownIcon className="size-4" />
+            ) : (
+              <ChevronRightIcon className="size-4" />
+            )}
+          </button>
+        </div>
 
         {/* Action buttons */}
         {onEdit && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            className="size-7 opacity-0 group-hover/task:opacity-100"
-            onClick={() => onEdit(task)}
-            aria-label="Edit task"
-          >
-            <PencilIcon className="size-3.5" />
-          </Button>
+          <div className="flex h-9 items-center">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              className="size-7 opacity-0 group-hover/task:opacity-100"
+              onClick={() => onEdit(task)}
+              aria-label="Edit task"
+            >
+              <PencilIcon className="size-3.5" />
+            </Button>
+          </div>
         )}
         {onDelete && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            className="hover:text-destructive size-7 opacity-0 group-hover/task:opacity-100"
-            onClick={() => onDelete(task.id)}
-            aria-label="Delete task"
-          >
-            <Trash2Icon className="size-3.5" />
-          </Button>
+          <div className="flex h-9 items-center">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              className="hover:text-destructive size-7 opacity-0 group-hover/task:opacity-100"
+              onClick={() => onDelete(task.id)}
+              aria-label="Delete task"
+            >
+              <Trash2Icon className="size-3.5" />
+            </Button>
+          </div>
         )}
       </div>
-
-      {/* Expanded subtasks area */}
-      {expanded && (
-        <div className="mt-1 ml-9 border-l pl-3.5">
-          <SubtaskList
-            subtasks={subtasks}
-            onAdd={handleAddSubtask}
-            onComplete={handleCompleteSubtask}
-            onDelete={handleDeleteSubtask}
-            readOnly={!!task.dateCompleted}
-          />
-        </div>
-      )}
     </div>
   );
 }
@@ -313,4 +336,38 @@ function DueDateBadge({
       <TooltipContent>{tooltipText}</TooltipContent>
     </Tooltip>
   );
+}
+
+const URL_REGEX = /https?:\/\/[^\s]+/g;
+
+function Linkify({ text }: { text: string }) {
+  const parts: React.ReactNode[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = URL_REGEX.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(text.slice(lastIndex, match.index));
+    }
+    const url = match[0];
+    parts.push(
+      <a
+        key={match.index}
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-primary hover:underline"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {url}
+      </a>,
+    );
+    lastIndex = match.index + url.length;
+  }
+
+  if (lastIndex < text.length) {
+    parts.push(text.slice(lastIndex));
+  }
+
+  return <>{parts}</>;
 }
