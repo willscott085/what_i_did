@@ -27,7 +27,6 @@ interface MiniCalendarProps {
 }
 
 const INITIAL_RANGE = 3;
-const LOAD_THRESHOLD = 2;
 const LOAD_MORE_COUNT = 3;
 
 function generateMonths(center: Date, before: number, after: number): Date[] {

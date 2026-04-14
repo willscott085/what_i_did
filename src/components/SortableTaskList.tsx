@@ -23,6 +23,12 @@ import { Task } from "~/features/tasks/types";
 
 // ─── Types ───────────────────────────────────────────────────────────
 
+interface LocalDragOrder {
+  ids: string[];
+  /** The serverIds snapshot when the drag happened */
+  forServerIds: string[];
+}
+
 interface SortableTaskListProps {
   tasks: Task[];
   onReorder: (taskIds: string[]) => void;
@@ -69,19 +75,17 @@ export function SortableTaskList({
   );
 
   // Local override for ordering — set synchronously during drag
-  const [localIds, setLocalIds] = useState<string[] | null>(null);
+  const [localOrder, setLocalOrder] = useState<LocalDragOrder | null>(null);
   const serverIds = useMemo(
     () => incompleteTasks.map((t) => t.id),
     [incompleteTasks],
   );
-  const ids = localIds ?? serverIds;
 
-  // Reset local override when server data catches up
-  const prevServerIdsRef = useRef(serverIds);
-  if (prevServerIdsRef.current !== serverIds) {
-    prevServerIdsRef.current = serverIds;
-    if (localIds) setLocalIds(null);
-  }
+  // Use local override only if server data hasn't changed since the drag
+  const ids =
+    localOrder && localOrder.forServerIds === serverIds
+      ? localOrder.ids
+      : serverIds;
 
   const taskMap = useMemo(
     () => new Map(allTasks.map((t) => [t.id, t])),
@@ -143,13 +147,16 @@ export function SortableTaskList({
 
       // Drop on calendar date
       if (calDate && draggedId) {
-        setLocalIds(ids.filter((id) => id !== draggedId));
+        setLocalOrder({
+          ids: ids.filter((id) => id !== draggedId),
+          forServerIds: serverIds,
+        });
         onDropOnDate?.(draggedId, calDate);
         return;
       }
 
       if (!over || active.id === over.id) {
-        setLocalIds(null);
+        setLocalOrder(null);
         return;
       }
 
@@ -158,13 +165,14 @@ export function SortableTaskList({
 
       if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
         const newOrder = arrayMove(ids, oldIndex, newIndex);
-        setLocalIds(newOrder);
+        setLocalOrder({ ids: newOrder, forServerIds: serverIds });
         onReorder(newOrder);
       }
     },
     [
       activeId,
       ids,
+      serverIds,
       onReorder,
       onDragActiveChange,
       onDropOnDate,
