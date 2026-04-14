@@ -129,14 +129,16 @@ export function TaskItem({
         )}
 
         {/* Category color dot */}
-        {categoryColor && (
-          <div className="flex h-9 items-center">
-            <span
-              className="size-2 shrink-0 rounded-full"
-              style={{ backgroundColor: categoryColor }}
-            />
-          </div>
-        )}
+        <div className="flex h-9 items-center">
+          <span
+            className="size-2 shrink-0 rounded-full"
+            style={{
+              backgroundColor: !task.dateCompleted
+                ? categoryColor || "var(--color-muted)"
+                : "transparent",
+            }}
+          />
+        </div>
 
         <form
           onSubmit={(e) => {

@@ -4,9 +4,11 @@ import {
   asc,
   desc,
   eq,
+  gte,
   gt,
   isNotNull,
   isNull,
+  lt,
   lte,
   or,
   sql,
@@ -423,6 +425,24 @@ export const createTask = createServerFn({ method: "POST" })
     const rawDb = db.$client;
 
     const result = rawDb.transaction(() => {
+      // Get the max sortOrder for this category so the new task goes to the bottom
+      const maxRow = db
+        .select({ max: sql<number>`COALESCE(MAX(${tasks.sortOrder}), -1)` })
+        .from(tasks)
+        .where(
+          and(
+            eq(tasks.userId, data.userId),
+            isNull(tasks.parentTaskId),
+            isNull(tasks.dateCompleted),
+            data.priorityCategoryId
+              ? eq(tasks.priorityCategoryId, data.priorityCategoryId)
+              : isNull(tasks.priorityCategoryId),
+          ),
+        )
+        .get();
+
+      const nextSortOrder = (maxRow?.max ?? -1) + 1;
+
       const taskResult = db
         .insert(tasks)
         .values({
@@ -437,7 +457,7 @@ export const createTask = createServerFn({ method: "POST" })
           dateCreated: new Date().toISOString(),
           dateCompleted: null,
           userId: data.userId,
-          sortOrder: 0,
+          sortOrder: nextSortOrder,
         })
         .returning()
         .get();
@@ -548,4 +568,161 @@ export const fetchSubtasks = createServerFn({ method: "GET" })
         ),
       )
       .orderBy(asc(tasks.dateCompleted), asc(tasks.dateCreated));
+  });
+
+// ─── Phase 6: Calendar & Day View queries ────────────────────────────
+
+const taskSelectColumns = {
+  id: tasks.id,
+  title: tasks.title,
+  notes: tasks.notes,
+  dateCreated: tasks.dateCreated,
+  dateCompleted: tasks.dateCompleted,
+  dueDate: tasks.dueDate,
+  dueTime: tasks.dueTime,
+  userId: tasks.userId,
+  priorityCategoryId: tasks.priorityCategoryId,
+  parentTaskId: tasks.parentTaskId,
+  recurrenceRule: tasks.recurrenceRule,
+  sortOrder: tasks.sortOrder,
+  subtaskCount:
+    sql<number>`(SELECT COUNT(*) FROM tasks st WHERE st.parent_task_id = ${tasks.id})`.as(
+      "subtask_count",
+    ),
+  completedSubtaskCount:
+    sql<number>`(SELECT COUNT(*) FROM tasks st WHERE st.parent_task_id = ${tasks.id} AND st.date_completed IS NOT NULL)`.as(
+      "completed_subtask_count",
+    ),
+};
+
+export const fetchTasksForDate = createServerFn({ method: "GET" })
+  .inputValidator(
+    z.object({
+      userId: z.string().min(1),
+      date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    }),
+  )
+  .handler(async ({ data }) => {
+    return db
+      .select(taskSelectColumns)
+      .from(tasks)
+      .leftJoin(
+        priorityCategories,
+        eq(tasks.priorityCategoryId, priorityCategories.id),
+      )
+      .where(
+        and(
+          eq(tasks.userId, data.userId),
+          isNull(tasks.parentTaskId),
+          eq(tasks.dueDate, data.date),
+        ),
+      )
+      .orderBy(
+        desc(isNull(tasks.dateCompleted)),
+        sql`CASE WHEN ${tasks.dateCompleted} IS NOT NULL THEN 1 ELSE 0 END`,
+        sql`CASE WHEN ${priorityCategories.sortOrder} IS NULL THEN 999999 ELSE ${priorityCategories.sortOrder} END`,
+        asc(tasks.sortOrder),
+        desc(tasks.dateCompleted),
+      );
+  });
+
+export const fetchRecentCompletedTasks = createServerFn({ method: "GET" })
+  .inputValidator(
+    z.object({
+      userId: z.string().min(1),
+      beforeDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      limit: z.number().min(1).max(100).optional(),
+    }),
+  )
+  .handler(async ({ data }) => {
+    return db
+      .select(taskSelectColumns)
+      .from(tasks)
+      .where(
+        and(
+          eq(tasks.userId, data.userId),
+          isNull(tasks.parentTaskId),
+          isNotNull(tasks.dateCompleted),
+          lt(sql`date(${tasks.dateCompleted})`, data.beforeDate),
+        ),
+      )
+      .orderBy(desc(tasks.dateCompleted))
+      .limit(data.limit ?? 20);
+  });
+
+export const fetchUpcomingTasksFromDate = createServerFn({ method: "GET" })
+  .inputValidator(
+    z.object({
+      userId: z.string().min(1),
+      afterDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      limit: z.number().min(1).max(100).optional(),
+    }),
+  )
+  .handler(async ({ data }) => {
+    return db
+      .select(taskSelectColumns)
+      .from(tasks)
+      .where(
+        and(
+          eq(tasks.userId, data.userId),
+          isNull(tasks.parentTaskId),
+          isNull(tasks.dateCompleted),
+          isNotNull(tasks.dueDate),
+          gt(tasks.dueDate, data.afterDate),
+        ),
+      )
+      .orderBy(asc(tasks.dueDate), asc(tasks.sortOrder))
+      .limit(data.limit ?? 20);
+  });
+
+export const fetchDaysWithTasks = createServerFn({ method: "GET" })
+  .inputValidator(
+    z.object({
+      userId: z.string().min(1),
+      startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    }),
+  )
+  .handler(async ({ data }) => {
+    const rows = await db
+      .selectDistinct({ dueDate: tasks.dueDate })
+      .from(tasks)
+      .where(
+        and(
+          eq(tasks.userId, data.userId),
+          isNull(tasks.parentTaskId),
+          isNull(tasks.dateCompleted),
+          isNotNull(tasks.dueDate),
+          gte(tasks.dueDate, data.startDate),
+          lte(tasks.dueDate, data.endDate),
+        ),
+      );
+
+    return rows.map((r) => r.dueDate).filter((d): d is string => d !== null);
+  });
+
+export const fetchBacklogTasks = createServerFn({ method: "GET" })
+  .inputValidator(userIdInput)
+  .handler(async ({ data }) => {
+    return db
+      .select(taskSelectColumns)
+      .from(tasks)
+      .leftJoin(
+        priorityCategories,
+        eq(tasks.priorityCategoryId, priorityCategories.id),
+      )
+      .where(
+        and(
+          eq(tasks.userId, data.userId),
+          isNull(tasks.parentTaskId),
+          isNull(tasks.dueDate),
+        ),
+      )
+      .orderBy(
+        desc(isNull(tasks.dateCompleted)),
+        sql`CASE WHEN ${tasks.dateCompleted} IS NOT NULL THEN 1 ELSE 0 END`,
+        sql`CASE WHEN ${priorityCategories.sortOrder} IS NULL THEN 999999 ELSE ${priorityCategories.sortOrder} END`,
+        asc(tasks.sortOrder),
+        desc(tasks.dateCompleted),
+      );
   });

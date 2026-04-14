@@ -43,6 +43,9 @@ interface CategoryGroupedListProps {
     categoryId: string | null,
     taskIdsInNewGroup: string[],
   ) => void;
+  onDragActiveChange?: (taskId: string | null) => void;
+  onDropOnDate?: (taskId: string, date: string) => void;
+  onDragOverDate?: (date: string | null) => void;
   children: (
     task: Task,
     isDragging: boolean,
@@ -127,6 +130,9 @@ export function CategoryGroupedList({
   categories,
   onReorderInCategory,
   onMoveToCategory,
+  onDragActiveChange,
+  onDropOnDate,
+  onDragOverDate,
   children,
   completedChildren,
 }: CategoryGroupedListProps) {
@@ -155,6 +161,28 @@ export function CategoryGroupedList({
 
   const [activeId, setActiveId] = useState<string | null>(null);
 
+  // Track pointer position during drag for drop-on-calendar detection
+  const pointerRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const hoveredDateRef = useRef<string | null>(null);
+  const pointerHandler = useCallback(
+    (e: PointerEvent) => {
+      pointerRef.current = { x: e.clientX, y: e.clientY };
+
+      // Detect calendar cell under pointer
+      const elements = document.elementsFromPoint(e.clientX, e.clientY);
+      const calEl = elements.find((el) => el.closest("[data-calendar-date]"));
+      const date =
+        calEl?.closest<HTMLElement>("[data-calendar-date]")?.dataset
+          .calendarDate ?? null;
+
+      if (date !== hoveredDateRef.current) {
+        hoveredDateRef.current = date;
+        onDragOverDate?.(date);
+      }
+    },
+    [onDragOverDate],
+  );
+
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
@@ -166,6 +194,8 @@ export function CategoryGroupedList({
     (event: DragStartEvent) => {
       const id = String(event.active.id);
       setActiveId(id);
+      onDragActiveChange?.(id);
+      document.addEventListener("pointermove", pointerHandler);
 
       // Track where this drag started
       const task = allTasks.find((t) => t.id === id);
@@ -173,7 +203,7 @@ export function CategoryGroupedList({
         ? groupKey(task.priorityCategoryId)
         : null;
     },
-    [allTasks],
+    [allTasks, onDragActiveChange, pointerHandler],
   );
 
   // Live cross-container movement during drag
@@ -255,11 +285,32 @@ export function CategoryGroupedList({
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
       const draggedId = activeId;
+      const calDate = hoveredDateRef.current;
+
       setActiveId(null);
+      onDragActiveChange?.(null);
+      onDragOverDate?.(null);
+      hoveredDateRef.current = null;
+      document.removeEventListener("pointermove", pointerHandler);
 
       const { active, over } = event;
+
+      // If pointer was over a calendar date, treat as date-drop regardless of dnd-kit's `over`
+      if (calDate && draggedId) {
+        // Optimistically remove the task from the list so it doesn't flash back
+        setLocalOverride({
+          groups: groups.map((g) => ({
+            ...g,
+            tasks: g.tasks.filter((t) => t.id !== draggedId),
+          })),
+          serverRef: serverGroups,
+        });
+        onDropOnDate?.(draggedId, calDate);
+        dragSourceContainerRef.current = null;
+        return;
+      }
+
       if (!over) {
-        // Cancelled — reset local override
         setLocalOverride(null);
         dragSourceContainerRef.current = null;
         return;
@@ -347,7 +398,17 @@ export function CategoryGroupedList({
 
       dragSourceContainerRef.current = null;
     },
-    [activeId, groups, serverGroups, onReorderInCategory, onMoveToCategory],
+    [
+      activeId,
+      groups,
+      serverGroups,
+      onReorderInCategory,
+      onMoveToCategory,
+      onDragActiveChange,
+      onDropOnDate,
+      onDragOverDate,
+      pointerHandler,
+    ],
   );
 
   const activeTask = activeId ? allTasks.find((t) => t.id === activeId) : null;
@@ -389,7 +450,7 @@ export function CategoryGroupedList({
 
       {/* Completed section — not sortable */}
       {completedTasks.length > 0 && (
-        <div className="pl-4">
+        <div>
           {completedTasks.map((task) =>
             completedChildren ? (
               completedChildren(task)

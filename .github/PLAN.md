@@ -234,7 +234,7 @@ These are the default seed categories. Users can add/rename/remove later.
 
 ---
 
-## Phase 6: Calendar + Day View UI
+## Phase 6: Calendar + Day View UI ✅
 
 > The main app interface — a 3-month mini calendar sidebar with a scrollable day view.
 
@@ -248,59 +248,57 @@ These are the default seed categories. Users can add/rename/remove later.
 
 ### 6A: Server Functions & Queries
 
-- [ ] Add `fetchTasksForDate` server function — tasks where `dueDate` falls on a given calendar day
+- [x] Add `fetchTasksForDate` server function — tasks where `dueDate` falls on a given calendar day
   - Reuses `fetchInboxTasks` ordering logic (incomplete first, category sort, completed last)
-- [ ] Add `fetchRecentCompletedTasks` server function — tasks completed _before_ the selected date
+- [x] Add `fetchRecentCompletedTasks` server function — tasks completed _before_ the selected date
   - Input: `{ userId, beforeDate, limit? }`, ordered by `dateCompleted DESC`, excludes subtasks
-- [ ] Add `fetchUpcomingTasksFromDate` server function — incomplete tasks with `dueDate > selectedDate`
+- [x] Add `fetchUpcomingTasksFromDate` server function — incomplete tasks with `dueDate > selectedDate`
   - Input: `{ userId, afterDate, limit? }`, ordered by `dueDate ASC`, excludes subtasks
-- [ ] Add `fetchDaysWithTasks` server function — distinct dates with tasks in a date range (for calendar dot indicators)
+- [x] Add `fetchDaysWithTasks` server function — distinct dates with tasks in a date range (for calendar dot indicators)
   - Input: `{ userId, startDate, endDate }`, returns `string[]` of date strings
-- [ ] Add corresponding query options in `src/features/tasks/queries.ts`
-- [ ] Add new query keys in `src/features/tasks/consts.ts` (`byDate`, `recentCompleted`, `upcomingFrom`, `daysWithTasks`)
+- [x] Add corresponding query options in `src/features/tasks/queries.ts`
+- [x] Add new query keys in `src/features/tasks/consts.ts` (`byDate`, `recentCompleted`, `upcomingFrom`, `daysWithTasks`)
 
 ### 6B: Calendar Component
 
-- [ ] Build `src/components/MiniCalendar.tsx` — custom CSS grid, no external dependencies
-  - Props: `selectedDate`, `onSelectDate`, `today`, `daysWithTasks: Set<string>`
+- [x] Build `src/components/MiniCalendar.tsx` — custom CSS grid, no external dependencies
+  - Props: `selectedDate`, `onSelectDate`, `daysWithTasks: Set<string>`
   - 3 stacked `MonthGrid` sub-components (prev month, current month, next month)
-  - Indicators: **today** (highlighted bg/ring), **selected day** (distinct ring), **days with tasks** (small dot)
+  - Indicators: **today** (ring), **selected day** (primary bg), **days with tasks** (small dot)
   - Calendar centers on the selected date's month (shifts as user navigates to different months)
-  - Click a day cell → calls `onSelectDate(dateString)`
+  - Click a day cell → calls `onSelectDate(date)`
 
 ### 6C: Day View Panels
 
-- [ ] Build `src/components/DayView.tsx` — scrollable container with 3 vertical sections
-- [ ] Build `ActiveDayPanel` (middle section):
+- [x] Build `src/components/DayView.tsx` — scrollable container with 3 vertical sections
+- [x] Build `ActiveDayPanel` (middle section):
   - Reuses `CategoryGroupedList`, `TaskItem`, drag-drop, mutations from current `/tasks/` route
-  - Header: formatted date (e.g., "Thursday, 10 April 2026") + "+" button → `TaskDialog` with selected date pre-filled
+  - Header: formatted date (e.g., "Monday, 14 April 2026") + "+" button → `TaskDialog` with selected date pre-filled
   - Completed tasks for _that day_ appear inline (same as current behavior)
-- [ ] Build `RecentCompletedPanel` (top section):
+- [x] Build `RecentCompletedPanel` (top section):
   - Tasks completed before the selected date, grouped by completion date (e.g., "Yesterday", "April 8")
   - Strikethrough/muted styling, compact read-only items (no drag-drop, no edit/delete inline)
-- [ ] Build `UpcomingPanel` (bottom section):
+- [x] Build `UpcomingPanel` (bottom section):
   - Incomplete tasks with future due dates, grouped by due date
-  - Read-only list with task title + due date + priority indicator
+  - Read-only list with task title + priority dot
   - Clicking a task's date navigates to that day
 
 ### 6D: Scroll-to-Navigate
 
-- [ ] Implement scroll boundary navigation in `DayView.tsx`:
-  - Sentinel elements at top and bottom of the scroll container
-  - `IntersectionObserver` detects when sentinels enter viewport
+- [x] Implement scroll boundary navigation in `src/routes/index.tsx`:
+  - Scroll event listener on main container detects top/bottom boundaries
   - Scroll to top → decrement `selectedDate` by 1 day; scroll to bottom → increment by 1 day
-  - Debounce to prevent rapid-fire day changes
+  - 300ms debounce to prevent rapid-fire day changes
   - Calendar selection updates to match
 
 ### 6E: Route Wiring & Cleanup
 
-- [ ] Update `src/routes/index.tsx` — replace `<>Yolo</>` with calendar + day view layout
+- [x] Update `src/routes/index.tsx` — replace `<>Yolo</>` with calendar + day view layout
   - Side-by-side: `MiniCalendar` (left) + `DayView` (right)
   - `selectedDate` state lifted here, passed to both components
   - Route loader pre-fetches today's data (tasks for date, recent completed, upcoming, days with tasks for 3 months)
-- [ ] Remove or redirect `/tasks/` route to `/`
-  - Move reusable logic (mutations, dialog state) into shared hooks if needed
-- [ ] Responsive: calendar wrapper `hidden lg:block`, day view full width on mobile
+- [ ] Remove or redirect `/tasks/` route to `/` (deferred — kept for now)
+- [x] Responsive: calendar wrapper `hidden lg:block`, day view full width on mobile
 
 ### Decisions
 
