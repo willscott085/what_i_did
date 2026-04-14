@@ -1,7 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { PlusIcon, XIcon } from "lucide-react";
+import { CheckIcon, PlusIcon, XIcon } from "lucide-react";
 import { useRef, useState } from "react";
-import { Checkbox } from "~/components/ui/checkbox";
 import { Input } from "~/components/ui/input";
 import { useCreateTag } from "~/features/tags/mutations";
 import { fetchTagsQueryOptions } from "~/features/tags/queries";
@@ -108,11 +107,11 @@ export function TagMultiSelect({
                   className="hover:bg-accent flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm"
                   onClick={() => toggleTag(tag.id)}
                 >
-                  <Checkbox
-                    checked={selectedTagIds.includes(tag.id)}
-                    tabIndex={-1}
-                    className="pointer-events-none size-4"
-                  />
+                  <span className="border-input flex size-4 shrink-0 items-center justify-center rounded-sm border">
+                    {selectedTagIds.includes(tag.id) && (
+                      <CheckIcon className="size-3" />
+                    )}
+                  </span>
                   {tag.color && (
                     <span
                       className="size-2.5 rounded-full"

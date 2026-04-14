@@ -84,16 +84,6 @@ function Backlog() {
               onReorder={(taskIds) => reorderTasks(taskIds)}
               onDropOnDate={handleDropOnDate}
               onDragOverDate={setDragOverDate}
-              completedChildren={(task) => (
-                <TaskItem
-                  key={task.id}
-                  task={task}
-                  onUpdate={updateTask}
-                  onEdit={handleEdit}
-                  onDelete={handleDelete}
-                  isDragging={false}
-                />
-              )}
             >
               {(task, isDragging, dragAttributes, dragListeners) => (
                 <TaskItem

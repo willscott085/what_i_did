@@ -444,12 +444,8 @@ export const fetchBacklogTasks = createServerFn({ method: "GET" })
           eq(tasks.userId, data.userId),
           isNull(tasks.parentTaskId),
           isNull(tasks.startDate),
+          isNull(tasks.dateCompleted),
         ),
       )
-      .orderBy(
-        desc(isNull(tasks.dateCompleted)),
-        sql`CASE WHEN ${tasks.dateCompleted} IS NOT NULL THEN 1 ELSE 0 END`,
-        asc(tasks.sortOrder),
-        desc(tasks.dateCompleted),
-      );
+      .orderBy(asc(tasks.sortOrder));
   });
