@@ -2,7 +2,8 @@ import { test, expect } from "@playwright/test";
 
 test.describe("Task Management", () => {
   test("should create a new task via the dialog", async ({ page }) => {
-    await page.goto("/tasks");
+    await page.goto("/");
+    await page.waitForURL(/\/day\//);
 
     // Open the create task dialog
     await page.getByRole("button", { name: "Add task" }).click();
@@ -29,7 +30,8 @@ test.describe("Task Management", () => {
   });
 
   test("should complete and uncomplete a task", async ({ page }) => {
-    await page.goto("/tasks");
+    await page.goto("/");
+    await page.waitForURL(/\/day\//);
 
     // Find the first unchecked task checkbox
     const firstTask = page.locator(".group\\/task").first();
@@ -45,7 +47,8 @@ test.describe("Task Management", () => {
   });
 
   test("should create a task with a start date", async ({ page }) => {
-    await page.goto("/tasks");
+    await page.goto("/");
+    await page.waitForURL(/\/day\//);
 
     await page.getByRole("button", { name: "Add task" }).click();
     const dialog = page.getByRole("dialog");
@@ -56,13 +59,16 @@ test.describe("Task Management", () => {
     await dialog.getByRole("button", { name: "Create" }).click();
     await expect(dialog).not.toBeVisible();
 
+    // Navigate to the date where the task was created
+    await page.goto("/day/2026-12-31");
     await expect(
       page.getByRole("textbox", { name: "Task with start date" }),
     ).toBeVisible();
   });
 
   test("should delete a task", async ({ page }) => {
-    await page.goto("/tasks");
+    await page.goto("/");
+    await page.waitForURL(/\/day\//);
 
     // Create a task to delete
     await page.getByRole("button", { name: "Add task" }).click();

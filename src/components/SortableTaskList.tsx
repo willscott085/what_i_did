@@ -18,7 +18,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Task } from "~/features/tasks/types";
 
 // ─── Types ───────────────────────────────────────────────────────────
@@ -88,12 +88,10 @@ export function SortableTaskList({
   const [activeId, setActiveId] = useState<string | null>(null);
 
   // Track pointer position during drag for drop-on-calendar detection
-  const pointerRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const hoveredDateRef = useRef<string | null>(null);
+  const pointerHandlerRef = useRef<((e: PointerEvent) => void) | null>(null);
   const pointerHandler = useCallback(
     (e: PointerEvent) => {
-      pointerRef.current = { x: e.clientX, y: e.clientY };
-
       const elements = document.elementsFromPoint(e.clientX, e.clientY);
       const calEl = elements.find((el) => el.closest("[data-calendar-date]"));
       const date =
@@ -120,6 +118,7 @@ export function SortableTaskList({
       const id = String(event.active.id);
       setActiveId(id);
       onDragActiveChange?.(id);
+      pointerHandlerRef.current = pointerHandler;
       document.addEventListener("pointermove", pointerHandler);
     },
     [onDragActiveChange, pointerHandler],
@@ -135,6 +134,7 @@ export function SortableTaskList({
       onDragOverDate?.(null);
       hoveredDateRef.current = null;
       document.removeEventListener("pointermove", pointerHandler);
+      pointerHandlerRef.current = null;
 
       const { active, over } = event;
 
@@ -180,7 +180,18 @@ export function SortableTaskList({
     onDragOverDate?.(null);
     hoveredDateRef.current = null;
     document.removeEventListener("pointermove", pointerHandler);
+    pointerHandlerRef.current = null;
   }, [onDragActiveChange, onDragOverDate, pointerHandler]);
+
+  // Safety cleanup: remove listener if component unmounts mid-drag
+  useEffect(() => {
+    return () => {
+      if (pointerHandlerRef.current) {
+        document.removeEventListener("pointermove", pointerHandlerRef.current);
+        pointerHandlerRef.current = null;
+      }
+    };
+  }, []);
 
   const activeTask = activeId ? taskMap.get(activeId) : null;
 

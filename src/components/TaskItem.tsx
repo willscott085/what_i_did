@@ -170,14 +170,18 @@ export function TaskItem({
                   <Input
                     type="text"
                     id={`${task.id}-title`}
+                    aria-label={field.state.value}
                     title={field.state.value}
                     value={field.state.value}
                     onBlur={field.handleBlur}
                     onChange={(e) => field.handleChange(e.target.value)}
                     onClick={() => {
                       if (task.dateCompleted) {
-                        navigator.clipboard.writeText(field.state.value);
-                        toast.success("Copied task label");
+                        if (!navigator.clipboard?.writeText) return;
+                        navigator.clipboard.writeText(field.state.value).then(
+                          () => toast.success("Copied task label"),
+                          () => toast.error("Failed to copy"),
+                        );
                       }
                     }}
                     autoComplete="off"

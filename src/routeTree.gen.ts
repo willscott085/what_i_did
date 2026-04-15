@@ -10,18 +10,12 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as AppRouteImport } from './routes/_app'
-import { Route as TasksIndexRouteImport } from './routes/tasks/index'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as AppBacklogRouteImport } from './routes/_app/backlog'
 import { Route as AppDayDateRouteImport } from './routes/_app/day/$date'
 
 const AppRoute = AppRouteImport.update({
   id: '/_app',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const TasksIndexRoute = TasksIndexRouteImport.update({
-  id: '/tasks/',
-  path: '/tasks/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppIndexRoute = AppIndexRouteImport.update({
@@ -43,13 +37,11 @@ const AppDayDateRoute = AppDayDateRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/backlog': typeof AppBacklogRoute
-  '/tasks/': typeof TasksIndexRoute
   '/day/$date': typeof AppDayDateRoute
 }
 export interface FileRoutesByTo {
   '/backlog': typeof AppBacklogRoute
   '/': typeof AppIndexRoute
-  '/tasks': typeof TasksIndexRoute
   '/day/$date': typeof AppDayDateRoute
 }
 export interface FileRoutesById {
@@ -57,26 +49,18 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteWithChildren
   '/_app/backlog': typeof AppBacklogRoute
   '/_app/': typeof AppIndexRoute
-  '/tasks/': typeof TasksIndexRoute
   '/_app/day/$date': typeof AppDayDateRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/backlog' | '/tasks/' | '/day/$date'
+  fullPaths: '/' | '/backlog' | '/day/$date'
   fileRoutesByTo: FileRoutesByTo
-  to: '/backlog' | '/' | '/tasks' | '/day/$date'
-  id:
-    | '__root__'
-    | '/_app'
-    | '/_app/backlog'
-    | '/_app/'
-    | '/tasks/'
-    | '/_app/day/$date'
+  to: '/backlog' | '/' | '/day/$date'
+  id: '__root__' | '/_app' | '/_app/backlog' | '/_app/' | '/_app/day/$date'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
-  TasksIndexRoute: typeof TasksIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -86,13 +70,6 @@ declare module '@tanstack/react-router' {
       path: ''
       fullPath: '/'
       preLoaderRoute: typeof AppRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/tasks/': {
-      id: '/tasks/'
-      path: '/tasks'
-      fullPath: '/tasks/'
-      preLoaderRoute: typeof TasksIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_app/': {
@@ -135,7 +112,6 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
-  TasksIndexRoute: TasksIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

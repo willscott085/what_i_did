@@ -37,12 +37,18 @@ export function TaskDialog({
   defaultStartDate,
   defaultParentTaskId,
 }: TaskDialogProps) {
-  const { data: taskWithRelations, isLoading } = useQuery({
+  const {
+    data: taskWithRelations,
+    isLoading,
+    isError,
+  } = useQuery({
     ...fetchTaskQueryOptions(task?.id ?? ""),
     enabled: open && !!task?.id,
   });
 
-  const resolvedTask = task?.id ? (taskWithRelations ?? null) : null;
+  const resolvedTask = task?.id
+    ? (taskWithRelations ?? (isError ? task : null))
+    : null;
   const formKey = `${open}-${task?.id ?? "new"}-${resolvedTask?.id ?? "pending"}`;
 
   return (
