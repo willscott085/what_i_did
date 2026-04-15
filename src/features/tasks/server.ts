@@ -334,10 +334,22 @@ export const fetchTaskWithRelations = createServerFn({ method: "GET" })
 
     if (!result) return null;
 
+    const completedSubtasks = result.subtasks.filter(
+      (s) => s.dateCompleted !== null,
+    );
+
     return {
       ...result,
       tags: result.taskTags.map((tt) => tt.tag),
-      subtasks: result.subtasks,
+      subtasks: result.subtasks.map((s) => ({
+        ...s,
+        subtaskCount: 0,
+        completedSubtaskCount: 0,
+        tagNames: null,
+      })),
+      subtaskCount: result.subtasks.length,
+      completedSubtaskCount: completedSubtasks.length,
+      tagNames: result.taskTags.map((tt) => tt.tag.name).join(", ") || null,
     };
   });
 
