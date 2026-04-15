@@ -6,7 +6,9 @@ test.describe("Task Management", () => {
     await page.waitForURL(/\/day\//);
 
     // Open the create task dialog
-    await page.getByRole("button", { name: "Add task" }).click();
+    const addButton = page.getByRole("button", { name: "Add task" });
+    await expect(addButton).toBeVisible();
+    await addButton.click();
 
     // Fill in the task title
     const dialog = page.getByRole("dialog");
@@ -33,8 +35,9 @@ test.describe("Task Management", () => {
     await page.goto("/");
     await page.waitForURL(/\/day\//);
 
-    // Find the first unchecked task checkbox
+    // Wait for task list to render
     const firstTask = page.locator(".group\\/task").first();
+    await expect(firstTask).toBeVisible();
     const checkbox = firstTask.getByRole("checkbox");
 
     // Complete the task
@@ -50,8 +53,11 @@ test.describe("Task Management", () => {
     await page.goto("/");
     await page.waitForURL(/\/day\//);
 
-    await page.getByRole("button", { name: "Add task" }).click();
+    const addButton = page.getByRole("button", { name: "Add task" });
+    await expect(addButton).toBeVisible();
+    await addButton.click();
     const dialog = page.getByRole("dialog");
+    await expect(dialog).toBeVisible();
 
     await dialog.getByLabel("Title").fill("Task with start date");
     await dialog.getByLabel("Start Date").fill("2026-12-31");
@@ -71,14 +77,18 @@ test.describe("Task Management", () => {
     await page.waitForURL(/\/day\//);
 
     // Create a task to delete
-    await page.getByRole("button", { name: "Add task" }).click();
+    const addButton = page.getByRole("button", { name: "Add task" });
+    await expect(addButton).toBeVisible();
+    await addButton.click();
     const dialog = page.getByRole("dialog");
+    await expect(dialog).toBeVisible();
     await dialog.getByLabel("Title").fill("Task to delete");
     await dialog.getByRole("button", { name: "Create" }).click();
     await expect(dialog).not.toBeVisible();
 
     // Find the task and hover to reveal the delete button
     const taskInput = page.getByRole("textbox", { name: "Task to delete" });
+    await expect(taskInput).toBeVisible();
     const taskRow = taskInput.locator("ancestor::.group\\/task");
     await taskRow.hover();
 
