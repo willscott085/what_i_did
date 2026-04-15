@@ -86,9 +86,7 @@ test.describe("Task Management", () => {
     // Find the task and hover to reveal the delete button
     const taskInput = page.getByRole("textbox", { name: "Task to delete" });
     await expect(taskInput).toBeVisible();
-    const taskRow = page
-      .locator(".group\\/task")
-      .filter({ has: taskInput });
+    const taskRow = page.locator(".group\\/task").filter({ has: taskInput });
     await taskRow.hover();
 
     // Click delete
