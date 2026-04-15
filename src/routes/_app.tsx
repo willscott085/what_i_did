@@ -5,7 +5,7 @@ import {
   useNavigate,
   useParams,
 } from "@tanstack/react-router";
-import { format, parseISO } from "date-fns";
+import { format, isValid, parseISO } from "date-fns";
 import { useMemo, useState } from "react";
 import { AppLayoutProvider } from "~/components/AppLayoutContext";
 import { MiniCalendar } from "~/components/MiniCalendar";
@@ -20,10 +20,10 @@ const navItems = [{ to: "/backlog", label: "Backlog" }] as const;
 
 function AppLayout() {
   const navigate = useNavigate();
-  const { date: dateParam } = useParams({ strict: false }) as {
-    date?: string;
-  };
-  const selectedDate = dateParam ? parseISO(dateParam) : new Date();
+  const { date: dateParam } = useParams({ strict: false });
+  const parsedDate = dateParam ? parseISO(dateParam) : null;
+  const selectedDate =
+    parsedDate && isValid(parsedDate) ? parsedDate : new Date();
 
   function handleSelectDate(date: Date) {
     const dateStr = format(date, "yyyy-MM-dd");
