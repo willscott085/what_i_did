@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite dev",
     "build": "vite build && tsc --noEmit",
-    "start": "vite dev",
+    "start": "pnpm db:migrate && serve -s dist -l 55001",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest",
