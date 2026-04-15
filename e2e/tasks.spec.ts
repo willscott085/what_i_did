@@ -39,17 +39,20 @@ test.describe("Task Management", () => {
   test("should complete and uncomplete a task", async ({ page }) => {
     await waitForHydration(page);
 
-    // Find the first unchecked task checkbox
+    // Find the first unchecked task checkbox and remember the task id
     const firstTask = page.locator(".group\\/task").first();
     const checkbox = firstTask.getByRole("checkbox");
+    const checkboxId = await checkbox.getAttribute("id");
 
-    // Complete the task
-    await checkbox.check();
-    await expect(checkbox).toBeChecked();
+    // Complete the task — use click() for Radix UI button-based checkboxes
+    await checkbox.click();
+    // Re-locate by id since completing moves the task in the list
+    const completedCheckbox = page.locator(`#${CSS.escape(checkboxId!)}`);
+    await expect(completedCheckbox).toBeChecked();
 
     // Uncomplete the task
-    await checkbox.uncheck();
-    await expect(checkbox).not.toBeChecked();
+    await completedCheckbox.click();
+    await expect(completedCheckbox).not.toBeChecked();
   });
 
   test("should create a task with a start date", async ({ page }) => {
