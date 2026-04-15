@@ -6,7 +6,7 @@ import {
   useParams,
 } from "@tanstack/react-router";
 import { format, isValid, parseISO } from "date-fns";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 import { AppLayoutProvider } from "~/components/AppLayoutContext";
 import { MiniCalendar } from "~/components/MiniCalendar";
 import { TaskDialog } from "~/components/TaskDialog";
@@ -20,6 +20,11 @@ const navItems = [{ to: "/backlog", label: "Backlog" }] as const;
 
 function AppLayout() {
   const navigate = useNavigate();
+  const hydrated = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
   const { date: dateParam } = useParams({ strict: false });
   const parsedDate = dateParam ? parseISO(dateParam) : null;
   const selectedDate =
@@ -67,7 +72,7 @@ function AppLayout() {
 
   return (
     <AppLayoutProvider value={layoutCtx}>
-      <div className="flex h-screen">
+      <div className="flex h-screen" data-hydrated={hydrated || undefined}>
         {/* Sidebar — hidden on mobile */}
         <aside className="border-border hidden w-60 shrink-0 border-r px-4 lg:block">
           <MiniCalendar

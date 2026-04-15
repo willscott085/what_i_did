@@ -1,11 +1,12 @@
 import { test, expect } from "@playwright/test";
 
-// Seed data creates tasks for today, so after hydration at least one .group/task exists.
-// Waiting for it proves React has hydrated and event handlers are attached.
+// Wait for React hydration to complete before interacting.
+// The app layout sets data-hydrated only after client-side React mount,
+// guaranteeing event handlers are attached.
 async function waitForHydration(page: import("@playwright/test").Page) {
   await page.goto("/");
   await page.waitForURL(/\/day\//);
-  await page.locator(".group\\/task").first().waitFor({ state: "visible" });
+  await page.locator("[data-hydrated]").waitFor({ state: "visible" });
 }
 
 test.describe("Task Management", () => {
