@@ -1,25 +1,52 @@
-name: Deploy whatidid to Production
+name: Deploy whatidid Stack to Production (Traefik)
+
 on:
   push:
     branches: [ main ]
 
+# Security: Least privilege
 permissions:
   contents: read
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
 
-      - name: Deploy via SSH
+    # Force Node.js 24 runtime (eliminates the deprecation warning)
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to Mac Mini via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.PROD_IP }}
           username: ${{ secrets.PROD_USER }}
           key: ${{ secrets.PROD_SSH_KEY }}
           script: |
-            cd /Volumes/10TB/Projects/whatidid 
+            set -euo pipefail   # Strict mode - fail fast on any error
+
+            echo "🚀 Starting deployment to production..."
+
+            # Change to the correct directory where your docker-compose.yml lives
+            cd ~/Desktop/HTPC
+
+            echo "📥 Pulling latest images..."
             docker compose pull
+
+            echo "🔄 Rebuilding and deploying stack (Traefik + all services)..."
             docker compose up -d --build --force-recreate --remove-orphans
+
+            echo "🧹 Cleaning up unused resources..."
             docker system prune -f
+
+            echo "✅ Deployment completed successfully at $(date)"
+            echo "Current running containers:"
+            docker compose ps
+
+            # Optional: Show Traefik logs for quick verification
+            echo "📋 Last 20 lines of Traefik logs:"
+            docker logs traefik --tail 20
