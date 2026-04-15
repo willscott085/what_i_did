@@ -12,6 +12,7 @@ async function waitForHydration(page: import("@playwright/test").Page) {
 test.describe("Task Management", () => {
   test("should create a new task via the dialog", async ({ page }) => {
     await waitForHydration(page);
+    const taskName = `E2E task ${Date.now()}`;
 
     // Open the create task dialog
     await page.getByRole("button", { name: "Add task" }).click();
@@ -23,7 +24,7 @@ test.describe("Task Management", () => {
       dialog.getByRole("heading", { name: "New Task" }),
     ).toBeVisible();
 
-    await dialog.getByLabel("Title").fill("E2E test task");
+    await dialog.getByLabel("Title").fill(taskName);
 
     // Submit the form
     await dialog.getByRole("button", { name: "Create" }).click();
@@ -32,9 +33,7 @@ test.describe("Task Management", () => {
     await expect(dialog).not.toBeVisible();
 
     // New task should appear in the list
-    await expect(
-      page.getByRole("textbox", { name: "E2E test task" }),
-    ).toBeVisible();
+    await expect(page.getByRole("textbox", { name: taskName })).toBeVisible();
   });
 
   test("should complete and uncomplete a task", async ({ page }) => {
@@ -55,12 +54,13 @@ test.describe("Task Management", () => {
 
   test("should create a task with a start date", async ({ page }) => {
     await waitForHydration(page);
+    const taskName = `Start date task ${Date.now()}`;
 
     await page.getByRole("button", { name: "Add task" }).click();
     const dialog = page.getByRole("dialog");
     await expect(dialog).toBeVisible();
 
-    await dialog.getByLabel("Title").fill("Task with start date");
+    await dialog.getByLabel("Title").fill(taskName);
     await dialog.getByLabel("Start Date").fill("2026-12-31");
 
     await dialog.getByRole("button", { name: "Create" }).click();
@@ -68,24 +68,23 @@ test.describe("Task Management", () => {
 
     // Navigate to the date where the task was created
     await page.goto("/day/2026-12-31");
-    await expect(
-      page.getByRole("textbox", { name: "Task with start date" }),
-    ).toBeVisible();
+    await expect(page.getByRole("textbox", { name: taskName })).toBeVisible();
   });
 
   test("should delete a task", async ({ page }) => {
     await waitForHydration(page);
+    const taskName = `Delete me ${Date.now()}`;
 
     // Create a task to delete
     await page.getByRole("button", { name: "Add task" }).click();
     const dialog = page.getByRole("dialog");
     await expect(dialog).toBeVisible();
-    await dialog.getByLabel("Title").fill("Task to delete");
+    await dialog.getByLabel("Title").fill(taskName);
     await dialog.getByRole("button", { name: "Create" }).click();
     await expect(dialog).not.toBeVisible();
 
     // Find the task and hover to reveal the delete button
-    const taskInput = page.getByRole("textbox", { name: "Task to delete" });
+    const taskInput = page.getByRole("textbox", { name: taskName });
     await expect(taskInput).toBeVisible();
     const taskRow = page.locator(".group\\/task").filter({ has: taskInput });
     await taskRow.hover();
