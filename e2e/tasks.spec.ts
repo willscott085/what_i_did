@@ -1,14 +1,19 @@
 import { test, expect } from "@playwright/test";
 
+// Seed data creates tasks for today, so after hydration at least one .group/task exists.
+// Waiting for it proves React has hydrated and event handlers are attached.
+async function waitForHydration(page: import("@playwright/test").Page) {
+  await page.goto("/");
+  await page.waitForURL(/\/day\//);
+  await page.locator(".group\\/task").first().waitFor({ state: "visible" });
+}
+
 test.describe("Task Management", () => {
   test("should create a new task via the dialog", async ({ page }) => {
-    await page.goto("/");
-    await page.waitForURL(/\/day\//);
+    await waitForHydration(page);
 
     // Open the create task dialog
-    const addButton = page.getByRole("button", { name: "Add task" });
-    await expect(addButton).toBeVisible();
-    await addButton.click();
+    await page.getByRole("button", { name: "Add task" }).click();
 
     // Fill in the task title
     const dialog = page.getByRole("dialog");
@@ -32,12 +37,10 @@ test.describe("Task Management", () => {
   });
 
   test("should complete and uncomplete a task", async ({ page }) => {
-    await page.goto("/");
-    await page.waitForURL(/\/day\//);
+    await waitForHydration(page);
 
-    // Wait for task list to render
+    // Find the first unchecked task checkbox
     const firstTask = page.locator(".group\\/task").first();
-    await expect(firstTask).toBeVisible();
     const checkbox = firstTask.getByRole("checkbox");
 
     // Complete the task
@@ -50,12 +53,9 @@ test.describe("Task Management", () => {
   });
 
   test("should create a task with a start date", async ({ page }) => {
-    await page.goto("/");
-    await page.waitForURL(/\/day\//);
+    await waitForHydration(page);
 
-    const addButton = page.getByRole("button", { name: "Add task" });
-    await expect(addButton).toBeVisible();
-    await addButton.click();
+    await page.getByRole("button", { name: "Add task" }).click();
     const dialog = page.getByRole("dialog");
     await expect(dialog).toBeVisible();
 
@@ -73,13 +73,10 @@ test.describe("Task Management", () => {
   });
 
   test("should delete a task", async ({ page }) => {
-    await page.goto("/");
-    await page.waitForURL(/\/day\//);
+    await waitForHydration(page);
 
     // Create a task to delete
-    const addButton = page.getByRole("button", { name: "Add task" });
-    await expect(addButton).toBeVisible();
-    await addButton.click();
+    await page.getByRole("button", { name: "Add task" }).click();
     const dialog = page.getByRole("dialog");
     await expect(dialog).toBeVisible();
     await dialog.getByLabel("Title").fill("Task to delete");
@@ -89,7 +86,9 @@ test.describe("Task Management", () => {
     // Find the task and hover to reveal the delete button
     const taskInput = page.getByRole("textbox", { name: "Task to delete" });
     await expect(taskInput).toBeVisible();
-    const taskRow = taskInput.locator("ancestor::.group\\/task");
+    const taskRow = page
+      .locator(".group\\/task")
+      .filter({ has: taskInput });
     await taskRow.hover();
 
     // Click delete
@@ -98,4 +97,5 @@ test.describe("Task Management", () => {
     // Task should be removed
     await expect(taskInput).not.toBeVisible();
   });
+});
 });
