@@ -47,7 +47,7 @@ test.describe("Task Management", () => {
     // Complete the task — use click() for Radix UI button-based checkboxes
     await checkbox.click();
     // Re-locate by id since completing moves the task in the list
-    const completedCheckbox = page.locator(`#${CSS.escape(checkboxId!)}`);
+    const completedCheckbox = page.locator(`[id="${checkboxId}"]`);
     await expect(completedCheckbox).toBeChecked();
 
     // Uncomplete the task
