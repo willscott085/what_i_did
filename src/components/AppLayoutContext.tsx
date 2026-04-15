@@ -2,12 +2,10 @@ import { createContext, useContext } from "react";
 import { TaskWithRelations } from "~/features/tasks/types";
 
 interface AppLayoutContextValue {
-  selectedDate: Date;
-  setSelectedDate: (date: Date) => void;
   dragOverDate: string | null;
   setDragOverDate: (date: string | null) => void;
-  defaultDueDate: string | undefined;
-  setDefaultDueDate: (date: string | undefined) => void;
+  defaultStartDate: string | undefined;
+  setDefaultStartDate: (date: string | undefined) => void;
   handleOpenDialog: (task?: TaskWithRelations | null) => void;
 }
 

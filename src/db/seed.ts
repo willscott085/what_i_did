@@ -12,63 +12,15 @@ migrate(db, { migrationsFolder: "./drizzle" });
 
 // Clear existing data
 db.delete(schema.taskTags).run();
-db.delete(schema.listItems).run();
 db.delete(schema.tasks).run();
-db.delete(schema.lists).run();
 db.delete(schema.tags).run();
-db.delete(schema.priorityCategories).run();
 
-// Seed priority categories
-db.insert(schema.priorityCategories)
-  .values([
-    {
-      id: "cat_001",
-      name: "Business-Critical",
-      description: "Work that directly drives company/team OKRs and outcomes",
-      color: "#ef4444",
-      sortOrder: 0,
-      userId: "1",
-    },
-    {
-      id: "cat_002",
-      name: "Momentum Builder",
-      description: "Unblocks or supports critical work & progress",
-      color: "#f97316",
-      sortOrder: 1,
-      userId: "1",
-    },
-    {
-      id: "cat_003",
-      name: "Nice-to-Have",
-      description: "Good ideas, but not tied to impact or timing",
-      color: "#3b82f6",
-      sortOrder: 2,
-      userId: "1",
-    },
-    {
-      id: "cat_004",
-      name: "Noise",
-      description: "Low-leverage work that clutters your focus",
-      color: "#6b7280",
-      sortOrder: 3,
-      userId: "1",
-    },
-  ])
-  .run();
-
-// Seed sample tasks (mix of inbox, upcoming, and completed)
+// Seed sample tasks
 const formatDate = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
 const today = new Date();
-const tomorrow = new Date(today);
-tomorrow.setDate(tomorrow.getDate() + 1);
-const nextWeek = new Date(today);
-nextWeek.setDate(nextWeek.getDate() + 7);
-
 const todayStr = formatDate(today);
-const tomorrowStr = formatDate(tomorrow);
-const nextWeekStr = formatDate(nextWeek);
 
 const sampleTasks = [
   {
@@ -77,8 +29,7 @@ const sampleTasks = [
     notes: "Outline key deliverables and milestones.",
     dateCreated: "2025-09-25T09:12:03.000Z",
     dateCompleted: null,
-    dueDate: null,
-    priorityCategoryId: "cat_001",
+    startDate: todayStr,
     userId: "1",
     sortOrder: 0,
   },
@@ -88,9 +39,7 @@ const sampleTasks = [
     notes: "Improve readability and add missing tests.",
     dateCreated: "2025-09-20T14:31:10.000Z",
     dateCompleted: null,
-    dueDate: todayStr,
-    dueTime: "14:30",
-    priorityCategoryId: "cat_001",
+    startDate: todayStr,
     userId: "1",
     sortOrder: 1,
   },
@@ -100,8 +49,6 @@ const sampleTasks = [
     notes: "Focus on edge cases around completion toggling.",
     dateCreated: "2025-09-29T11:05:47.000Z",
     dateCompleted: null,
-    dueDate: null,
-    priorityCategoryId: "cat_002",
     userId: "1",
     sortOrder: 2,
   },
@@ -111,8 +58,6 @@ const sampleTasks = [
     notes: "Add staging environment notes.",
     dateCreated: "2025-09-18T08:44:55.000Z",
     dateCompleted: null,
-    dueDate: nextWeekStr,
-    priorityCategoryId: "cat_003",
     userId: "1",
     sortOrder: 3,
   },
@@ -122,9 +67,7 @@ const sampleTasks = [
     notes: "Keep components accessible with proper ARIA.",
     dateCreated: "2025-10-01T10:02:11.000Z",
     dateCompleted: null,
-    dueDate: tomorrowStr,
-    dueTime: "09:00",
-    priorityCategoryId: "cat_002",
+    startDate: todayStr,
     userId: "1",
     sortOrder: 4,
   },
@@ -134,8 +77,6 @@ const sampleTasks = [
     notes: "Occurs when user switches locale mid-session.",
     dateCreated: "2025-09-30T07:22:39.000Z",
     dateCompleted: null,
-    dueDate: null,
-    priorityCategoryId: "cat_004",
     userId: "1",
     sortOrder: 5,
   },
@@ -145,7 +86,6 @@ const sampleTasks = [
     notes: "Cover error states (500, 404).",
     dateCreated: "2025-09-27T15:50:33.000Z",
     dateCompleted: "2025-11-17T17:46:50.189Z",
-    dueDate: null,
     userId: "1",
     sortOrder: 6,
   },
@@ -155,8 +95,6 @@ const sampleTasks = [
     notes: "Investigate code splitting for feature routes.",
     dateCreated: "2025-09-23T09:05:14.000Z",
     dateCompleted: null,
-    dueDate: nextWeekStr,
-    priorityCategoryId: "cat_003",
     userId: "1",
     sortOrder: 7,
   },
@@ -166,7 +104,6 @@ const sampleTasks = [
     notes: "Reference reputable sources.",
     dateCreated: "2025-09-26T12:14:57.000Z",
     dateCompleted: "2026-04-10T12:00:00.000Z",
-    dueDate: null,
     userId: "1",
     sortOrder: 8,
   },
@@ -176,23 +113,8 @@ const sampleTasks = [
     notes: "Use client-side filtering first pass.",
     dateCreated: "2025-10-03T13:43:22.000Z",
     dateCompleted: null,
-    dueDate: null,
     userId: "1",
     sortOrder: 9,
-  },
-  // Daily standup — recurring task
-  {
-    id: "tsk_011",
-    title: "Daily standup",
-    notes: "Share blockers and progress with the team.",
-    dateCreated: "2025-10-01T08:00:00.000Z",
-    dateCompleted: null,
-    dueDate: todayStr,
-    priorityCategoryId: "cat_002",
-    recurrenceRule:
-      "DTSTART:20251001T080000Z\nRRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR",
-    userId: "1",
-    sortOrder: 10,
   },
   // Subtasks of tsk_001
   {
@@ -201,7 +123,6 @@ const sampleTasks = [
     notes: null,
     dateCreated: "2025-09-25T09:15:00.000Z",
     dateCompleted: null,
-    dueDate: null,
     parentTaskId: "tsk_001",
     userId: "1",
     sortOrder: 0,
@@ -212,7 +133,6 @@ const sampleTasks = [
     notes: null,
     dateCreated: "2025-09-25T09:16:00.000Z",
     dateCompleted: "2025-10-02T11:00:00.000Z",
-    dueDate: null,
     parentTaskId: "tsk_001",
     userId: "1",
     sortOrder: 1,
@@ -247,10 +167,7 @@ db.insert(schema.taskTags)
   .run();
 
 console.info("Database seeded successfully.");
-console.info(`  - ${4} priority categories`);
-console.info(
-  `  - ${sampleTasks.length} tasks (including ${2} subtasks, ${1} recurring)`,
-);
+console.info(`  - ${sampleTasks.length} tasks (including ${2} subtasks)`);
 console.info(`  - ${4} tags`);
 console.info(`  - ${9} task-tag relationships`);
 

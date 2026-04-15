@@ -9,9 +9,7 @@ import {
   completeTask,
   createTask,
   deleteTask,
-  moveTaskToCategory,
   reorderTasks,
-  reorderTasksInCategory,
   updateTask,
   updateTaskOrder,
 } from "./server";
@@ -86,58 +84,6 @@ export const useReorderTasks = ({ onError }: UseReorderTasksProps) => {
               return task ? { ...task, sortOrder: i } : undefined;
             })
             .filter((t): t is Task => t !== undefined),
-        );
-      }
-
-      return { prev };
-    },
-    onError: (_err, _vars, ctx) => {
-      if (ctx?.prev) {
-        queryClient.setQueryData(queryKey, ctx.prev);
-      }
-      onError?.();
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: tasksQueryKeys.all });
-    },
-  });
-};
-
-interface UseReorderTasksInCategoryProps {
-  onError?: () => void;
-}
-export const useReorderTasksInCategory = ({
-  onError,
-}: UseReorderTasksInCategoryProps) => {
-  const queryClient = useQueryClient();
-  const queryKey = fetchInboxTasksQueryOptions().queryKey;
-
-  return useMutation({
-    mutationFn: ({
-      taskIds,
-      categoryId,
-    }: {
-      taskIds: string[];
-      categoryId: string | null;
-    }) =>
-      reorderTasksInCategory({
-        data: { taskIds, categoryId, userId: DEFAULT_USER_ID },
-      }),
-    onMutate: async ({ taskIds }) => {
-      await queryClient.cancelQueries({ queryKey });
-
-      const prev = queryClient.getQueryData<Task[]>(queryKey);
-
-      if (prev) {
-        const reorderedSet = new Set(taskIds);
-        const reorderedMap = new Map(taskIds.map((id, i) => [id, i]));
-        queryClient.setQueryData<Task[]>(
-          queryKey,
-          prev.map((t) =>
-            reorderedSet.has(t.id)
-              ? { ...t, sortOrder: reorderedMap.get(t.id)! }
-              : t,
-          ),
         );
       }
 
@@ -276,57 +222,6 @@ export const useDeleteTask = () => {
   });
 };
 
-export const useMoveTaskToCategory = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (input: {
-      taskId: string;
-      categoryId: string | null;
-      taskIdsInNewGroup: string[];
-    }) =>
-      moveTaskToCategory({
-        data: { ...input, userId: DEFAULT_USER_ID },
-      }),
-    onMutate: async ({ taskId, categoryId, taskIdsInNewGroup }) => {
-      await queryClient.cancelQueries({ queryKey: tasksQueryKeys.all });
-
-      const inboxKey = fetchInboxTasksQueryOptions().queryKey;
-      const prev = queryClient.getQueryData<Task[]>(inboxKey);
-
-      if (prev) {
-        const orderMap = new Map(taskIdsInNewGroup.map((id, i) => [id, i]));
-        queryClient.setQueryData<Task[]>(
-          inboxKey,
-          prev.map((t) => {
-            if (t.id === taskId) {
-              return {
-                ...t,
-                priorityCategoryId: categoryId,
-                sortOrder: orderMap.get(t.id) ?? t.sortOrder,
-              };
-            }
-            if (orderMap.has(t.id)) {
-              return { ...t, sortOrder: orderMap.get(t.id)! };
-            }
-            return t;
-          }),
-        );
-      }
-
-      return { prev, inboxKey };
-    },
-    onError: (_err, _vars, ctx) => {
-      if (ctx?.prev) {
-        queryClient.setQueryData(ctx.inboxKey, ctx.prev);
-      }
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: tasksQueryKeys.all });
-    },
-  });
-};
-
 export const useCompleteTask = () => {
   const queryClient = useQueryClient();
 
@@ -362,7 +257,7 @@ export const useCompleteTask = () => {
       }
     },
     onSettled: () => {
-      // Invalidate all task queries to pick up recurrence-generated tasks
+      // Invalidate all task queries
       queryClient.invalidateQueries({ queryKey: tasksQueryKeys.all });
     },
   });

@@ -5,10 +5,9 @@ import {
   Scripts,
   createRootRouteWithContext,
 } from "@tanstack/react-router";
-import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
-import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 import * as React from "react";
 import type { QueryClient } from "@tanstack/react-query";
+import { Toaster } from "sonner";
 import { DefaultCatchBoundary } from "~/components/DefaultCatchBoundary";
 import { NotFound } from "~/components/NotFound";
 import appCss from "~/styles/app.css?url";
@@ -82,6 +81,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       </head>
       <body>
         {children}
+        <Toaster position="bottom-center" />
         <Scripts />
       </body>
     </html>

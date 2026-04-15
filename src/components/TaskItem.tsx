@@ -1,9 +1,7 @@
 import { useForm } from "@tanstack/react-form";
 import { useQuery } from "@tanstack/react-query";
 import { clsx } from "clsx";
-import { format, isPast } from "date-fns";
 import {
-  CalendarIcon,
   ChevronDownIcon,
   ChevronRightIcon,
   GripVertical,
@@ -11,16 +9,12 @@ import {
   Trash2Icon,
 } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 import { SubtaskList } from "~/components/SubtaskList";
 import { Button } from "~/components/ui/button";
 import { Checkbox } from "~/components/ui/checkbox";
 import { FieldError } from "~/components/ui/field";
 import { Input } from "~/components/ui/input";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "~/components/ui/tooltip";
 import {
   useCompleteTask,
   useCreateTask,
@@ -28,7 +22,6 @@ import {
 } from "~/features/tasks/mutations";
 import { fetchSubtasksQueryOptions } from "~/features/tasks/queries";
 import { Task } from "~/features/tasks/types";
-import { useOverdueCheck } from "~/hooks/useOverdueCheck";
 
 type TaskUpdate = Pick<Task, "id" | "title" | "dateCompleted" | "userId">;
 
@@ -38,7 +31,6 @@ interface TaskItemProps {
   onUpdate: (task: TaskUpdate) => void;
   onEdit?: (task: Task) => void;
   onDelete?: (taskId: string) => void;
-  categoryColor?: string | null;
   dragAttributes?: React.HTMLAttributes<HTMLButtonElement>;
   dragListeners?: React.HTMLAttributes<HTMLButtonElement>;
 }
@@ -49,12 +41,12 @@ export function TaskItem({
   onUpdate,
   onEdit,
   onDelete,
-  categoryColor,
   dragAttributes = {},
   dragListeners = {},
 }: TaskItemProps) {
   const [expanded, setExpanded] = useState(false);
-  const overdueTick = useOverdueCheck();
+
+  const tagNames = task.tagNames ? task.tagNames.split(",") : [];
 
   const { data: subtasks = [] } = useQuery({
     ...fetchSubtasksQueryOptions(task.id),
@@ -128,18 +120,6 @@ export function TaskItem({
           </div>
         )}
 
-        {/* Category color dot */}
-        <div className="flex h-9 items-center">
-          <span
-            className="size-2 shrink-0 rounded-full"
-            style={{
-              backgroundColor: !task.dateCompleted
-                ? categoryColor || "var(--color-muted)"
-                : "transparent",
-            }}
-          />
-        </div>
-
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -175,30 +155,46 @@ export function TaskItem({
             children={(field) => (
               <div className="relative flex min-w-0 grow flex-col">
                 <div className="flex items-center gap-2">
-                  {/* Due date badge */}
-                  {task.dueDate && !task.dateCompleted && (
-                    <DueDateBadge
-                      dueDate={task.dueDate}
-                      dueTime={task.dueTime}
-                      tick={overdueTick}
-                    />
+                  {tagNames.length > 0 && (
+                    <div className="flex shrink-0 items-center gap-1 overflow-x-auto">
+                      {tagNames.map((name) => (
+                        <span
+                          key={name}
+                          className="text-muted-foreground bg-muted rounded px-1.5 py-0.5 text-[10px] leading-tight whitespace-nowrap"
+                        >
+                          {name}
+                        </span>
+                      ))}
+                    </div>
                   )}
-
                   <Input
                     type="text"
                     id={`${task.id}-title`}
+                    aria-label={field.state.value}
+                    title={field.state.value}
                     value={field.state.value}
                     onBlur={field.handleBlur}
                     onChange={(e) => field.handleChange(e.target.value)}
+                    onClick={() => {
+                      if (task.dateCompleted) {
+                        if (!navigator.clipboard?.writeText) return;
+                        navigator.clipboard.writeText(field.state.value).then(
+                          () => toast.success("Copied task label"),
+                          () => toast.error("Failed to copy"),
+                        );
+                      }
+                    }}
                     autoComplete="off"
                     readOnly={!!task.dateCompleted}
                     tabIndex={task.dateCompleted ? -1 : undefined}
                     className={clsx(
-                      "w-full truncate border-0 p-0 shadow-none focus-visible:ring-0 dark:bg-transparent",
+                      "truncate border-0 p-0 shadow-none focus-visible:ring-0 dark:bg-transparent",
+                      "min-w-0 flex-1",
                       form.state.values.completed &&
-                        "text-muted-foreground cursor-default line-through",
+                        "text-muted-foreground cursor-copy line-through",
                     )}
                   />
+
                   {!field.state.meta.isValid && (
                     <FieldError className="absolute top-2 right-4">
                       {field.state.meta.errors.join(", ")}
@@ -290,53 +286,6 @@ export function TaskItem({
         )}
       </div>
     </div>
-  );
-}
-
-function DueDateBadge({
-  dueDate,
-  dueTime,
-  tick,
-}: {
-  dueDate: string;
-  dueTime: string | null;
-  tick: number;
-}) {
-  // Use tick to ensure re-evaluation each interval
-  void tick;
-
-  // dueDate is stored as YYYY-MM-DD
-  const [year, month, day] = dueDate.split("-").map(Number);
-  const date = new Date(year, month - 1, day);
-
-  let overdue: boolean;
-
-  if (dueTime) {
-    // Overdue at the start of the next minute after the due minute
-    const [hours, minutes] = dueTime.split(":").map(Number);
-    const deadline = new Date(year, month - 1, day, hours, minutes + 1);
-    overdue = isPast(deadline);
-  } else {
-    // Date-only: overdue after end of that day
-    const endOfDay = new Date(year, month - 1, day, 23, 59, 59, 999);
-    overdue = isPast(endOfDay);
-  }
-
-  if (!overdue) return null;
-
-  const tooltipText = dueTime
-    ? `${format(date, "MMM d, yyyy")} at ${dueTime}`
-    : `${format(date, "MMM d, yyyy")}`;
-
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <span className="bg-destructive/10 text-destructive inline-flex shrink-0 animate-[alarm-shake_3s_ease-in-out] items-center gap-1 rounded-full px-2 py-0.5 text-xs">
-          <CalendarIcon className="size-3" />!
-        </span>
-      </TooltipTrigger>
-      <TooltipContent>{tooltipText}</TooltipContent>
-    </Tooltip>
   );
 }
 

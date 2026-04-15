@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite dev",
     "build": "vite build && tsc --noEmit",
-    "start": "vite dev",
+    "start": "pnpm db:migrate && serve -s dist -l 55001",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest",
@@ -47,6 +47,7 @@
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
     "rrule": "^2.8.1",
+    "sonner": "^2.0.7",
     "tailwind-merge": "^3.5.0",
     "zod": "^3.25.76"
   },

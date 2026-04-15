@@ -5,11 +5,5 @@ export const tasksQueryKeys = {
   byId: (id: string) => ["tasks", id] as const,
   subtasks: (parentId: string) => ["tasks", parentId, "subtasks"] as const,
   byDate: (date: string) => ["tasks", "byDate", date] as const,
-  recentCompleted: (beforeDate: string) =>
-    ["tasks", "recentCompleted", beforeDate] as const,
-  upcomingFrom: (afterDate: string) =>
-    ["tasks", "upcomingFrom", afterDate] as const,
-  daysWithTasks: (startDate: string, endDate: string) =>
-    ["tasks", "daysWithTasks", startDate, endDate] as const,
   backlog: ["tasks", "backlog"] as const,
 };

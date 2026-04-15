@@ -1,8 +1,18 @@
 import { test, expect } from "@playwright/test";
 
+// Wait for React hydration to complete before interacting.
+// The app layout sets data-hydrated only after client-side React mount,
+// guaranteeing event handlers are attached.
+async function waitForHydration(page: import("@playwright/test").Page) {
+  await page.goto("/");
+  await page.waitForURL(/\/day\//);
+  await page.locator("[data-hydrated]").waitFor({ state: "visible" });
+}
+
 test.describe("Task Management", () => {
   test("should create a new task via the dialog", async ({ page }) => {
-    await page.goto("/tasks");
+    await waitForHydration(page);
+    const taskName = `E2E task ${Date.now()}`;
 
     // Open the create task dialog
     await page.getByRole("button", { name: "Add task" }).click();
@@ -14,7 +24,7 @@ test.describe("Task Management", () => {
       dialog.getByRole("heading", { name: "New Task" }),
     ).toBeVisible();
 
-    await dialog.getByLabel("Title").fill("E2E test task");
+    await dialog.getByLabel("Title").fill(taskName);
 
     // Submit the form
     await dialog.getByRole("button", { name: "Create" }).click();
@@ -23,53 +33,63 @@ test.describe("Task Management", () => {
     await expect(dialog).not.toBeVisible();
 
     // New task should appear in the list
-    await expect(page.getByDisplayValue("E2E test task")).toBeVisible();
+    await expect(page.getByRole("textbox", { name: taskName })).toBeVisible();
   });
 
   test("should complete and uncomplete a task", async ({ page }) => {
-    await page.goto("/tasks");
+    await waitForHydration(page);
 
-    // Find the first unchecked task checkbox
+    // Find the first unchecked task checkbox and remember the task id
     const firstTask = page.locator(".group\\/task").first();
     const checkbox = firstTask.getByRole("checkbox");
+    const checkboxId = await checkbox.getAttribute("id");
 
-    // Complete the task
-    await checkbox.check();
-    await expect(checkbox).toBeChecked();
+    // Complete the task — use click() for Radix UI button-based checkboxes
+    await checkbox.click();
+    // Re-locate by id since completing moves the task in the list
+    const completedCheckbox = page.locator(`[id="${checkboxId}"]`);
+    await expect(completedCheckbox).toBeChecked();
 
     // Uncomplete the task
-    await checkbox.uncheck();
-    await expect(checkbox).not.toBeChecked();
+    await completedCheckbox.click();
+    await expect(completedCheckbox).not.toBeChecked();
   });
 
-  test("should create a task with a due date", async ({ page }) => {
-    await page.goto("/tasks");
+  test("should create a task with a start date", async ({ page }) => {
+    await waitForHydration(page);
+    const taskName = `Start date task ${Date.now()}`;
 
     await page.getByRole("button", { name: "Add task" }).click();
     const dialog = page.getByRole("dialog");
+    await expect(dialog).toBeVisible();
 
-    await dialog.getByLabel("Title").fill("Task with due date");
-    await dialog.getByLabel("Due Date").fill("2026-12-31");
+    await dialog.getByLabel("Title").fill(taskName);
+    await dialog.getByLabel("Start Date").fill("2026-12-31");
 
     await dialog.getByRole("button", { name: "Create" }).click();
     await expect(dialog).not.toBeVisible();
 
-    await expect(page.getByDisplayValue("Task with due date")).toBeVisible();
+    // Navigate to the date where the task was created
+    await page.goto("/day/2026-12-31");
+    await expect(page.getByRole("textbox", { name: taskName })).toBeVisible();
   });
 
   test("should delete a task", async ({ page }) => {
-    await page.goto("/tasks");
+    await waitForHydration(page);
+    const taskName = `Delete me ${Date.now()}`;
 
     // Create a task to delete
     await page.getByRole("button", { name: "Add task" }).click();
     const dialog = page.getByRole("dialog");
-    await dialog.getByLabel("Title").fill("Task to delete");
+    await expect(dialog).toBeVisible();
+    await dialog.getByLabel("Title").fill(taskName);
     await dialog.getByRole("button", { name: "Create" }).click();
     await expect(dialog).not.toBeVisible();
 
     // Find the task and hover to reveal the delete button
-    const taskInput = page.getByDisplayValue("Task to delete");
-    const taskRow = taskInput.locator("ancestor::.group\\/task");
+    const taskInput = page.getByRole("textbox", { name: taskName });
+    await expect(taskInput).toBeVisible();
+    const taskRow = page.locator(".group\\/task").filter({ has: taskInput });
     await taskRow.hover();
 
     // Click delete
