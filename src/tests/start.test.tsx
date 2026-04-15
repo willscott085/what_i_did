@@ -16,6 +16,7 @@ test("requests are mocked", async () => {
       sortOrder: 0,
       subtaskCount: 0,
       completedSubtaskCount: 0,
+      tagNames: null,
     },
   ]);
 });

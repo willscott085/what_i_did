@@ -9,6 +9,7 @@ import {
   Trash2Icon,
 } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 import { SubtaskList } from "~/components/SubtaskList";
 import { Button } from "~/components/ui/button";
 import { Checkbox } from "~/components/ui/checkbox";
@@ -23,12 +24,6 @@ import { fetchSubtasksQueryOptions } from "~/features/tasks/queries";
 import { Task } from "~/features/tasks/types";
 
 type TaskUpdate = Pick<Task, "id" | "title" | "dateCompleted" | "userId">;
-
-function isCompletedToday(dateCompleted: string | null): boolean {
-  if (!dateCompleted) return false;
-  const today = new Date().toISOString().slice(0, 10);
-  return dateCompleted.slice(0, 10) === today;
-}
 
 interface TaskItemProps {
   task: Task;
@@ -50,6 +45,8 @@ export function TaskItem({
   dragListeners = {},
 }: TaskItemProps) {
   const [expanded, setExpanded] = useState(false);
+
+  const tagNames = task.tagNames ? task.tagNames.split(",") : [];
 
   const { data: subtasks = [] } = useQuery({
     ...fetchSubtasksQueryOptions(task.id),
@@ -158,22 +155,42 @@ export function TaskItem({
             children={(field) => (
               <div className="relative flex min-w-0 grow flex-col">
                 <div className="flex items-center gap-2">
+                  {tagNames.length > 0 && (
+                    <div className="flex shrink-0 items-center gap-1 overflow-x-auto">
+                      {tagNames.map((name) => (
+                        <span
+                          key={name}
+                          className="text-muted-foreground bg-muted rounded px-1.5 py-0.5 text-[10px] leading-tight whitespace-nowrap"
+                        >
+                          {name}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                   <Input
                     type="text"
                     id={`${task.id}-title`}
+                    title={field.state.value}
                     value={field.state.value}
                     onBlur={field.handleBlur}
                     onChange={(e) => field.handleChange(e.target.value)}
+                    onClick={() => {
+                      if (task.dateCompleted) {
+                        navigator.clipboard.writeText(field.state.value);
+                        toast.success("Copied task label");
+                      }
+                    }}
                     autoComplete="off"
                     readOnly={!!task.dateCompleted}
                     tabIndex={task.dateCompleted ? -1 : undefined}
                     className={clsx(
-                      "w-full truncate border-0 p-0 shadow-none focus-visible:ring-0 dark:bg-transparent",
+                      "truncate border-0 p-0 shadow-none focus-visible:ring-0 dark:bg-transparent",
+                      "min-w-0 flex-1",
                       form.state.values.completed &&
-                        "text-muted-foreground cursor-default",
-                      isCompletedToday(task.dateCompleted) && "line-through",
+                        "text-muted-foreground cursor-copy line-through",
                     )}
                   />
+
                   {!field.state.meta.isValid && (
                     <FieldError className="absolute top-2 right-4">
                       {field.state.meta.errors.join(", ")}

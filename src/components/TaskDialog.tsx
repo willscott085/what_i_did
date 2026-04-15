@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   Dialog,
   DialogContent,
@@ -18,6 +19,7 @@ import {
   useCompleteTask,
   useDeleteTask,
 } from "~/features/tasks/mutations";
+import { fetchTaskQueryOptions } from "~/features/tasks/queries";
 import { Task, TaskWithRelations } from "~/features/tasks/types";
 
 interface TaskDialogProps {
@@ -35,18 +37,30 @@ export function TaskDialog({
   defaultStartDate,
   defaultParentTaskId,
 }: TaskDialogProps) {
-  const formKey = `${open}-${task?.id ?? "new"}`;
+  const { data: taskWithRelations, isLoading } = useQuery({
+    ...fetchTaskQueryOptions(task?.id ?? ""),
+    enabled: open && !!task?.id,
+  });
+
+  const resolvedTask = task?.id ? (taskWithRelations ?? null) : null;
+  const formKey = `${open}-${task?.id ?? "new"}-${resolvedTask?.id ?? "pending"}`;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex max-h-[85vh] flex-col overflow-hidden sm:max-w-xl">
-        <TaskDialogForm
-          key={formKey}
-          task={task}
-          defaultStartDate={defaultStartDate}
-          defaultParentTaskId={defaultParentTaskId}
-          onOpenChange={onOpenChange}
-        />
+        {isLoading && task?.id ? (
+          <DialogHeader>
+            <DialogTitle>Loading…</DialogTitle>
+          </DialogHeader>
+        ) : (
+          <TaskDialogForm
+            key={formKey}
+            task={resolvedTask}
+            defaultStartDate={defaultStartDate}
+            defaultParentTaskId={defaultParentTaskId}
+            onOpenChange={onOpenChange}
+          />
+        )}
       </DialogContent>
     </Dialog>
   );
@@ -119,7 +133,12 @@ function TaskDialogForm({
           if (newTask) {
             setSubtasks((prev) => [
               ...prev,
-              { ...newTask, subtaskCount: 0, completedSubtaskCount: 0 },
+              {
+                ...newTask,
+                subtaskCount: 0,
+                completedSubtaskCount: 0,
+                tagNames: null,
+              },
             ]);
           }
         },

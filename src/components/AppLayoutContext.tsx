@@ -2,8 +2,6 @@ import { createContext, useContext } from "react";
 import { TaskWithRelations } from "~/features/tasks/types";
 
 interface AppLayoutContextValue {
-  selectedDate: Date;
-  setSelectedDate: (date: Date) => void;
   dragOverDate: string | null;
   setDragOverDate: (date: string | null) => void;
   defaultStartDate: string | undefined;

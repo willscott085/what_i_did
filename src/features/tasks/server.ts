@@ -4,7 +4,6 @@ import {
   asc,
   desc,
   eq,
-  gte,
   isNotNull,
   isNull,
   lt,
@@ -59,6 +58,11 @@ const taskColumns = {
     sql<number>`(SELECT COUNT(*) FROM tasks st WHERE st.parent_task_id = ${tasks.id} AND st.date_completed IS NOT NULL)`.as(
       "completed_subtask_count",
     ),
+  tagNames: sql<
+    string | null
+  >`(SELECT GROUP_CONCAT(t.name, ',') FROM task_tags tt JOIN tags t ON t.id = tt.tag_id WHERE tt.task_id = "tasks"."id")`.as(
+    "tag_names",
+  ),
 };
 
 export const fetchTasks = createServerFn({ method: "GET" })
@@ -92,7 +96,7 @@ export const fetchInboxTasks = createServerFn({ method: "GET" })
         desc(isNull(tasks.dateCompleted)),
         sql`CASE WHEN ${tasks.dateCompleted} IS NOT NULL THEN 1 ELSE 0 END`,
         asc(tasks.sortOrder),
-        desc(tasks.dateCompleted),
+        asc(tasks.dateCompleted),
       );
   });
 
@@ -358,6 +362,7 @@ export const fetchSubtasks = createServerFn({ method: "GET" })
         sortOrder: tasks.sortOrder,
         subtaskCount: sql<number>`0`.as("subtask_count"),
         completedSubtaskCount: sql<number>`0`.as("completed_subtask_count"),
+        tagNames: sql<string | null>`NULL`.as("tag_names"),
       })
       .from(tasks)
       .where(
@@ -379,7 +384,10 @@ export const fetchTasksForDate = createServerFn({ method: "GET" })
     }),
   )
   .handler(async ({ data }) => {
-    rollForwardStaleTasks(data.userId);
+    const todayStr = formatLocalDate(new Date());
+    if (data.date === todayStr) {
+      rollForwardStaleTasks(data.userId);
+    }
 
     return db
       .select(taskColumns)
@@ -403,34 +411,8 @@ export const fetchTasksForDate = createServerFn({ method: "GET" })
         desc(isNull(tasks.dateCompleted)),
         sql`CASE WHEN ${tasks.dateCompleted} IS NOT NULL THEN 1 ELSE 0 END`,
         asc(tasks.sortOrder),
-        desc(tasks.dateCompleted),
+        asc(tasks.dateCompleted),
       );
-  });
-
-export const fetchDaysWithTasks = createServerFn({ method: "GET" })
-  .inputValidator(
-    z.object({
-      userId: z.string().min(1),
-      startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-      endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-    }),
-  )
-  .handler(async ({ data }) => {
-    const rows = await db
-      .selectDistinct({ startDate: tasks.startDate })
-      .from(tasks)
-      .where(
-        and(
-          eq(tasks.userId, data.userId),
-          isNull(tasks.parentTaskId),
-          isNull(tasks.dateCompleted),
-          isNotNull(tasks.startDate),
-          gte(tasks.startDate, data.startDate),
-          lte(tasks.startDate, data.endDate),
-        ),
-      );
-
-    return rows.map((r) => r.startDate).filter((d): d is string => d !== null);
   });
 
 export const fetchBacklogTasks = createServerFn({ method: "GET" })

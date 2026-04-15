@@ -12,6 +12,7 @@ export type Task = {
   sortOrder: number;
   subtaskCount: number;
   completedSubtaskCount: number;
+  tagNames: string | null;
 };
 
 export type TaskWithRelations = Task & {

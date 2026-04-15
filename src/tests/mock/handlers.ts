@@ -15,6 +15,7 @@ export const handlers = [
         sortOrder: 0,
         subtaskCount: 0,
         completedSubtaskCount: 0,
+        tagNames: null,
       },
     ]);
   }),

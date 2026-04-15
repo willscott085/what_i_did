@@ -319,6 +319,56 @@ These are the default seed categories. Users can add/rename/remove later.
 
 ---
 
+## Phase 6F: Simplification & Routing Overhaul ✅
+
+> Simplify the task model, fix tag handling, improve UX, and move to URL-driven date routing.
+
+### Tag Fixes
+
+- [x] Fix `tagNames` subquery in `taskColumns` — Drizzle `${tasks.id}` resolved to unqualified `"id"` in subqueries, causing the `GROUP_CONCAT` join to always return null. Fixed by hardcoding `"tasks"."id"` in the SQL template.
+- [x] Fix `TaskDialog` not loading tags when editing — list queries return plain `Task` objects without tags. Dialog now fetches the full task via `fetchTaskQueryOptions(task.id)` when opened for edit, so `useState` initializers see the correct tag list.
+- [x] Display tag badges on `TaskItem` — small muted badges rendered before the title input. Input uses `min-w-0 flex-1` to fill remaining space after tags.
+
+### Ordering Consistency
+
+- [x] Standardize completed task ordering — all queries (`fetchCompletedTasks`, `fetchInboxTasks`, `fetchTasksForDate`, `fetchSubtasks`) now use `asc(tasks.dateCompleted)` (most recently completed last).
+- [x] Remove redundant client-side sort in `SortableTaskList` — was re-sorting completed tasks client-side which conflicted with server order during hydration, causing a flash on page load.
+
+### Side Effect Fix
+
+- [x] Gate `rollForwardStaleTasks()` in `fetchTasksForDate` — only runs when `data.date` equals today. Previously, opening any past date would mutate incomplete tasks' start dates as a side effect.
+
+### UX Improvements
+
+- [x] Click-to-copy on completed tasks — clicking a completed task's label copies text to clipboard with a sonner toast confirmation ("Copied task label") and `cursor-copy` cursor.
+- [x] Install `sonner` toast library — `<Toaster>` added to `__root.tsx` at bottom-center position.
+- [x] Native `title` attribute on task title input for browser tooltip on hover.
+
+### URL-Driven Date Routing
+
+- [x] Create `/day/$date` route (`src/routes/_app/day/$date.tsx`) — date param drives task fetching and page title (`${date} - whatIdid`).
+- [x] Index route (`/_app/`) now redirects to `/day/{today}` via `beforeLoad` + `throw redirect`.
+- [x] Calendar `onSelectDate` navigates to `/day/$date` instead of updating local state.
+- [x] `selectedDate` in `MiniCalendar` driven by URL param — `_app.tsx` reads `$date` param via `useParams({ strict: false })` and passes it as a prop.
+- [x] Removed `selectedDate`/`setSelectedDate` from `AppLayoutContext` (no longer needed — URL is the source of truth).
+
+### Calendar Cleanup
+
+- [x] Removed `daysWithTasks` dot indicators from `MiniCalendar` — no longer fetch or display task-presence dots on calendar days.
+- [x] Removed `fetchDaysWithTasks` server function, query options, and query key.
+- [x] "Today" button now also shows when today's month isn't in the generated months list (e.g., viewing a date months away).
+
+### Outputs
+
+- `src/routes/_app/day/$date.tsx` (new)
+- Updated: `src/routes/_app.tsx`, `src/routes/_app/index.tsx`, `src/components/MiniCalendar.tsx`, `src/components/AppLayoutContext.tsx`
+- Updated: `src/components/TaskItem.tsx`, `src/components/TaskDialog.tsx`, `src/components/SortableTaskList.tsx`
+- Updated: `src/features/tasks/server.ts`, `src/features/tasks/queries.ts`, `src/features/tasks/consts.ts`
+- Updated: `src/routes/__root.tsx` (sonner Toaster)
+- Added dependency: `sonner`
+
+---
+
 ## Phase 7: Notes System Core
 
 > Quick-capture notes with markdown editing and organization.

@@ -1,39 +1,18 @@
-import { useQuery } from "@tanstack/react-query";
 import {
   Link,
   Outlet,
   createFileRoute,
   useNavigate,
+  useParams,
 } from "@tanstack/react-router";
-import {
-  addMonths,
-  endOfMonth,
-  format,
-  startOfMonth,
-  subMonths,
-} from "date-fns";
+import { format, parseISO } from "date-fns";
 import { useMemo, useState } from "react";
 import { AppLayoutProvider } from "~/components/AppLayoutContext";
 import { MiniCalendar } from "~/components/MiniCalendar";
 import { TaskDialog } from "~/components/TaskDialog";
-import { fetchDaysWithTasksQueryOptions } from "~/features/tasks/queries";
 import { TaskWithRelations } from "~/features/tasks/types";
 
-function getCalendarRange(date: Date) {
-  const start = format(startOfMonth(subMonths(date, 1)), "yyyy-MM-dd");
-  const end = format(endOfMonth(addMonths(date, 1)), "yyyy-MM-dd");
-  return { start, end };
-}
-
 export const Route = createFileRoute("/_app")({
-  loader: async ({ context }) => {
-    const { start, end } = getCalendarRange(new Date());
-
-    await context.queryClient.ensureQueryData(
-      fetchDaysWithTasksQueryOptions(start, end),
-    );
-    return null;
-  },
   component: AppLayout,
 });
 
@@ -41,26 +20,22 @@ const navItems = [{ to: "/backlog", label: "Backlog" }] as const;
 
 function AppLayout() {
   const navigate = useNavigate();
-  const [selectedDate, setSelectedDate] = useState(() => new Date());
-  const dateStr = format(selectedDate, "yyyy-MM-dd");
+  const { date: dateParam } = useParams({ strict: false }) as {
+    date?: string;
+  };
+  const selectedDate = dateParam ? parseISO(dateParam) : new Date();
 
   function handleSelectDate(date: Date) {
-    setSelectedDate(date);
-    navigate({ to: "/" });
+    const dateStr = format(date, "yyyy-MM-dd");
+    navigate({ to: "/day/$date", params: { date: dateStr } });
   }
-
-  const { start, end } = getCalendarRange(selectedDate);
-  const { data: daysWithTasks = [] } = useQuery(
-    fetchDaysWithTasksQueryOptions(start, end),
-  );
-  const daysWithTasksSet = new Set(daysWithTasks);
 
   // ─── Drag state ──────────────────────────────────────────────────
   const [dragOverDate, setDragOverDate] = useState<string | null>(null);
 
   // ─── Default start date (child routes set this) ──────────────────
   const [defaultStartDate, setDefaultStartDate] = useState<string | undefined>(
-    dateStr,
+    format(new Date(), "yyyy-MM-dd"),
   );
 
   // ─── Dialog state ────────────────────────────────────────────────
@@ -81,15 +56,13 @@ function AppLayout() {
 
   const layoutCtx = useMemo(
     () => ({
-      selectedDate,
-      setSelectedDate,
       dragOverDate,
       setDragOverDate,
       defaultStartDate,
       setDefaultStartDate,
       handleOpenDialog,
     }),
-    [selectedDate, dragOverDate, defaultStartDate],
+    [dragOverDate, defaultStartDate],
   );
 
   return (
@@ -100,7 +73,6 @@ function AppLayout() {
           <MiniCalendar
             selectedDate={selectedDate}
             onSelectDate={handleSelectDate}
-            daysWithTasks={daysWithTasksSet}
             dragOverDate={dragOverDate}
           />
         </aside>

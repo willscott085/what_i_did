@@ -1,5 +1,5 @@
-DROP TABLE `priority_categories`;--> statement-breakpoint
 PRAGMA foreign_keys=OFF;--> statement-breakpoint
+DROP TABLE `priority_categories`;--> statement-breakpoint
 CREATE TABLE `__new_tasks` (
 	`id` text PRIMARY KEY NOT NULL,
 	`title` text NOT NULL,

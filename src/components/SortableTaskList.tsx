@@ -63,14 +63,7 @@ export function SortableTaskList({
     [allTasks],
   );
   const completedTasks = useMemo(
-    () =>
-      allTasks
-        .filter((t) => !!t.dateCompleted)
-        .sort(
-          (a, b) =>
-            new Date(a.dateCompleted!).getTime() -
-            new Date(b.dateCompleted!).getTime(),
-        ),
+    () => allTasks.filter((t) => !!t.dateCompleted),
     [allTasks],
   );
 
@@ -181,6 +174,14 @@ export function SortableTaskList({
     ],
   );
 
+  const handleDragCancel = useCallback(() => {
+    setActiveId(null);
+    onDragActiveChange?.(null);
+    onDragOverDate?.(null);
+    hoveredDateRef.current = null;
+    document.removeEventListener("pointermove", pointerHandler);
+  }, [onDragActiveChange, onDragOverDate, pointerHandler]);
+
   const activeTask = activeId ? taskMap.get(activeId) : null;
 
   return (
@@ -188,6 +189,7 @@ export function SortableTaskList({
       sensors={sensors}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
+      onDragCancel={handleDragCancel}
     >
       <SortableContext items={ids} strategy={verticalListSortingStrategy}>
         {ids.map((id) => {

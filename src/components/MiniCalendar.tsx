@@ -22,7 +22,6 @@ import {
 interface MiniCalendarProps {
   selectedDate: Date;
   onSelectDate: (date: Date) => void;
-  daysWithTasks?: Set<string>;
   dragOverDate?: string | null;
 }
 
@@ -44,7 +43,6 @@ function monthKey(date: Date): string {
 export function MiniCalendar({
   selectedDate,
   onSelectDate,
-  daysWithTasks,
   dragOverDate,
 }: MiniCalendarProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -150,6 +148,8 @@ export function MiniCalendar({
   const [isTodayMonthVisible, setIsTodayMonthVisible] = useState(true);
   const todayMonthRef = useRef<HTMLDivElement | null>(null);
   const todayObserverRef = useRef<IntersectionObserver | null>(null);
+  const todayMonthInList = months.some((m) => monthKey(m) === todayMonthKey);
+  const showTodayButton = !todayMonthInList || !isTodayMonthVisible;
 
   const setTodayMonthRef = useCallback(
     (node: HTMLDivElement | null) => {
@@ -216,7 +216,6 @@ export function MiniCalendar({
                 month={month}
                 selectedDate={selectedDate}
                 onSelectDate={onSelectDate}
-                daysWithTasks={daysWithTasks}
                 dragOverDate={dragOverDate}
               />
             </div>
@@ -225,7 +224,7 @@ export function MiniCalendar({
       </div>
 
       {/* Today button — shown when scrolled away from the selected month */}
-      {!isTodayMonthVisible && (
+      {showTodayButton && (
         <button
           type="button"
           onClick={handleTodayClick}
@@ -244,7 +243,6 @@ interface MonthGridProps {
   month: Date;
   selectedDate: Date;
   onSelectDate: (date: Date) => void;
-  daysWithTasks?: Set<string>;
   dragOverDate?: string | null;
 }
 
@@ -252,7 +250,6 @@ function MonthGrid({
   month,
   selectedDate,
   onSelectDate,
-  daysWithTasks,
   dragOverDate,
 }: MonthGridProps) {
   const monthStart = startOfMonth(month);
@@ -289,7 +286,6 @@ function MonthGrid({
           const dateStr = format(day, "yyyy-MM-dd");
           const selected = isSameDay(day, selectedDate);
           const today = isToday(day);
-          const hasTasks = daysWithTasks?.has(dateStr);
           const inMonth = isSameMonth(day, month);
 
           return (
@@ -299,7 +295,7 @@ function MonthGrid({
               data-calendar-date={dateStr}
               onClick={() => onSelectDate(day)}
               className={clsx(
-                "relative mx-auto flex size-7 items-center justify-center rounded-full text-xs transition-colors",
+                "mx-auto flex size-7 items-center justify-center rounded-full text-xs transition-colors",
                 inMonth ? "text-foreground" : "text-muted-foreground",
                 today && "bg-purple-700 text-white",
                 !today && selected && "bg-primary text-primary-foreground",
@@ -308,14 +304,6 @@ function MonthGrid({
               )}
             >
               {day.getDate()}
-              {hasTasks && (
-                <span
-                  className={clsx(
-                    "absolute bottom-0.5 left-1/2 size-1 -translate-x-1/2 rounded-full",
-                    today || selected ? "bg-white" : "bg-primary",
-                  )}
-                />
-              )}
             </button>
           );
         })}

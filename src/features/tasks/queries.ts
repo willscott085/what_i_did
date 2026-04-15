@@ -3,7 +3,6 @@ import { DEFAULT_USER_ID, tasksQueryKeys } from "./consts";
 import {
   fetchBacklogTasks,
   fetchCompletedTasks,
-  fetchDaysWithTasks,
   fetchInboxTasks,
   fetchSubtasks,
   fetchTasks,
@@ -52,18 +51,6 @@ export const fetchTasksForDateQueryOptions = (date: string) =>
     queryKey: tasksQueryKeys.byDate(date),
     queryFn: () =>
       fetchTasksForDate({ data: { userId: DEFAULT_USER_ID, date } }),
-  });
-
-export const fetchDaysWithTasksQueryOptions = (
-  startDate: string,
-  endDate: string,
-) =>
-  queryOptions({
-    queryKey: tasksQueryKeys.daysWithTasks(startDate, endDate),
-    queryFn: () =>
-      fetchDaysWithTasks({
-        data: { userId: DEFAULT_USER_ID, startDate, endDate },
-      }),
   });
 
 export const fetchBacklogTasksQueryOptions = () =>
