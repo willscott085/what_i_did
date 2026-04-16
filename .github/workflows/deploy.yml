@@ -1,4 +1,4 @@
-name: Deploy whatidid Stack to Production (Traefik)
+name: Build & Push whatidid Image
 
 on:
   push:
@@ -6,43 +6,30 @@ on:
 
 permissions:
   contents: read
+  packages: write   # 👈 required for GHCR
+
+env:
+  IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/whatidid
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: 📥 Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup SSH key
+      - name: 🔐 Log in to GHCR
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: 🏗️ Build Docker image
         run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.PROD_SSH_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
+          docker build \
+            -t $IMAGE_NAME:latest \
+            -t $IMAGE_NAME:${{ github.sha }} \
+            .
 
-      - name: Deploy via Cloudflare Tunnel SSH
+      - name: 📤 Push Docker image
         run: |
-          ssh -o StrictHostKeyChecking=no \
-              -i ~/.ssh/id_rsa \
-              ${{ secrets.PROD_USER }}@${{ secrets.CLOUDFLARE_SSH_HOSTNAME }} << 'EOF'
-
-            set -euo pipefail
-
-            echo "🚀 Connected via Cloudflare Tunnel"
-            cd ~/Desktop/HTPC
-
-            echo "📥 Pulling latest images..."
-            docker compose pull
-
-            echo "🔄 Rebuilding and deploying full stack..."
-            docker compose up -d --build --force-recreate --remove-orphans
-
-            echo "🧹 Pruning..."
-            docker system prune -f
-
-            echo "✅ Deployment completed at $(date)"
-            docker compose ps
-            docker logs traefik --tail 30
-
-          EOF
+          docker push $IMAGE_NAME:latest
+          docker push $IMAGE_NAME:${{ github.sha }}
