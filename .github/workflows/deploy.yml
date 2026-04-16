@@ -21,10 +21,13 @@ jobs:
           echo "${{ secrets.PROD_SSH_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
 
-      - name: Add SSH known host bypass
+      - name: Setup SSH known hosts
         run: |
           mkdir -p ~/.ssh
-          ssh-keyscan -H ${{ secrets.CLOUDFLARE_SSH_HOSTNAME }} >> ~/.ssh/known_hosts
+
+          HOST="${{ secrets.CLOUDFLARE_SSH_HOSTNAME }}"
+
+          ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts
 
       - name: Deploy via SSH (Cloudflare Tunnel only)
         run: |
