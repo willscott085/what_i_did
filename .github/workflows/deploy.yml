@@ -11,9 +11,6 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
 
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -30,20 +27,20 @@ jobs:
           echo "${{ secrets.PROD_SSH_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
 
-      - name: Deploy via Cloudflare Tunnel SSH
-        env:
-          CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
-          CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
-          CLOUDFLARE_SSH_HOSTNAME: ${{ secrets.CLOUDFLARE_SSH_HOSTNAME }}
-          PROD_USER: ${{ secrets.PROD_USER }}
+      - name: Add SSH config for Cloudflare Tunnel
         run: |
-          ssh -o StrictHostKeyChecking=no \
-              -o ProxyCommand="cloudflared access ssh \
-                --hostname $CLOUDFLARE_SSH_HOSTNAME \
-                --id $CF_ACCESS_CLIENT_ID \
-                --secret $CF_ACCESS_CLIENT_SECRET" \
-              $PROD_USER@$CLOUDFLARE_SSH_HOSTNAME << 'EOF'
+          cat <<EOF > ~/.ssh/config
+          Host prod-mac
+            HostName ${{ secrets.CLOUDFLARE_SSH_HOSTNAME }}
+            User ${{ secrets.PROD_USER }}
+            IdentityFile ~/.ssh/id_rsa
+            StrictHostKeyChecking no
+            ProxyCommand cloudflared access ssh --hostname %h
+          EOF
 
+      - name: Deploy via SSH
+        run: |
+          ssh prod-mac << 'EOF'
             set -euo pipefail
 
             echo "🚀 Connected via Cloudflare Tunnel"
@@ -61,5 +58,4 @@ jobs:
             echo "✅ Deployment completed at $(date)"
             docker compose ps
             docker logs traefik --tail 30
-
           EOF
