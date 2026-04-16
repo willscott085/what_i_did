@@ -1,14 +1,5 @@
-import Database from "better-sqlite3";
-import { drizzle } from "drizzle-orm/better-sqlite3";
-import { migrate } from "drizzle-orm/better-sqlite3/migrator";
+import { db } from "./index";
 import * as schema from "./schema";
-
-const sqlite = new Database("./data/whatidid.db");
-sqlite.pragma("journal_mode = WAL");
-const db = drizzle(sqlite, { schema });
-
-// Apply migrations first
-migrate(db, { migrationsFolder: "./drizzle" });
 
 // Clear existing data
 db.delete(schema.taskTags).run();
@@ -170,5 +161,3 @@ console.info("Database seeded successfully.");
 console.info(`  - ${sampleTasks.length} tasks (including ${2} subtasks)`);
 console.info(`  - ${4} tags`);
 console.info(`  - ${9} task-tag relationships`);
-
-sqlite.close();

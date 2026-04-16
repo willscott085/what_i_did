@@ -25,20 +25,21 @@ RUN addgroup -g 1001 -S nodejs && \
 
 ENV NODE_ENV=production
 
-# Only install tiny runtime deps
-RUN npm install -g serve
-
 # Copy ONLY what we need
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/package.json ./
+COPY --from=builder /app/drizzle ./drizzle
 
 # Install ONLY production deps
 COPY --from=builder /app/node_modules ./node_modules
+
+# Create data directory for SQLite (volume mount point)
+RUN mkdir -p ./data && chown nodejs:nodejs ./data
+VOLUME /app/data
 
 # Drop root
 USER nodejs
 
 EXPOSE 3000
 
-# Run migrations, then start server
-CMD ["sh", "-c", "node dist/db/migrate.js && node dist/server.js"]
+CMD ["node", "dist/server/server.js"]

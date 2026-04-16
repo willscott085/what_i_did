@@ -14,7 +14,7 @@
     "test:e2e:ui": "playwright test --ui-port=0 --ui-host=${PLAYWRIGHT_UI_HOST:-127.0.0.1}",
     "coverage": "vitest run --coverage",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "node src/db/migrate.ts",
+    "db:migrate": "tsx src/db/migrate.ts",
     "db:seed": "tsx src/db/seed.ts",
     "db:studio": "drizzle-kit studio"
   },
