@@ -21,17 +21,10 @@ jobs:
           echo "${{ secrets.PROD_SSH_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
 
-      - name: Setup SSH known hosts
-        run: |
-          mkdir -p ~/.ssh
-
-          HOST="${{ secrets.CLOUDFLARE_SSH_HOSTNAME }}"
-
-          ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts
-
-      - name: Deploy via SSH (Cloudflare Tunnel only)
+      - name: Deploy via Cloudflare Tunnel SSH
         run: |
           ssh -o StrictHostKeyChecking=no \
+              -i ~/.ssh/id_rsa \
               ${{ secrets.PROD_USER }}@${{ secrets.CLOUDFLARE_SSH_HOSTNAME }} << 'EOF'
 
             set -euo pipefail
