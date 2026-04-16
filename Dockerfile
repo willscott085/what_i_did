@@ -1,33 +1,44 @@
-# Stage 1: Install dependencies with pnpm
-FROM node:22-alpine AS deps
-RUN apk add --no-cache libc6-compat
+# -------- Base --------
+FROM node:22-alpine AS base
 WORKDIR /app
-COPY package.json pnpm-lock.yaml ./
-RUN npm install -g pnpm && pnpm install --frozen-lockfile
+RUN corepack enable
 
-# Stage 2: Build the app
-FROM deps AS builder
+# -------- Dependencies --------
+FROM base AS deps
+RUN apk add --no-cache libc6-compat
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
+
+# -------- Build --------
+FROM base AS builder
+COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN pnpm build
 
-# Stage 3: Runtime (small & secure)
+# -------- Production --------
 FROM node:22-alpine AS runtime
 WORKDIR /app
 
-# Non-root user for security (zero-trust container principle)
+# Security: non-root user
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S -u 1001 -G nodejs nodejs
 
-# Install only what we need for production + migrations
-RUN npm install -g pnpm serve
+ENV NODE_ENV=production
 
+# Only install tiny runtime deps
+RUN npm install -g serve
+
+# Copy ONLY what we need
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/package.json ./
 
-# Run as non-root
+# Install ONLY production deps
+COPY --from=builder /app/node_modules ./node_modules
+
+# Drop root
 USER nodejs
 
-EXPOSE 55001
+EXPOSE 3000
 
-# Run migrations then start server
-CMD ["pnpm", "start"]
+# Run migrations, then start server
+CMD ["sh", "-c", "node dist/db/migrate.js && node dist/server.js"]

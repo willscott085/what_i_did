@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite dev",
     "build": "vite build && tsc --noEmit",
-    "start": "pnpm db:migrate && serve -s dist -l 55001",
+    "start": "node dist/server/server.js",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest",
@@ -14,7 +14,7 @@
     "test:e2e:ui": "playwright test --ui-port=0 --ui-host=${PLAYWRIGHT_UI_HOST:-127.0.0.1}",
     "coverage": "vitest run --coverage",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "tsx src/db/migrate.ts",
+    "db:migrate": "node src/db/migrate.ts",
     "db:seed": "tsx src/db/seed.ts",
     "db:studio": "drizzle-kit studio"
   },
