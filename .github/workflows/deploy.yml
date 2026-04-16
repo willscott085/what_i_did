@@ -20,33 +20,30 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Deploy to Mac Mini via SSH
+      - name: Deploy via Cloudflare Tunnel SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.PROD_IP }}
+          host: ${{ secrets.PROD_HOSTNAME }}
           username: ${{ secrets.PROD_USER }}
           key: ${{ secrets.PROD_SSH_KEY }}
+          port: 22
+          timeout: 90s
+          command_timeout: 15m
           script: |
-            set -euo pipefail   # Strict mode - fail fast on any error
+            set -euo pipefail
 
-            echo "🚀 Starting deployment to production..."
-
-            # Change to the correct directory where your docker-compose.yml lives
+            echo "🚀 Connected via Cloudflare Tunnel"
             cd ~/Desktop/HTPC
 
             echo "📥 Pulling latest images..."
             docker compose pull
 
-            echo "🔄 Rebuilding and deploying stack (Traefik + all services)..."
+            echo "🔄 Deploying Traefik + services..."
             docker compose up -d --build --force-recreate --remove-orphans
 
-            echo "🧹 Cleaning up unused resources..."
+            echo "🧹 Pruning unused resources..."
             docker system prune -f
 
-            echo "✅ Deployment completed successfully at $(date)"
-            echo "Current running containers:"
+            echo "✅ Deployment completed at $(date)"
             docker compose ps
-
-            # Optional: Show Traefik logs for quick verification
-            echo "📋 Last 20 lines of Traefik logs:"
-            docker logs traefik --tail 20
+            docker logs traefik --tail 30

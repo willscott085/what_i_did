@@ -9,6 +9,18 @@ async function waitForHydration(page: import("@playwright/test").Page) {
   await page.locator("[data-hydrated]").waitFor({ state: "visible" });
 }
 
+// Delete a task by hovering its row and clicking the delete button.
+async function deleteTask(
+  page: import("@playwright/test").Page,
+  taskName: string,
+) {
+  const taskInput = page.getByRole("textbox", { name: taskName });
+  const taskRow = page.locator(".group\\/task").filter({ has: taskInput });
+  await taskRow.hover();
+  await taskRow.getByRole("button", { name: "Delete task" }).click();
+  await expect(taskInput).not.toBeVisible();
+}
+
 test.describe("Task Management", () => {
   test("should create a new task via the dialog", async ({ page }) => {
     await waitForHydration(page);
@@ -34,6 +46,9 @@ test.describe("Task Management", () => {
 
     // New task should appear in the list
     await expect(page.getByRole("textbox", { name: taskName })).toBeVisible();
+
+    // Cleanup
+    await deleteTask(page, taskName);
   });
 
   test("should complete and uncomplete a task", async ({ page }) => {
@@ -72,6 +87,9 @@ test.describe("Task Management", () => {
     // Navigate to the date where the task was created
     await page.goto("/day/2026-12-31");
     await expect(page.getByRole("textbox", { name: taskName })).toBeVisible();
+
+    // Cleanup
+    await deleteTask(page, taskName);
   });
 
   test("should delete a task", async ({ page }) => {
