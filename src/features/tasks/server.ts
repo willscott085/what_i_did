@@ -204,16 +204,16 @@ export const reorderTasks = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     console.info(`Reordering ${data.taskIds.length} tasks...`);
 
-    await db.transaction(async (tx) => {
-      for (let i = 0; i < data.taskIds.length; i++) {
-        await tx
-          .update(tasks)
-          .set({ sortOrder: i })
-          .where(
-            and(eq(tasks.id, data.taskIds[i]), eq(tasks.userId, data.userId)),
-          );
-      }
-    });
+    const valuesList = sql.join(
+      data.taskIds.map((id, i) => sql`(${id}, ${i})`),
+      sql`, `,
+    );
+
+    await db.execute(
+      sql`UPDATE tasks SET sort_order = v.sort_order
+          FROM (VALUES ${valuesList}) AS v(id, sort_order)
+          WHERE tasks.id = v.id AND tasks.user_id = ${data.userId}`,
+    );
   });
 
 export const createTask = createServerFn({ method: "POST" })
@@ -405,7 +405,7 @@ export const fetchTasksForDate = createServerFn({ method: "GET" })
             // Completed tasks: only on the day they were completed
             and(
               isNotNull(tasks.dateCompleted),
-              eq(sql`date(${tasks.dateCompleted})`, data.date),
+              eq(sql`CAST(${tasks.dateCompleted} AS date)`, data.date),
             ),
           ),
         ),

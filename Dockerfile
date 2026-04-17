@@ -35,5 +35,7 @@ USER nodejs
 
 EXPOSE 55001
 
-# Run migrations then start the server
-CMD ["sh", "-c", "pnpm db:migrate && node dist/server/server.js"]
+# Run migrations as a separate step before deploying (e.g. via a Job or init container):
+#   docker run --rm <image> pnpm db:migrate
+# The default CMD only starts the server.
+CMD ["node", "dist/server/server.js"]
