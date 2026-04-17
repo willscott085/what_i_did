@@ -1,21 +1,16 @@
-# -------- Base --------
-FROM node:22-alpine AS base
-WORKDIR /app
-RUN corepack enable
-
 # -------- Dependencies --------
-FROM base AS deps
+FROM node:22-alpine AS deps
 RUN apk add --no-cache libc6-compat
+WORKDIR /app
 COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile
+RUN npm install -g pnpm && pnpm install --frozen-lockfile
 
 # -------- Build --------
-FROM base AS builder
-COPY --from=deps /app/node_modules ./node_modules
+FROM deps AS builder
 COPY . .
 RUN pnpm build
 
-# -------- Production --------
+# -------- Production Runtime --------
 FROM node:22-alpine AS runtime
 WORKDIR /app
 
@@ -23,23 +18,24 @@ WORKDIR /app
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S -u 1001 -G nodejs nodejs
 
+# Install runtime tools
+RUN npm install -g pnpm tsx
+
 ENV NODE_ENV=production
 
-# Copy ONLY what we need
+# Copy production files + migration source
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/package.json ./
+COPY --from=builder /app/pnpm-lock.yaml ./
 COPY --from=builder /app/drizzle ./drizzle
+COPY --from=builder /app/src/db ./src/db
+RUN npm install -g pnpm && pnpm install --prod --frozen-lockfile
 
-# Install ONLY production deps
-COPY --from=builder /app/node_modules ./node_modules
-
-# Create data directory for SQLite (volume mount point)
-RUN mkdir -p ./data && chown nodejs:nodejs ./data
-VOLUME /app/data
-
-# Drop root
 USER nodejs
 
-EXPOSE 3000
+EXPOSE 55001
 
+# Run migrations as a separate step before deploying (e.g. via a Job or init container):
+#   docker run --rm <image> pnpm db:migrate
+# The default CMD only starts the server.
 CMD ["node", "dist/server/server.js"]

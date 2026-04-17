@@ -1,10 +1,20 @@
-import { db } from "./index";
+import postgres from "postgres";
+import { drizzle } from "drizzle-orm/postgres-js";
 import * as schema from "./schema";
 
+const DATABASE_URL = process.env.DATABASE_URL;
+
+if (!DATABASE_URL) {
+  throw new Error("DATABASE_URL environment variable is required");
+}
+
+const client = postgres(DATABASE_URL);
+const db = drizzle(client, { schema });
+
 // Clear existing data
-db.delete(schema.taskTags).run();
-db.delete(schema.tasks).run();
-db.delete(schema.tags).run();
+await db.delete(schema.taskTags);
+await db.delete(schema.tasks);
+await db.delete(schema.tags);
 
 // Seed sample tasks
 const formatDate = (d: Date) =>
@@ -130,34 +140,32 @@ const sampleTasks = [
   },
 ];
 
-db.insert(schema.tasks).values(sampleTasks).run();
+await db.insert(schema.tasks).values(sampleTasks);
 
 // Seed tags
-db.insert(schema.tags)
-  .values([
-    { id: "tag_001", name: "frontend", color: "#3b82f6", userId: "1" },
-    { id: "tag_002", name: "backend", color: "#22c55e", userId: "1" },
-    { id: "tag_003", name: "urgent", color: "#ef4444", userId: "1" },
-    { id: "tag_004", name: "review", color: "#8b5cf6", userId: "1" },
-  ])
-  .run();
+await db.insert(schema.tags).values([
+  { id: "tag_001", name: "frontend", color: "#3b82f6", userId: "1" },
+  { id: "tag_002", name: "backend", color: "#22c55e", userId: "1" },
+  { id: "tag_003", name: "urgent", color: "#ef4444", userId: "1" },
+  { id: "tag_004", name: "review", color: "#8b5cf6", userId: "1" },
+]);
 
 // Seed task-tag relationships
-db.insert(schema.taskTags)
-  .values([
-    { taskId: "tsk_001", tagId: "tag_002" },
-    { taskId: "tsk_002", tagId: "tag_002" },
-    { taskId: "tsk_002", tagId: "tag_003" },
-    { taskId: "tsk_003", tagId: "tag_001" },
-    { taskId: "tsk_005", tagId: "tag_001" },
-    { taskId: "tsk_005", tagId: "tag_004" },
-    { taskId: "tsk_006", tagId: "tag_001" },
-    { taskId: "tsk_006", tagId: "tag_003" },
-    { taskId: "tsk_008", tagId: "tag_001" },
-  ])
-  .run();
+await db.insert(schema.taskTags).values([
+  { taskId: "tsk_001", tagId: "tag_002" },
+  { taskId: "tsk_002", tagId: "tag_002" },
+  { taskId: "tsk_002", tagId: "tag_003" },
+  { taskId: "tsk_003", tagId: "tag_001" },
+  { taskId: "tsk_005", tagId: "tag_001" },
+  { taskId: "tsk_005", tagId: "tag_004" },
+  { taskId: "tsk_006", tagId: "tag_001" },
+  { taskId: "tsk_006", tagId: "tag_003" },
+  { taskId: "tsk_008", tagId: "tag_001" },
+]);
 
 console.info("Database seeded successfully.");
 console.info(`  - ${sampleTasks.length} tasks (including ${2} subtasks)`);
 console.info(`  - ${4} tags`);
 console.info(`  - ${9} task-tag relationships`);
+
+await client.end();

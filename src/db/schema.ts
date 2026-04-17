@@ -1,10 +1,10 @@
 import {
-  sqliteTable,
+  pgTable,
   text,
   integer,
   foreignKey,
   primaryKey,
-} from "drizzle-orm/sqlite-core";
+} from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
 // =====================
@@ -13,7 +13,7 @@ import { relations } from "drizzle-orm";
 
 // --- Tags ---
 
-export const tags = sqliteTable("tags", {
+export const tags = pgTable("tags", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   color: text("color"),
@@ -22,7 +22,7 @@ export const tags = sqliteTable("tags", {
 
 // --- Tasks ---
 
-export const tasks = sqliteTable(
+export const tasks = pgTable(
   "tasks",
   {
     id: text("id").primaryKey(),
@@ -45,7 +45,7 @@ export const tasks = sqliteTable(
 
 // --- Task Tags (junction) ---
 
-export const taskTags = sqliteTable(
+export const taskTags = pgTable(
   "task_tags",
   {
     taskId: text("task_id")

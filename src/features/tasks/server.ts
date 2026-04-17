@@ -24,10 +24,11 @@ const formatLocalDate = (d: Date) =>
  * Roll forward any incomplete tasks whose startDate is in the past to today.
  * Runs lazily before task fetches — no background process needed.
  */
-function rollForwardStaleTasks(userId: string) {
+async function rollForwardStaleTasks(userId: string) {
   const todayStr = formatLocalDate(new Date());
 
-  db.update(tasks)
+  await db
+    .update(tasks)
     .set({ startDate: todayStr })
     .where(
       and(
@@ -36,8 +37,7 @@ function rollForwardStaleTasks(userId: string) {
         isNotNull(tasks.startDate),
         lt(tasks.startDate, todayStr),
       ),
-    )
-    .run();
+    );
 }
 
 const taskColumns = {
@@ -60,7 +60,7 @@ const taskColumns = {
     ),
   tagNames: sql<
     string | null
-  >`(SELECT GROUP_CONCAT(t.name, ',') FROM task_tags tt JOIN tags t ON t.id = tt.tag_id WHERE tt.task_id = "tasks"."id")`.as(
+  >`(SELECT STRING_AGG(t.name, ',') FROM task_tags tt JOIN tags t ON t.id = tt.tag_id WHERE tt.task_id = "tasks"."id")`.as(
     "tag_names",
   ),
 };
@@ -78,7 +78,7 @@ export const fetchTasks = createServerFn({ method: "GET" })
 export const fetchInboxTasks = createServerFn({ method: "GET" })
   .inputValidator(userIdInput)
   .handler(async ({ data }) => {
-    rollForwardStaleTasks(data.userId);
+    await rollForwardStaleTasks(data.userId);
 
     const todayStr = formatLocalDate(new Date());
 
@@ -151,28 +151,25 @@ export const updateTask = createServerFn({ method: "POST" })
 
     const { id, userId, tagIds, ...updates } = data;
 
-    const rawDb = db.$client;
-
-    const result = rawDb.transaction(() => {
-      const taskResult = db
+    const result = await db.transaction(async (tx) => {
+      const [taskResult] = await tx
         .update(tasks)
         .set(updates)
         .where(and(eq(tasks.id, id), eq(tasks.userId, userId)))
-        .returning()
-        .get();
+        .returning();
 
       if (tagIds !== undefined) {
-        db.delete(taskTags).where(eq(taskTags.taskId, id)).run();
+        await tx.delete(taskTags).where(eq(taskTags.taskId, id));
 
         if (tagIds.length > 0) {
-          db.insert(taskTags)
-            .values(tagIds.map((tagId) => ({ taskId: id, tagId })))
-            .run();
+          await tx
+            .insert(taskTags)
+            .values(tagIds.map((tagId) => ({ taskId: id, tagId })));
         }
       }
 
       return taskResult;
-    })();
+    });
 
     return result;
   });
@@ -207,16 +204,16 @@ export const reorderTasks = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     console.info(`Reordering ${data.taskIds.length} tasks...`);
 
-    const rawDb = db.$client;
-    const updateStmt = rawDb.prepare(
-      "UPDATE tasks SET sort_order = ? WHERE id = ? AND user_id = ?",
+    const valuesList = sql.join(
+      data.taskIds.map((id, i) => sql`(${id}, ${i})`),
+      sql`, `,
     );
 
-    rawDb.transaction(() => {
-      for (let i = 0; i < data.taskIds.length; i++) {
-        updateStmt.run(i, data.taskIds[i], data.userId);
-      }
-    })();
+    await db.execute(
+      sql`UPDATE tasks SET sort_order = v.sort_order
+          FROM (VALUES ${valuesList}) AS v(id, sort_order)
+          WHERE tasks.id = v.id AND tasks.user_id = ${data.userId}`,
+    );
   });
 
 export const createTask = createServerFn({ method: "POST" })
@@ -238,11 +235,9 @@ export const createTask = createServerFn({ method: "POST" })
 
     const id = `tsk_${crypto.randomUUID()}`;
 
-    const rawDb = db.$client;
-
-    const result = rawDb.transaction(() => {
+    const result = await db.transaction(async (tx) => {
       // Get the max sortOrder so the new task goes to the bottom
-      const maxRow = db
+      const [maxRow] = await tx
         .select({ max: sql<number>`COALESCE(MAX(${tasks.sortOrder}), -1)` })
         .from(tasks)
         .where(
@@ -251,12 +246,11 @@ export const createTask = createServerFn({ method: "POST" })
             isNull(tasks.parentTaskId),
             isNull(tasks.dateCompleted),
           ),
-        )
-        .get();
+        );
 
       const nextSortOrder = (maxRow?.max ?? -1) + 1;
 
-      const taskResult = db
+      const [taskResult] = await tx
         .insert(tasks)
         .values({
           id,
@@ -269,17 +263,16 @@ export const createTask = createServerFn({ method: "POST" })
           userId: data.userId,
           sortOrder: nextSortOrder,
         })
-        .returning()
-        .get();
+        .returning();
 
       if (data.tagIds && data.tagIds.length > 0) {
-        db.insert(taskTags)
-          .values(data.tagIds.map((tagId) => ({ taskId: id, tagId })))
-          .run();
+        await tx
+          .insert(taskTags)
+          .values(data.tagIds.map((tagId) => ({ taskId: id, tagId })));
       }
 
       return taskResult;
-    })();
+    });
 
     return result;
   });
@@ -294,22 +287,20 @@ export const deleteTask = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     console.info(`Deleting task ${data.taskId}...`);
 
-    const rawDb = db.$client;
-
-    rawDb.transaction(() => {
-      db.delete(tasks)
+    await db.transaction(async (tx) => {
+      await tx
+        .delete(tasks)
         .where(
           and(
             eq(tasks.parentTaskId, data.taskId),
             eq(tasks.userId, data.userId),
           ),
-        )
-        .run();
+        );
 
-      db.delete(tasks)
-        .where(and(eq(tasks.id, data.taskId), eq(tasks.userId, data.userId)))
-        .run();
-    })();
+      await tx
+        .delete(tasks)
+        .where(and(eq(tasks.id, data.taskId), eq(tasks.userId, data.userId)));
+    });
   });
 
 export const fetchTaskWithRelations = createServerFn({ method: "GET" })
@@ -398,7 +389,7 @@ export const fetchTasksForDate = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     const todayStr = formatLocalDate(new Date());
     if (data.date === todayStr) {
-      rollForwardStaleTasks(data.userId);
+      await rollForwardStaleTasks(data.userId);
     }
 
     return db
@@ -414,7 +405,7 @@ export const fetchTasksForDate = createServerFn({ method: "GET" })
             // Completed tasks: only on the day they were completed
             and(
               isNotNull(tasks.dateCompleted),
-              eq(sql`date(${tasks.dateCompleted})`, data.date),
+              eq(sql`CAST(${tasks.dateCompleted} AS date)`, data.date),
             ),
           ),
         ),

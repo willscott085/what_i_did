@@ -29,5 +29,6 @@ export default defineConfig({
     command: "pnpm db:migrate && pnpm db:seed && pnpm dev",
     url: "http://localhost:55001",
     reuseExistingServer: !process.env.CI,
+    timeout: 120_000,
   },
 });

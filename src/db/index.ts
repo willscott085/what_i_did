@@ -1,12 +1,12 @@
-import Database from "better-sqlite3";
-import { drizzle } from "drizzle-orm/better-sqlite3";
-import { migrate } from "drizzle-orm/better-sqlite3/migrator";
+import postgres from "postgres";
+import { drizzle } from "drizzle-orm/postgres-js";
 import * as schema from "./schema";
 
-const sqlite = new Database("./data/whatidid.db");
-sqlite.pragma("journal_mode = WAL");
+const DATABASE_URL = process.env.DATABASE_URL;
 
-export const db = drizzle(sqlite, { schema });
+if (!DATABASE_URL) {
+  throw new Error("DATABASE_URL environment variable is required");
+}
 
-// Auto-apply migrations on startup (no-op if already up to date)
-migrate(db, { migrationsFolder: "./drizzle" });
+const client = postgres(DATABASE_URL);
+export const db = drizzle(client, { schema });

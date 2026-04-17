@@ -1,1 +1,0 @@
-ALTER TABLE `tasks` ADD `start_date` text;
