@@ -39,6 +39,7 @@ export const tasks = pgTable(
     foreignKey({
       columns: [table.parentTaskId],
       foreignColumns: [table.id],
+      onDelete: "no action",
     }),
   ],
 );
