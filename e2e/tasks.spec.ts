@@ -86,6 +86,7 @@ test.describe("Task Management", () => {
 
     // Navigate to the date where the task was created
     await page.goto("/day/2026-12-31");
+    await page.locator("[data-hydrated]").waitFor({ state: "visible" });
     await expect(page.getByRole("textbox", { name: taskName })).toBeVisible();
 
     // Cleanup
