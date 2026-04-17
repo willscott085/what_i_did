@@ -9,8 +9,6 @@ RUN npm install -g pnpm && pnpm install --frozen-lockfile
 FROM deps AS builder
 COPY . .
 RUN pnpm build
-# Bundle the migration runner to plain JS so it can run with just `node`
-RUN pnpm exec esbuild src/db/migrate.ts --bundle --platform=node --format=esm --outfile=dist/db/migrate.mjs --packages=external
 
 # -------- Production Runtime --------
 FROM node:22-alpine AS runtime
@@ -28,8 +26,9 @@ ENV NODE_ENV=production
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/package.json ./
 COPY --from=builder /app/pnpm-lock.yaml ./
-# Migration assets: SQL files + bundled runner
+# Migration assets: SQL files + source runner (executed via node --experimental-strip-types)
 COPY --from=builder /app/drizzle ./drizzle
+COPY --from=builder /app/src/db/migrate.ts ./src/db/migrate.ts
 RUN pnpm install --prod --frozen-lockfile
 
 USER nodejs
@@ -37,5 +36,5 @@ USER nodejs
 EXPOSE 55001
 
 # Migrations run as a separate one-off container:
-#   entrypoint: ["node"], command: ["dist/db/migrate.mjs"]
+#   entrypoint: ["node"], command: ["--experimental-strip-types", "src/db/migrate.ts"]
 CMD ["node", "dist/server/server.js"]
