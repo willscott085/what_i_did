@@ -1,5 +1,15 @@
-import { db } from "./index";
+import postgres from "postgres";
+import { drizzle } from "drizzle-orm/postgres-js";
 import * as schema from "./schema";
+
+const DATABASE_URL = process.env.DATABASE_URL;
+
+if (!DATABASE_URL) {
+  throw new Error("DATABASE_URL environment variable is required");
+}
+
+const client = postgres(DATABASE_URL);
+const db = drizzle(client, { schema });
 
 // Clear existing data
 await db.delete(schema.taskTags);
@@ -157,3 +167,5 @@ console.info("Database seeded successfully.");
 console.info(`  - ${sampleTasks.length} tasks (including ${2} subtasks)`);
 console.info(`  - ${4} tags`);
 console.info(`  - ${9} task-tag relationships`);
+
+await client.end();
