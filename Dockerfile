@@ -10,7 +10,7 @@ FROM deps AS builder
 COPY . .
 RUN pnpm build
 # Bundle the migration runner to plain JS so it can run with just `node`
-RUN npx esbuild src/db/migrate.ts --bundle --platform=node --format=esm --outfile=dist/db/migrate.mjs --packages=external
+RUN pnpm exec esbuild src/db/migrate.ts --bundle --platform=node --format=esm --outfile=dist/db/migrate.mjs --packages=external
 
 # -------- Production Runtime --------
 FROM node:22-alpine AS runtime
