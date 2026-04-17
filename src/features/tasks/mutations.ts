@@ -200,21 +200,38 @@ export const useDeleteTask = () => {
       await queryClient.cancelQueries({ queryKey: tasksQueryKeys.all });
 
       const inboxKey = fetchInboxTasksQueryOptions().queryKey;
-      const prev = queryClient.getQueryData<Task[]>(inboxKey);
+      const prevInbox = queryClient.getQueryData<Task[]>(inboxKey);
 
-      if (prev) {
+      if (prevInbox) {
         queryClient.setQueryData<Task[]>(
           inboxKey,
-          prev.filter((t) => t.id !== taskId),
+          prevInbox.filter((t) => t.id !== taskId),
         );
       }
 
-      return { prev, inboxKey };
+      // Also optimistically remove from any cached byDate queries
+      const prevByDate: { key: readonly unknown[]; data: Task[] }[] = [];
+      queryClient
+        .getQueriesData<Task[]>({ queryKey: ["tasks", "byDate"] })
+        .forEach(([key, data]) => {
+          if (data) {
+            prevByDate.push({ key, data });
+            queryClient.setQueryData<Task[]>(
+              key,
+              data.filter((t) => t.id !== taskId),
+            );
+          }
+        });
+
+      return { prevInbox, inboxKey, prevByDate };
     },
     onError: (_err, _vars, ctx) => {
-      if (ctx?.prev) {
-        queryClient.setQueryData(ctx.inboxKey, ctx.prev);
+      if (ctx?.prevInbox) {
+        queryClient.setQueryData(ctx.inboxKey, ctx.prevInbox);
       }
+      ctx?.prevByDate.forEach(({ key, data }) => {
+        queryClient.setQueryData(key, data);
+      });
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: tasksQueryKeys.all });
