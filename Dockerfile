@@ -9,6 +9,8 @@ RUN npm install -g pnpm && pnpm install --frozen-lockfile
 FROM deps AS builder
 COPY . .
 RUN pnpm build
+# Bundle the migration runner to plain JS so it can run with just `node`
+RUN npx esbuild src/db/migrate.ts --bundle --platform=node --format=esm --outfile=dist/db/migrate.mjs --packages=external
 
 # -------- Production Runtime --------
 FROM node:22-alpine AS runtime
@@ -18,24 +20,22 @@ WORKDIR /app
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S -u 1001 -G nodejs nodejs
 
-# Install runtime tools
-RUN npm install -g pnpm tsx
+RUN npm install -g pnpm
 
 ENV NODE_ENV=production
 
-# Copy production files + migration source
+# Copy production files
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/package.json ./
 COPY --from=builder /app/pnpm-lock.yaml ./
+# Migration assets: SQL files + bundled runner
 COPY --from=builder /app/drizzle ./drizzle
-COPY --from=builder /app/src/db ./src/db
-RUN npm install -g pnpm && pnpm install --prod --frozen-lockfile
+RUN pnpm install --prod --frozen-lockfile
 
 USER nodejs
 
 EXPOSE 55001
 
-# Run migrations as a separate step before deploying (e.g. via a Job or init container):
-#   docker run --rm <image> pnpm db:migrate
-# The default CMD only starts the server.
+# Migrations run as a separate one-off container:
+#   entrypoint: ["node"], command: ["dist/db/migrate.mjs"]
 CMD ["node", "dist/server/server.js"]
