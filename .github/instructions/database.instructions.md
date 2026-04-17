@@ -2,28 +2,34 @@
 applyTo: "src/db/**"
 ---
 
-# Database Instructions (Drizzle + SQLite)
+# Database Instructions (Drizzle + PostgreSQL)
 
 ## Schema Conventions (`src/db/schema.ts`)
 
-- Use `sqliteTable` from `drizzle-orm/sqlite-core`
+- Use `pgTable` from `drizzle-orm/pg-core`
 - All tables include a `userId` text column (multi-user ready, hardcode '1' for now)
 - Use `text` for IDs — generate with a prefix pattern (e.g., `tsk_`, `lst_`, `cat_`, `tag_`, `nte_`)
 - Use `text` for dates — store as ISO 8601 strings
 - Use `integer` for sort order fields
-- Use `text('json')` for structured data stored as JSON (e.g., recurrence rules)
+- Use `text` for structured data stored as JSON (e.g., recurrence rules)
 - Foreign keys: use `.references(() => otherTable.id)` with explicit `onDelete` behavior
 
 ## Client Singleton (`src/db/index.ts`)
 
 ```typescript
-import Database from "better-sqlite3";
-import { drizzle } from "drizzle-orm/better-sqlite3";
+import postgres from "postgres";
+import { drizzle } from "drizzle-orm/postgres-js";
 import * as schema from "./schema";
 
-const sqlite = new Database("./data/whatidid.db");
-export const db = drizzle(sqlite, { schema });
+const client = postgres(process.env.DATABASE_URL!);
+export const db = drizzle(client, { schema });
 ```
+
+## Environment
+
+- `DATABASE_URL` env var is required (e.g., `postgres://whatidid:whatidid@db:5432/whatidid`)
+- Dev: provided by the devcontainer's docker-compose Postgres service
+- Prod: set via deployment config
 
 ## Migrations
 

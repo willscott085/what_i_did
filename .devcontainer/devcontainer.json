@@ -3,7 +3,8 @@
   "image": "mcr.microsoft.com/playwright:v1.59.1-noble",
   "remoteUser": "pwuser",
   "remoteEnv": {
-    "PLAYWRIGHT_UI_HOST": "0.0.0.0"
+    "PLAYWRIGHT_UI_HOST": "0.0.0.0",
+    "DATABASE_URL": "postgres://whatidid:whatidid@db:5432/whatidid"
   },
   "features": {
     "ghcr.io/devcontainers/features/node:1": {
@@ -11,9 +12,12 @@
       "installYarnUsingApt": false
     }
   },
+  "service": "app",
+  "dockerComposeFile": "docker-compose.yml",
+  "workspaceFolder": "/workspaces/what_i_did",
   "postCreateCommand": "npm install -g pnpm && pnpm install",
-  "postAttachCommand": "pnpm start",
-  "forwardPorts": [55001],
+  "postAttachCommand": "pnpm db:migrate && pnpm start",
+  "forwardPorts": [55001, 5432],
   "customizations": {
     "vscode": {
       "extensions": [
@@ -25,7 +29,6 @@
         "GitHub.copilot-chat",
         "GitHub.vscode-github-actions",
         "eamodio.gitlens",
-        "qwtel.sqlite-viewer",
         "hbenl.vscode-mocha-test-adapter"
       ],
       "settings": {

@@ -1,0 +1,31 @@
+services:
+  app:
+    image: mcr.microsoft.com/playwright:v1.59.1-noble
+    volumes:
+      - ..:/workspaces/what_i_did:cached
+    command: sleep infinity
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://whatidid:whatidid@db:5432/whatidid
+
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: whatidid
+      POSTGRES_PASSWORD: whatidid
+      POSTGRES_DB: whatidid
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U whatidid"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "5432:5432"
+
+volumes:
+  pgdata:
