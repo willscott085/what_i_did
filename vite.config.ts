@@ -5,6 +5,7 @@ import { configDefaults, defineConfig } from "vitest/config";
 import tsConfigPaths from "vite-tsconfig-paths";
 import viteReact from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
+import { nitro } from "nitro/vite";
 
 export default defineConfig({
   server: {
@@ -16,6 +17,7 @@ export default defineConfig({
       projects: ["./tsconfig.json"],
     }),
     tanstackStart(),
+    nitro(),
     viteReact(),
     tailwindcss(),
   ],
