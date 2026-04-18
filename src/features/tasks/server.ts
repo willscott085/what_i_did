@@ -51,11 +51,11 @@ const taskColumns = {
   parentTaskId: tasks.parentTaskId,
   sortOrder: tasks.sortOrder,
   subtaskCount:
-    sql<number>`(SELECT COUNT(*) FROM tasks st WHERE st.parent_task_id = ${tasks.id})`.as(
+    sql<number>`(SELECT COUNT(*) FROM tasks st WHERE st.parent_task_id = "tasks"."id")`.as(
       "subtask_count",
     ),
   completedSubtaskCount:
-    sql<number>`(SELECT COUNT(*) FROM tasks st WHERE st.parent_task_id = ${tasks.id} AND st.date_completed IS NOT NULL)`.as(
+    sql<number>`(SELECT COUNT(*) FROM tasks st WHERE st.parent_task_id = "tasks"."id" AND st.date_completed IS NOT NULL)`.as(
       "completed_subtask_count",
     ),
   tags: sql<
