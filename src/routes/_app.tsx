@@ -17,8 +17,8 @@ export const Route = createFileRoute("/_app")({
 });
 
 const navItems = [
-  { to: "/backlog", label: "Backlog" },
   { to: "/tags", label: "Tags" },
+  { to: "/backlog", label: "Backlog" },
 ] as const;
 
 function AppLayout() {
