@@ -112,7 +112,7 @@ export const useUpdateTaskMutationOptions = (
 
   return mutationOptions({
     mutationFn: (
-      task: Pick<Task, "id" | "title" | "dateCompleted" | "userId">,
+      task: Pick<Task, "id" | "title" | "notes" | "dateCompleted" | "userId">,
     ) => {
       return updateTask({ data: task });
     },

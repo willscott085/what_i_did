@@ -9,7 +9,7 @@ import {
   PencilIcon,
   Trash2Icon,
 } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { Markdown } from "~/components/Markdown";
 import { SubtaskList } from "~/components/SubtaskList";
@@ -31,7 +31,10 @@ import { fetchSubtasksQueryOptions } from "~/features/tasks/queries";
 import { useIsTruncated } from "~/hooks/useIsTruncated";
 import { Task } from "~/features/tasks/types";
 
-type TaskUpdate = Pick<Task, "id" | "title" | "dateCompleted" | "userId">;
+type TaskUpdate = Pick<
+  Task,
+  "id" | "title" | "notes" | "dateCompleted" | "userId"
+>;
 
 interface TaskItemProps {
   task: Task;
@@ -55,6 +58,8 @@ export function TaskItem({
   dragListeners = {},
 }: TaskItemProps) {
   const [expanded, setExpanded] = useState(false);
+  const [editingNotes, setEditingNotes] = useState(false);
+  const notesRef = useRef<HTMLTextAreaElement>(null);
 
   const taskTags = task.tags ?? [];
 
@@ -77,12 +82,14 @@ export function TaskItem({
     defaultValues: {
       completed: !!task.dateCompleted,
       title: task.title,
+      notes: task.notes ?? "",
     },
     onSubmit: async ({ value }) => {
       const dateCompleted = value.completed ? new Date().toISOString() : null;
       onUpdate({
         id: task.id,
         title: value.title,
+        notes: value.notes || null,
         dateCompleted,
         userId: task.userId,
       });
@@ -208,9 +215,87 @@ export function TaskItem({
                 </div>
 
                 {/* Notes */}
-                {task.notes && !task.dateCompleted && (
+                {!task.dateCompleted && (
+                  <form.Field
+                    name="notes"
+                    listeners={{
+                      onBlur: ({ value }) => {
+                        const normalised = value || null;
+                        if (normalised !== task.notes) form.handleSubmit();
+                        setEditingNotes(false);
+                      },
+                    }}
+                    children={(notesField) => (
+                      <div className="relative">
+                        {/* Edit textarea — always mounted, hidden when not editing */}
+                        <textarea
+                          ref={notesRef}
+                          value={notesField.state.value}
+                          onChange={(e) =>
+                            notesField.handleChange(e.target.value)
+                          }
+                          onBlur={notesField.handleBlur}
+                          onKeyDown={(e) => {
+                            if (e.key === "Escape") {
+                              e.currentTarget.blur();
+                            }
+                          }}
+                          rows={1}
+                          placeholder="Add notes…"
+                          className={clsx(
+                            "text-muted-foreground field-sizing-content min-h-0 w-full resize-none border-0 bg-transparent p-0 text-xs leading-normal shadow-none outline-none focus-visible:ring-0",
+                            !editingNotes && "invisible absolute inset-0",
+                          )}
+                        />
+
+                        {/* Display layer — visible when not editing */}
+                        {!editingNotes &&
+                          (notesField.state.value ? (
+                            <div
+                              role="button"
+                              tabIndex={0}
+                              onClick={() => {
+                                setEditingNotes(true);
+                                requestAnimationFrame(() =>
+                                  notesRef.current?.focus(),
+                                );
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === " ") {
+                                  e.preventDefault();
+                                  setEditingNotes(true);
+                                  requestAnimationFrame(() =>
+                                    notesRef.current?.focus(),
+                                  );
+                                }
+                              }}
+                              className="text-muted-foreground line-clamp-3 cursor-text text-xs leading-normal break-all"
+                            >
+                              <Markdown className="[&_p]:m-0">
+                                {notesField.state.value}
+                              </Markdown>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingNotes(true);
+                                requestAnimationFrame(() =>
+                                  notesRef.current?.focus(),
+                                );
+                              }}
+                              className="text-muted-foreground/50 hover:text-muted-foreground cursor-text text-xs opacity-0 group-hover/task:opacity-100"
+                            >
+                              Add notes…
+                            </button>
+                          ))}
+                      </div>
+                    )}
+                  />
+                )}
+                {task.notes && task.dateCompleted && (
                   <div className="text-muted-foreground line-clamp-3 text-xs leading-normal break-all">
-                    <Markdown>{task.notes}</Markdown>
+                    <Markdown className="[&_p]:m-0">{task.notes}</Markdown>
                   </div>
                 )}
 

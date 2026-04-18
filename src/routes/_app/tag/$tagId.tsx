@@ -188,7 +188,7 @@ function TagView() {
                 }
               }}
               placeholder="Add a description…"
-              className="text-muted-foreground field-sizing-content w-full resize-none border-none bg-transparent text-sm whitespace-pre-wrap outline-none"
+              className="text-muted-foreground field-sizing-content w-full resize-none border-none bg-transparent p-0 text-sm leading-normal whitespace-pre-wrap outline-none"
             />
           ) : (
             <div
