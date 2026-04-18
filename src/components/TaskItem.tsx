@@ -15,6 +15,7 @@ import { Button } from "~/components/ui/button";
 import { Checkbox } from "~/components/ui/checkbox";
 import { FieldError } from "~/components/ui/field";
 import { Input } from "~/components/ui/input";
+import { Tooltip, TooltipContent, TooltipTrigger } from "~/components/ui/tooltip";
 import {
   useCompleteTask,
   useCreateTask,
@@ -156,14 +157,16 @@ export function TaskItem({
               <div className="relative flex min-w-0 grow flex-col">
                 <div className="flex items-center gap-2">
                   {tagNames.length > 0 && (
-                    <div className="flex shrink-0 items-center gap-1 overflow-x-auto">
+                    <div className="flex shrink-0 items-center gap-1 overflow-hidden">
                       {tagNames.map((name) => (
-                        <span
-                          key={name}
-                          className="text-muted-foreground bg-muted rounded px-1.5 py-0.5 text-[10px] leading-tight whitespace-nowrap"
-                        >
-                          {name}
-                        </span>
+                        <Tooltip key={name}>
+                          <TooltipTrigger asChild>
+                            <span className="text-muted-foreground bg-muted max-w-24 truncate rounded px-1.5 py-0.5 text-[10px] leading-tight">
+                              {name}
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>{name}</TooltipContent>
+                        </Tooltip>
                       ))}
                     </div>
                   )}

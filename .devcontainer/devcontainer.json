@@ -28,7 +28,8 @@
         "GitHub.copilot-chat",
         "GitHub.vscode-github-actions",
         "eamodio.gitlens",
-        "hbenl.vscode-mocha-test-adapter"
+        "hbenl.vscode-mocha-test-adapter",
+        "ms-ossdata.vscode-pgsql"
       ],
       "settings": {
         "editor.defaultFormatter": "esbenp.prettier-vscode",
