@@ -1,5 +1,6 @@
 import { useForm } from "@tanstack/react-form";
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 import { clsx } from "clsx";
 import {
   ChevronDownIcon,
@@ -10,6 +11,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { Markdown } from "~/components/Markdown";
 import { SubtaskList } from "~/components/SubtaskList";
 import { Button } from "~/components/ui/button";
 import { Checkbox } from "~/components/ui/checkbox";
@@ -26,6 +28,7 @@ import {
   useDeleteTask,
 } from "~/features/tasks/mutations";
 import { fetchSubtasksQueryOptions } from "~/features/tasks/queries";
+import { useIsTruncated } from "~/hooks/useIsTruncated";
 import { Task } from "~/features/tasks/types";
 
 type TaskUpdate = Pick<Task, "id" | "title" | "dateCompleted" | "userId">;
@@ -36,6 +39,7 @@ interface TaskItemProps {
   onUpdate: (task: TaskUpdate) => void;
   onEdit?: (task: Task) => void;
   onDelete?: (taskId: string) => void;
+  hideTags?: boolean;
   dragAttributes?: React.HTMLAttributes<HTMLButtonElement>;
   dragListeners?: React.HTMLAttributes<HTMLButtonElement>;
 }
@@ -46,12 +50,13 @@ export function TaskItem({
   onUpdate,
   onEdit,
   onDelete,
+  hideTags,
   dragAttributes = {},
   dragListeners = {},
 }: TaskItemProps) {
   const [expanded, setExpanded] = useState(false);
 
-  const tagNames = task.tagNames ? task.tagNames.split(",") : [];
+  const taskTags = task.tags ?? [];
 
   const { data: subtasks = [] } = useQuery({
     ...fetchSubtasksQueryOptions(task.id),
@@ -160,17 +165,10 @@ export function TaskItem({
             children={(field) => (
               <div className="relative flex min-w-0 grow flex-col">
                 <div className="flex items-center gap-2">
-                  {tagNames.length > 0 && (
+                  {!hideTags && taskTags.length > 0 && (
                     <div className="flex shrink-0 items-center gap-1 overflow-hidden">
-                      {tagNames.map((name) => (
-                        <Tooltip key={name}>
-                          <TooltipTrigger asChild>
-                            <span className="text-muted-foreground bg-muted max-w-24 truncate rounded px-1.5 py-0.5 text-[10px] leading-tight">
-                              {name}
-                            </span>
-                          </TooltipTrigger>
-                          <TooltipContent>{name}</TooltipContent>
-                        </Tooltip>
+                      {taskTags.map((tag) => (
+                        <TruncatedTagBadge key={tag.id} tag={tag} />
                       ))}
                     </div>
                   )}
@@ -211,9 +209,9 @@ export function TaskItem({
 
                 {/* Notes */}
                 {task.notes && !task.dateCompleted && (
-                  <p className="text-muted-foreground line-clamp-3 text-xs leading-normal break-all">
-                    <Linkify text={task.notes} />
-                  </p>
+                  <div className="text-muted-foreground line-clamp-3 text-xs leading-normal break-all">
+                    <Markdown>{task.notes}</Markdown>
+                  </div>
                 )}
 
                 {/* Expanded subtasks area */}
@@ -296,36 +294,28 @@ export function TaskItem({
   );
 }
 
-const URL_REGEX = /https?:\/\/[^\s]+/g;
+function TruncatedTagBadge({ tag }: { tag: { id: string; name: string } }) {
+  const [ref, isTruncated] = useIsTruncated<HTMLSpanElement>();
 
-function Linkify({ text }: { text: string }) {
-  const parts: React.ReactNode[] = [];
-  let lastIndex = 0;
-  let match: RegExpExecArray | null;
+  const link = (
+    <Link
+      to="/tag/$tagId"
+      params={{ tagId: tag.id }}
+      className="bg-muted hover:bg-muted/80 inline-flex max-w-24 rounded px-1.5 py-0.5 text-[10px] leading-tight"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <span ref={ref} className="text-muted-foreground truncate">
+        {tag.name}
+      </span>
+    </Link>
+  );
 
-  while ((match = URL_REGEX.exec(text)) !== null) {
-    if (match.index > lastIndex) {
-      parts.push(text.slice(lastIndex, match.index));
-    }
-    const url = match[0];
-    parts.push(
-      <a
-        key={match.index}
-        href={url}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="text-primary hover:underline"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {url}
-      </a>,
-    );
-    lastIndex = match.index + url.length;
-  }
+  if (!isTruncated) return link;
 
-  if (lastIndex < text.length) {
-    parts.push(text.slice(lastIndex));
-  }
-
-  return <>{parts}</>;
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{link}</TooltipTrigger>
+      <TooltipContent>{tag.name}</TooltipContent>
+    </Tooltip>
+  );
 }

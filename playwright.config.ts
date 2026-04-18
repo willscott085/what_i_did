@@ -13,20 +13,37 @@ export default defineConfig({
   },
   projects: [
     {
+      name: "seed-chromium",
+      testMatch: /global-setup\.ts/,
+    },
+    {
       name: "chromium",
       use: { ...devices["Desktop Chrome"] },
+      dependencies: ["seed-chromium"],
+    },
+    {
+      name: "seed-firefox",
+      testMatch: /global-setup\.ts/,
+      dependencies: ["chromium"],
     },
     {
       name: "firefox",
       use: { ...devices["Desktop Firefox"] },
+      dependencies: ["seed-firefox"],
+    },
+    {
+      name: "seed-webkit",
+      testMatch: /global-setup\.ts/,
+      dependencies: ["firefox"],
     },
     {
       name: "webkit",
       use: { ...devices["Desktop Safari"] },
+      dependencies: ["seed-webkit"],
     },
   ],
   webServer: {
-    command: "pnpm db:migrate && pnpm db:seed && pnpm dev",
+    command: "pnpm db:migrate && pnpm dev",
     url: "http://localhost:55001",
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,

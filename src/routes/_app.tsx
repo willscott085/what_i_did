@@ -10,13 +10,16 @@ import { useMemo, useState, useSyncExternalStore } from "react";
 import { AppLayoutProvider } from "~/components/AppLayoutContext";
 import { MiniCalendar } from "~/components/MiniCalendar";
 import { TaskDialog } from "~/components/TaskDialog";
-import { TaskWithRelations } from "~/features/tasks/types";
+import { Task } from "~/features/tasks/types";
 
 export const Route = createFileRoute("/_app")({
   component: AppLayout,
 });
 
-const navItems = [{ to: "/backlog", label: "Backlog" }] as const;
+const navItems = [
+  { to: "/tags", label: "Tags" },
+  { to: "/backlog", label: "Backlog" },
+] as const;
 
 function AppLayout() {
   const navigate = useNavigate();
@@ -43,13 +46,16 @@ function AppLayout() {
     format(new Date(), "yyyy-MM-dd"),
   );
 
-  // ─── Dialog state ────────────────────────────────────────────────
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingTask, setEditingTask] = useState<TaskWithRelations | null>(
-    null,
+  // ─── Default tag IDs (child routes set this) ─────────────────────
+  const [defaultTagIds, setDefaultTagIds] = useState<string[] | undefined>(
+    undefined,
   );
 
-  function handleOpenDialog(task?: TaskWithRelations | null) {
+  // ─── Dialog state ────────────────────────────────────────────────
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+
+  function handleOpenDialog(task?: Task | null) {
     setEditingTask(task ?? null);
     setDialogOpen(true);
   }
@@ -65,9 +71,11 @@ function AppLayout() {
       setDragOverDate,
       defaultStartDate,
       setDefaultStartDate,
+      defaultTagIds,
+      setDefaultTagIds,
       handleOpenDialog,
     }),
-    [dragOverDate, defaultStartDate],
+    [dragOverDate, defaultStartDate, defaultTagIds],
   );
 
   return (
@@ -111,6 +119,7 @@ function AppLayout() {
           onOpenChange={handleDialogClose}
           task={editingTask}
           defaultStartDate={defaultStartDate}
+          defaultTagIds={defaultTagIds}
         />
       </div>
     </AppLayoutProvider>
