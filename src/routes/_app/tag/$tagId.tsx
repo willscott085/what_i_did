@@ -1,16 +1,20 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
+import { PlusIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useAppLayout } from "~/components/AppLayoutContext";
+import { DraggableTaskList } from "~/components/DraggableTaskList";
 import { Markdown } from "~/components/Markdown";
 import { TaskItem } from "~/components/TaskItem";
+import { Button } from "~/components/ui/button";
 import { useUpdateTag } from "~/features/tags/mutations";
 import {
   useDeleteTask,
+  useUpdateFullTask,
   useUpdateTaskMutationOptions,
 } from "~/features/tasks/mutations";
 import { fetchTasksByTagQueryOptions } from "~/features/tasks/queries";
-import { Task, TaskWithRelations } from "~/features/tasks/types";
+import { Task } from "~/features/tasks/types";
 
 export const Route = createFileRoute("/_app/tag/$tagId")({
   head: () => ({
@@ -27,11 +31,18 @@ export const Route = createFileRoute("/_app/tag/$tagId")({
 
 function TagView() {
   const { tagId } = Route.useParams();
-  const { setDefaultStartDate, handleOpenDialog } = useAppLayout();
+  const {
+    setDragOverDate,
+    setDefaultStartDate,
+    setDefaultTagIds,
+    handleOpenDialog,
+  } = useAppLayout();
 
   useEffect(() => {
     setDefaultStartDate(undefined);
-  }, [setDefaultStartDate]);
+    setDefaultTagIds([tagId]);
+    return () => setDefaultTagIds(undefined);
+  }, [setDefaultStartDate, setDefaultTagIds, tagId]);
 
   const { data } = useQuery(fetchTasksByTagQueryOptions(tagId));
   const tagName = data?.tag?.name ?? "Tag";
@@ -42,6 +53,7 @@ function TagView() {
     useUpdateTaskMutationOptions({ onError: () => {} }),
   );
   const { mutate: deleteTaskMutation } = useDeleteTask();
+  const { mutate: updateFullTask } = useUpdateFullTask();
   const { mutate: updateTagMutation } = useUpdateTag();
 
   // ─── Inline title editing ─────────────────────────────────────────
@@ -95,8 +107,12 @@ function TagView() {
     }
   }
 
+  function handleDropOnDate(taskId: string, date: string) {
+    updateFullTask({ id: taskId, startDate: date });
+  }
+
   function handleEdit(task: Task) {
-    handleOpenDialog(task as TaskWithRelations);
+    handleOpenDialog(task);
   }
 
   function handleDelete(taskId: string) {
@@ -106,9 +122,9 @@ function TagView() {
   return (
     <div className="flex min-h-full flex-col justify-center">
       <section>
-        <header className="pl-8">
+        <header className="flex items-center gap-2 pl-8">
           {editingTitle ? (
-            <div>
+            <div className="flex-1">
               <input
                 ref={titleInputRef}
                 value={titleDraft}
@@ -133,13 +149,29 @@ function TagView() {
             </div>
           ) : (
             <h2
+              role="button"
+              tabIndex={0}
               className="cursor-pointer text-lg font-medium"
               onClick={() => setEditingTitle(true)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  setEditingTitle(true);
+                }
+              }}
               title="Click to edit"
             >
               {titleDraft}
             </h2>
           )}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => handleOpenDialog(null)}
+            aria-label="Add task"
+          >
+            <PlusIcon className="size-5" />
+          </Button>
         </header>
 
         <div className="mt-1 pl-8">
@@ -159,9 +191,17 @@ function TagView() {
               className="text-muted-foreground field-sizing-content w-full resize-none border-none bg-transparent text-sm whitespace-pre-wrap outline-none"
             />
           ) : (
-            <p
+            <div
+              role="button"
+              tabIndex={0}
               className="text-muted-foreground cursor-pointer text-sm whitespace-pre-wrap"
               onClick={() => setEditingDescription(true)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  setEditingDescription(true);
+                }
+              }}
               title="Click to edit"
             >
               {descriptionDraft ? (
@@ -171,24 +211,30 @@ function TagView() {
               ) : (
                 <span className="italic opacity-50">Add a description…</span>
               )}
-            </p>
+            </div>
           )}
         </div>
 
         <div>
-          <ul>
-            {tasks.map((task) => (
+          <DraggableTaskList
+            tasks={tasks}
+            onDropOnDate={handleDropOnDate}
+            onDragOverDate={setDragOverDate}
+          >
+            {(task, isDragging, dragAttributes, dragListeners) => (
               <TaskItem
                 key={task.id}
                 task={task}
                 onUpdate={updateTask}
                 onEdit={handleEdit}
                 onDelete={handleDelete}
-                isDragging={false}
+                isDragging={isDragging}
+                dragAttributes={dragAttributes}
+                dragListeners={dragListeners}
                 hideTags
               />
-            ))}
-          </ul>
+            )}
+          </DraggableTaskList>
           {tasks.length === 0 && (
             <p className="text-muted-foreground py-8 text-center text-sm">
               No tasks with this tag.

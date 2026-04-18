@@ -12,6 +12,7 @@ import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Textarea } from "~/components/ui/textarea";
 import { TagMultiSelect } from "~/components/TagMultiSelect";
+import { Tag } from "~/features/tags/types";
 import { SubtaskList } from "~/components/SubtaskList";
 import {
   useCreateTask,
@@ -25,9 +26,10 @@ import { Task, TaskWithRelations } from "~/features/tasks/types";
 interface TaskDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  task?: TaskWithRelations | null;
+  task?: Task | null;
   defaultStartDate?: string;
   defaultParentTaskId?: string;
+  defaultTagIds?: string[];
 }
 
 export function TaskDialog({
@@ -36,6 +38,7 @@ export function TaskDialog({
   task,
   defaultStartDate,
   defaultParentTaskId,
+  defaultTagIds,
 }: TaskDialogProps) {
   const {
     data: taskWithRelations,
@@ -46,8 +49,9 @@ export function TaskDialog({
     enabled: open && !!task?.id,
   });
 
-  const resolvedTask = task?.id
-    ? (taskWithRelations ?? (isError ? task : null))
+  const resolvedTask: TaskWithRelations | null = task?.id
+    ? (taskWithRelations ??
+      (isError ? { ...task, subtasks: [], tags: task.tags as Tag[] } : null))
     : null;
   const formKey = `${open}-${task?.id ?? "new"}-${resolvedTask?.id ?? "pending"}`;
 
@@ -64,6 +68,7 @@ export function TaskDialog({
             task={resolvedTask}
             defaultStartDate={defaultStartDate}
             defaultParentTaskId={defaultParentTaskId}
+            defaultTagIds={defaultTagIds}
             onOpenChange={onOpenChange}
           />
         )}
@@ -76,11 +81,13 @@ function TaskDialogForm({
   task,
   defaultStartDate,
   defaultParentTaskId,
+  defaultTagIds,
   onOpenChange,
 }: {
   task?: TaskWithRelations | null;
   defaultStartDate?: string;
   defaultParentTaskId?: string;
+  defaultTagIds?: string[];
   onOpenChange: (open: boolean) => void;
 }) {
   const isEditing = !!task;
@@ -91,7 +98,7 @@ function TaskDialogForm({
     task?.startDate ?? defaultStartDate ?? "",
   );
   const [tagIds, setTagIds] = useState<string[]>(
-    task?.tags?.map((t) => t.id) ?? [],
+    task?.tags?.map((t) => t.id) ?? defaultTagIds ?? [],
   );
   const [subtasks, setSubtasks] = useState<Task[]>(task?.subtasks ?? []);
 

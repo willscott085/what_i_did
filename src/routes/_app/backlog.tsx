@@ -14,7 +14,7 @@ import {
   useUpdateTaskMutationOptions,
 } from "~/features/tasks/mutations";
 import { fetchBacklogTasksQueryOptions } from "~/features/tasks/queries";
-import { Task, TaskWithRelations } from "~/features/tasks/types";
+import { Task } from "~/features/tasks/types";
 
 export const Route = createFileRoute("/_app/backlog")({
   head: () => ({
@@ -52,7 +52,7 @@ function Backlog() {
   const { mutate: deleteTaskMutation } = useDeleteTask();
 
   function handleEdit(task: Task) {
-    handleOpenDialog(task as TaskWithRelations);
+    handleOpenDialog(task);
   }
 
   function handleDelete(taskId: string) {

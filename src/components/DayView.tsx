@@ -12,11 +12,11 @@ import {
   useUpdateTaskMutationOptions,
 } from "~/features/tasks/mutations";
 import { fetchTasksForDateQueryOptions } from "~/features/tasks/queries";
-import { Task, TaskWithRelations } from "~/features/tasks/types";
+import { Task } from "~/features/tasks/types";
 
 interface DayViewProps {
   selectedDate: Date;
-  onOpenDialog: (task?: TaskWithRelations | null) => void;
+  onOpenDialog: (task?: Task | null) => void;
   onDragActiveChange?: (taskId: string | null) => void;
   onDragOverDate?: (date: string | null) => void;
 }
@@ -45,7 +45,7 @@ export function DayView({
   const { mutate: deleteTaskMutation } = useDeleteTask();
 
   function handleEdit(task: Task) {
-    onOpenDialog(task as TaskWithRelations);
+    onOpenDialog(task);
   }
 
   function handleDelete(taskId: string) {

@@ -1,12 +1,14 @@
 import { createContext, useContext } from "react";
-import { TaskWithRelations } from "~/features/tasks/types";
+import { Task } from "~/features/tasks/types";
 
 interface AppLayoutContextValue {
   dragOverDate: string | null;
   setDragOverDate: (date: string | null) => void;
   defaultStartDate: string | undefined;
   setDefaultStartDate: (date: string | undefined) => void;
-  handleOpenDialog: (task?: TaskWithRelations | null) => void;
+  defaultTagIds: string[] | undefined;
+  setDefaultTagIds: (tagIds: string[] | undefined) => void;
+  handleOpenDialog: (task?: Task | null) => void;
 }
 
 const AppLayoutContext = createContext<AppLayoutContextValue | null>(null);

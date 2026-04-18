@@ -34,6 +34,7 @@ function Tags() {
         <div className="relative mt-4 pl-8">
           <SearchIcon className="text-muted-foreground absolute top-1/2 left-10 size-4 -translate-y-1/2" />
           <Input
+            aria-label="Search tags"
             placeholder="Search tags…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
