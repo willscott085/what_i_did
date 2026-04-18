@@ -12,8 +12,7 @@ export type Task = {
   sortOrder: number;
   subtaskCount: number;
   completedSubtaskCount: number;
-  tagNames: string | null;
-  tagIds: string | null;
+  tags: { id: string; name: string }[];
 };
 
 export type TaskWithRelations = Task & {

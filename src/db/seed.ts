@@ -144,10 +144,42 @@ await db.insert(schema.tasks).values(sampleTasks);
 
 // Seed tags
 await db.insert(schema.tags).values([
-  { id: "tag_001", name: "frontend", color: "#3b82f6", userId: "1" },
-  { id: "tag_002", name: "backend", color: "#22c55e", userId: "1" },
-  { id: "tag_003", name: "urgent", color: "#ef4444", userId: "1" },
-  { id: "tag_004", name: "review", color: "#8b5cf6", userId: "1" },
+  {
+    id: "tag_001",
+    name: "frontend",
+    description: "UI and client-side work",
+    color: "#3b82f6",
+    userId: "1",
+    dateCreated: "2025-09-01T10:00:00.000Z",
+    updatedAt: "2025-09-01T10:00:00.000Z",
+  },
+  {
+    id: "tag_002",
+    name: "backend",
+    description: "Server and API work",
+    color: "#22c55e",
+    userId: "1",
+    dateCreated: "2025-09-02T10:00:00.000Z",
+    updatedAt: "2025-09-02T10:00:00.000Z",
+  },
+  {
+    id: "tag_003",
+    name: "urgent",
+    description: null,
+    color: "#ef4444",
+    userId: "1",
+    dateCreated: "2025-09-03T10:00:00.000Z",
+    updatedAt: "2025-09-03T10:00:00.000Z",
+  },
+  {
+    id: "tag_004",
+    name: "review",
+    description: "Needs code review",
+    color: "#8b5cf6",
+    userId: "1",
+    dateCreated: "2025-09-04T10:00:00.000Z",
+    updatedAt: "2025-09-04T10:00:00.000Z",
+  },
 ]);
 
 // Seed task-tag relationships

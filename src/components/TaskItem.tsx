@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { Markdown } from "~/components/Markdown";
 import { SubtaskList } from "~/components/SubtaskList";
 import { Button } from "~/components/ui/button";
 import { Checkbox } from "~/components/ui/checkbox";
@@ -54,8 +55,7 @@ export function TaskItem({
 }: TaskItemProps) {
   const [expanded, setExpanded] = useState(false);
 
-  const tagNames = task.tagNames ? task.tagNames.split(",") : [];
-  const tagIds = task.tagIds ? task.tagIds.split(",") : [];
+  const taskTags = task.tags ?? [];
 
   const { data: subtasks = [] } = useQuery({
     ...fetchSubtasksQueryOptions(task.id),
@@ -164,21 +164,21 @@ export function TaskItem({
             children={(field) => (
               <div className="relative flex min-w-0 grow flex-col">
                 <div className="flex items-center gap-2">
-                  {!hideTags && tagNames.length > 0 && (
+                  {!hideTags && taskTags.length > 0 && (
                     <div className="flex shrink-0 items-center gap-1 overflow-hidden">
-                      {tagNames.map((name, i) => (
-                        <Tooltip key={name}>
+                      {taskTags.map((tag) => (
+                        <Tooltip key={tag.id}>
                           <TooltipTrigger asChild>
                             <Link
                               to="/tag/$tagId"
-                              params={{ tagId: tagIds[i] ?? "" }}
+                              params={{ tagId: tag.id }}
                               className="text-muted-foreground bg-muted hover:bg-muted/80 max-w-24 truncate rounded px-1.5 py-0.5 text-[10px] leading-tight"
                               onClick={(e) => e.stopPropagation()}
                             >
-                              {name}
+                              {tag.name}
                             </Link>
                           </TooltipTrigger>
-                          <TooltipContent>{name}</TooltipContent>
+                          <TooltipContent>{tag.name}</TooltipContent>
                         </Tooltip>
                       ))}
                     </div>
@@ -220,9 +220,9 @@ export function TaskItem({
 
                 {/* Notes */}
                 {task.notes && !task.dateCompleted && (
-                  <p className="text-muted-foreground line-clamp-3 text-xs leading-normal break-all">
-                    <Linkify text={task.notes} />
-                  </p>
+                  <div className="text-muted-foreground line-clamp-3 text-xs leading-normal break-all">
+                    <Markdown>{task.notes}</Markdown>
+                  </div>
                 )}
 
                 {/* Expanded subtasks area */}
@@ -303,38 +303,4 @@ export function TaskItem({
       </div>
     </div>
   );
-}
-
-const URL_REGEX = /https?:\/\/[^\s]+/g;
-
-function Linkify({ text }: { text: string }) {
-  const parts: React.ReactNode[] = [];
-  let lastIndex = 0;
-  let match: RegExpExecArray | null;
-
-  while ((match = URL_REGEX.exec(text)) !== null) {
-    if (match.index > lastIndex) {
-      parts.push(text.slice(lastIndex, match.index));
-    }
-    const url = match[0];
-    parts.push(
-      <a
-        key={match.index}
-        href={url}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="text-primary hover:underline"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {url}
-      </a>,
-    );
-    lastIndex = match.index + url.length;
-  }
-
-  if (lastIndex < text.length) {
-    parts.push(text.slice(lastIndex));
-  }
-
-  return <>{parts}</>;
 }

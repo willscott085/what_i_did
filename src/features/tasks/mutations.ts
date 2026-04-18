@@ -178,9 +178,7 @@ export const useUpdateFullTask = () => {
               ? {
                   ...t,
                   ...input,
-                  tagIds: Array.isArray(input.tagIds)
-                    ? input.tagIds.join(",")
-                    : (t.tagIds ?? null),
+                  tags: t.tags,
                 }
               : t,
           ),

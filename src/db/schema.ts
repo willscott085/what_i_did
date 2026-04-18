@@ -16,8 +16,11 @@ import { relations } from "drizzle-orm";
 export const tags = pgTable("tags", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
+  description: text("description"),
   color: text("color"),
   userId: text("user_id").notNull(),
+  dateCreated: text("date_created").notNull(),
+  updatedAt: text("updated_at").notNull(),
 });
 
 // --- Tasks ---

@@ -58,15 +58,10 @@ const taskColumns = {
     sql<number>`(SELECT COUNT(*) FROM tasks st WHERE st.parent_task_id = ${tasks.id} AND st.date_completed IS NOT NULL)`.as(
       "completed_subtask_count",
     ),
-  tagNames: sql<
-    string | null
-  >`(SELECT STRING_AGG(t.name, ',') FROM task_tags tt JOIN tags t ON t.id = tt.tag_id WHERE tt.task_id = "tasks"."id")`.as(
-    "tag_names",
-  ),
-  tagIds: sql<
-    string | null
-  >`(SELECT STRING_AGG(t.id, ',') FROM task_tags tt JOIN tags t ON t.id = tt.tag_id WHERE tt.task_id = "tasks"."id")`.as(
-    "tag_ids",
+  tags: sql<
+    { id: string; name: string }[]
+  >`(SELECT COALESCE(json_agg(json_build_object('id', t.id, 'name', t.name) ORDER BY t.name), '[]') FROM task_tags tt JOIN tags t ON t.id = tt.tag_id WHERE tt.task_id = "tasks"."id")`.as(
+    "tags",
   ),
 };
 
@@ -341,13 +336,10 @@ export const fetchTaskWithRelations = createServerFn({ method: "GET" })
         ...s,
         subtaskCount: 0,
         completedSubtaskCount: 0,
-        tagNames: null,
-        tagIds: null,
+        tags: [] as { id: string; name: string }[],
       })),
       subtaskCount: result.subtasks.length,
       completedSubtaskCount: completedSubtasks.length,
-      tagNames: result.taskTags.map((tt) => tt.tag.name).join(", ") || null,
-      tagIds: result.taskTags.map((tt) => tt.tag.id).join(",") || null,
     };
   });
 
@@ -372,8 +364,7 @@ export const fetchSubtasks = createServerFn({ method: "GET" })
         sortOrder: tasks.sortOrder,
         subtaskCount: sql<number>`0`.as("subtask_count"),
         completedSubtaskCount: sql<number>`0`.as("completed_subtask_count"),
-        tagNames: sql<string | null>`NULL`.as("tag_names"),
-        tagIds: sql<string | null>`NULL`.as("tag_ids"),
+        tags: sql<{ id: string; name: string }[]>`'[]'::json`.as("tags"),
       })
       .from(tasks)
       .where(
@@ -452,7 +443,7 @@ export const fetchTasksByTag = createServerFn({ method: "GET" })
   )
   .handler(async ({ data }) => {
     const [tag] = await db
-      .select({ name: tags.name })
+      .select({ name: tags.name, description: tags.description })
       .from(tags)
       .where(and(eq(tags.id, data.tagId), eq(tags.userId, data.userId)));
 
