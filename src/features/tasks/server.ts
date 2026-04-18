@@ -13,7 +13,7 @@ import {
 } from "drizzle-orm";
 import z from "zod";
 import { db } from "~/db";
-import { tasks, taskTags } from "~/db/schema";
+import { tags, tasks, taskTags } from "~/db/schema";
 
 const userIdInput = z.object({ userId: z.string().min(1) });
 
@@ -62,6 +62,11 @@ const taskColumns = {
     string | null
   >`(SELECT STRING_AGG(t.name, ',') FROM task_tags tt JOIN tags t ON t.id = tt.tag_id WHERE tt.task_id = "tasks"."id")`.as(
     "tag_names",
+  ),
+  tagIds: sql<
+    string | null
+  >`(SELECT STRING_AGG(t.id, ',') FROM task_tags tt JOIN tags t ON t.id = tt.tag_id WHERE tt.task_id = "tasks"."id")`.as(
+    "tag_ids",
   ),
 };
 
@@ -433,4 +438,37 @@ export const fetchBacklogTasks = createServerFn({ method: "GET" })
         ),
       )
       .orderBy(asc(tasks.sortOrder));
+  });
+
+export const fetchTasksByTag = createServerFn({ method: "GET" })
+  .inputValidator(
+    z.object({
+      userId: z.string().min(1),
+      tagId: z.string().min(1),
+    }),
+  )
+  .handler(async ({ data }) => {
+    const [tag] = await db
+      .select({ name: tags.name })
+      .from(tags)
+      .where(and(eq(tags.id, data.tagId), eq(tags.userId, data.userId)));
+
+    const taskList = await db
+      .select(taskColumns)
+      .from(tasks)
+      .innerJoin(taskTags, eq(taskTags.taskId, tasks.id))
+      .where(
+        and(
+          eq(tasks.userId, data.userId),
+          eq(taskTags.tagId, data.tagId),
+          isNull(tasks.parentTaskId),
+        ),
+      )
+      .orderBy(
+        sql`CASE WHEN ${tasks.dateCompleted} IS NOT NULL THEN 1 ELSE 0 END`,
+        asc(tasks.sortOrder),
+        asc(tasks.dateCompleted),
+      );
+
+    return { tag: tag ?? null, tasks: taskList };
   });

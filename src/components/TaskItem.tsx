@@ -1,5 +1,6 @@
 import { useForm } from "@tanstack/react-form";
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 import { clsx } from "clsx";
 import {
   ChevronDownIcon,
@@ -52,6 +53,7 @@ export function TaskItem({
   const [expanded, setExpanded] = useState(false);
 
   const tagNames = task.tagNames ? task.tagNames.split(",") : [];
+  const tagIds = task.tagIds ? task.tagIds.split(",") : [];
 
   const { data: subtasks = [] } = useQuery({
     ...fetchSubtasksQueryOptions(task.id),
@@ -162,12 +164,17 @@ export function TaskItem({
                 <div className="flex items-center gap-2">
                   {tagNames.length > 0 && (
                     <div className="flex shrink-0 items-center gap-1 overflow-hidden">
-                      {tagNames.map((name) => (
+                      {tagNames.map((name, i) => (
                         <Tooltip key={name}>
                           <TooltipTrigger asChild>
-                            <span className="text-muted-foreground bg-muted max-w-24 truncate rounded px-1.5 py-0.5 text-[10px] leading-tight">
+                            <Link
+                              to="/tag/$tagId"
+                              params={{ tagId: tagIds[i] ?? "" }}
+                              className="text-muted-foreground bg-muted hover:bg-muted/80 max-w-24 truncate rounded px-1.5 py-0.5 text-[10px] leading-tight"
+                              onClick={(e) => e.stopPropagation()}
+                            >
                               {name}
-                            </span>
+                            </Link>
                           </TooltipTrigger>
                           <TooltipContent>{name}</TooltipContent>
                         </Tooltip>

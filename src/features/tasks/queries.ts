@@ -6,6 +6,7 @@ import {
   fetchInboxTasks,
   fetchSubtasks,
   fetchTasks,
+  fetchTasksByTag,
   fetchTasksForDate,
   fetchTaskWithRelations,
 } from "./server";
@@ -57,4 +58,11 @@ export const fetchBacklogTasksQueryOptions = () =>
   queryOptions({
     queryKey: [...tasksQueryKeys.backlog],
     queryFn: () => fetchBacklogTasks({ data: { userId: DEFAULT_USER_ID } }),
+  });
+
+export const fetchTasksByTagQueryOptions = (tagId: string) =>
+  queryOptions({
+    queryKey: tasksQueryKeys.byTag(tagId),
+    queryFn: () =>
+      fetchTasksByTag({ data: { userId: DEFAULT_USER_ID, tagId } }),
   });
