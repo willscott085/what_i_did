@@ -28,6 +28,7 @@ import {
   useDeleteTask,
 } from "~/features/tasks/mutations";
 import { fetchSubtasksQueryOptions } from "~/features/tasks/queries";
+import { useIsTruncated } from "~/hooks/useIsTruncated";
 import { Task } from "~/features/tasks/types";
 
 type TaskUpdate = Pick<Task, "id" | "title" | "dateCompleted" | "userId">;
@@ -167,19 +168,7 @@ export function TaskItem({
                   {!hideTags && taskTags.length > 0 && (
                     <div className="flex shrink-0 items-center gap-1 overflow-hidden">
                       {taskTags.map((tag) => (
-                        <Tooltip key={tag.id}>
-                          <TooltipTrigger asChild>
-                            <Link
-                              to="/tag/$tagId"
-                              params={{ tagId: tag.id }}
-                              className="text-muted-foreground bg-muted hover:bg-muted/80 max-w-24 truncate rounded px-1.5 py-0.5 text-[10px] leading-tight"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              {tag.name}
-                            </Link>
-                          </TooltipTrigger>
-                          <TooltipContent>{tag.name}</TooltipContent>
-                        </Tooltip>
+                        <TruncatedTagBadge key={tag.id} tag={tag} />
                       ))}
                     </div>
                   )}
@@ -302,5 +291,31 @@ export function TaskItem({
         )}
       </div>
     </div>
+  );
+}
+
+function TruncatedTagBadge({ tag }: { tag: { id: string; name: string } }) {
+  const [ref, isTruncated] = useIsTruncated<HTMLSpanElement>();
+
+  const link = (
+    <Link
+      to="/tag/$tagId"
+      params={{ tagId: tag.id }}
+      className="bg-muted hover:bg-muted/80 inline-flex max-w-24 rounded px-1.5 py-0.5 text-[10px] leading-tight"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <span ref={ref} className="text-muted-foreground truncate">
+        {tag.name}
+      </span>
+    </Link>
+  );
+
+  if (!isTruncated) return link;
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{link}</TooltipTrigger>
+      <TooltipContent>{tag.name}</TooltipContent>
+    </Tooltip>
   );
 }

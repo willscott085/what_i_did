@@ -41,12 +41,12 @@ test.describe("Navigation", () => {
     // Navigate to Tags
     await page.getByRole("link", { name: "Tags" }).click();
     await page.waitForURL("/tags");
-    await expect(page.getByText("Tags")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Tags" })).toBeVisible();
 
     // Navigate to Backlog
     await page.getByRole("link", { name: "Backlog" }).click();
     await page.waitForURL("/backlog");
-    await expect(page.getByText("Backlog")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Backlog" })).toBeVisible();
 
     // Navigate back to a day view via browser history
     await page.goBack();

@@ -88,6 +88,11 @@ test.describe("Tags", () => {
     await page.getByText("frontend").click();
     await page.waitForURL(/\/tag\//);
 
+    // Wait for tag detail content to load
+    await expect(
+      page.getByRole("button", { name: "frontend", exact: true }),
+    ).toBeVisible();
+
     // Click description area to start editing
     const descArea = page.getByText("UI and client-side work");
     await descArea.click();

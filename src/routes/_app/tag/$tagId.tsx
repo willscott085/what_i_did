@@ -215,7 +215,7 @@ function TagView() {
           )}
         </div>
 
-        <div>
+        <div className="mt-4">
           <DraggableTaskList
             tasks={tasks}
             onDropOnDate={handleDropOnDate}

@@ -24,6 +24,9 @@ test.describe("Backlog", () => {
     await page.getByRole("link", { name: "Backlog" }).click();
     await page.waitForURL("/backlog");
 
+    // Wait for backlog tasks to load
+    await page.locator(".group\\/task").first().waitFor({ state: "visible" });
+
     // Backlog contains tasks without a start date (unscheduled, incomplete)
     // From seed: tsk_003, tsk_004, tsk_006, tsk_008, tsk_010 have no startDate
     await expect(
@@ -69,13 +72,18 @@ test.describe("Backlog", () => {
 
     // Find first task checkbox
     const firstTask = page.locator(".group\\/task").first();
+    await firstTask.waitFor({ state: "visible" });
     const checkbox = firstTask.getByRole("checkbox");
 
     await checkbox.click();
     await expect(checkbox).toBeChecked();
 
-    // Uncomplete
-    await checkbox.click();
-    await expect(checkbox).not.toBeChecked();
+    // Uncomplete — re-query since optimistic update may re-render the DOM
+    const uncompleteCheckbox = page
+      .locator(".group\\/task")
+      .first()
+      .getByRole("checkbox");
+    await uncompleteCheckbox.click();
+    await expect(uncompleteCheckbox).not.toBeChecked();
   });
 });
