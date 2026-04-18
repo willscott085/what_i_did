@@ -144,6 +144,7 @@ function TaskDialogForm({
                 subtaskCount: 0,
                 completedSubtaskCount: 0,
                 tagNames: null,
+                tagIds: null,
               },
             ]);
           }

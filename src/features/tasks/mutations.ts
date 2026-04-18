@@ -173,7 +173,17 @@ export const useUpdateFullTask = () => {
       if (prev) {
         queryClient.setQueryData<Task[]>(
           inboxKey,
-          prev.map((t) => (t.id === input.id ? { ...t, ...input } : t)),
+          prev.map((t) =>
+            t.id === input.id
+              ? {
+                  ...t,
+                  ...input,
+                  tagIds: Array.isArray(input.tagIds)
+                    ? input.tagIds.join(",")
+                    : (t.tagIds ?? null),
+                }
+              : t,
+          ),
         );
       }
 

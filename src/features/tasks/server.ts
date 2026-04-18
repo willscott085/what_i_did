@@ -342,10 +342,12 @@ export const fetchTaskWithRelations = createServerFn({ method: "GET" })
         subtaskCount: 0,
         completedSubtaskCount: 0,
         tagNames: null,
+        tagIds: null,
       })),
       subtaskCount: result.subtasks.length,
       completedSubtaskCount: completedSubtasks.length,
       tagNames: result.taskTags.map((tt) => tt.tag.name).join(", ") || null,
+      tagIds: result.taskTags.map((tt) => tt.tag.id).join(",") || null,
     };
   });
 
@@ -371,6 +373,7 @@ export const fetchSubtasks = createServerFn({ method: "GET" })
         subtaskCount: sql<number>`0`.as("subtask_count"),
         completedSubtaskCount: sql<number>`0`.as("completed_subtask_count"),
         tagNames: sql<string | null>`NULL`.as("tag_names"),
+        tagIds: sql<string | null>`NULL`.as("tag_ids"),
       })
       .from(tasks)
       .where(
