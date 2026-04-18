@@ -66,17 +66,25 @@ export const useUpdateTag = () => {
         tasks: unknown[];
       }>(byTagKey);
 
+      const { id: _, ...patch } = input;
+
       if (prev) {
         queryClient.setQueryData<Tag[]>(
           queryKey,
-          prev.map((t) => (t.id === input.id ? { ...t, ...input } : t)),
+          prev.map((t) => (t.id === input.id ? { ...t, ...patch } : t)),
         );
       }
 
       if (prevByTag?.tag) {
         queryClient.setQueryData(byTagKey, {
           ...prevByTag,
-          tag: { ...prevByTag.tag, ...input },
+          tag: {
+            ...prevByTag.tag,
+            ...(patch.name !== undefined && { name: patch.name }),
+            ...(patch.description !== undefined && {
+              description: patch.description,
+            }),
+          },
         });
       }
 

@@ -12,17 +12,21 @@ export function Markdown({ children, className }: MarkdownProps) {
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
-          a: ({ href, children }) => (
-            <a
-              href={href}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-primary/70 hover:text-primary hover:underline"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {children}
-            </a>
-          ),
+          a: ({ href, children, node: _, ...props }) =>
+            href ? (
+              <a
+                {...props}
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary/70 hover:text-primary hover:underline"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {children}
+              </a>
+            ) : (
+              <span>{children}</span>
+            ),
           p: ({ children }) => (
             <p className="my-1 first:mt-0 last:mb-0">{children}</p>
           ),

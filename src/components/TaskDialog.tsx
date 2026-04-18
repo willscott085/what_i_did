@@ -12,7 +12,6 @@ import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Textarea } from "~/components/ui/textarea";
 import { TagMultiSelect } from "~/components/TagMultiSelect";
-import { Tag } from "~/features/tags/types";
 import { SubtaskList } from "~/components/SubtaskList";
 import {
   useCreateTask,
@@ -51,7 +50,20 @@ export function TaskDialog({
 
   const resolvedTask: TaskWithRelations | null = task?.id
     ? (taskWithRelations ??
-      (isError ? { ...task, subtasks: [], tags: task.tags as Tag[] } : null))
+      (isError
+        ? {
+            ...task,
+            subtasks: [],
+            tags: task.tags.map((t) => ({
+              ...t,
+              description: null,
+              color: null,
+              userId: task.userId,
+              dateCreated: task.dateCreated,
+              updatedAt: task.dateCreated,
+            })),
+          }
+        : null))
     : null;
   const formKey = `${open}-${task?.id ?? "new"}-${resolvedTask?.id ?? "pending"}`;
 

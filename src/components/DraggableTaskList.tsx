@@ -147,7 +147,7 @@ function DraggableItem({
   });
 
   return (
-    <li ref={setNodeRef} style={{ opacity: isDragging ? 0.4 : undefined }}>
+    <li ref={setNodeRef} className={isDragging ? "opacity-40" : undefined}>
       {children({
         isDragging,
         attributes: attributes as React.HTMLAttributes<HTMLElement>,
