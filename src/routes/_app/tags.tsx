@@ -32,7 +32,7 @@ function Tags() {
         </header>
 
         <div className="relative mt-4 pl-8">
-          <SearchIcon className="text-muted-foreground absolute left-10 top-1/2 size-4 -translate-y-1/2" />
+          <SearchIcon className="text-muted-foreground absolute top-1/2 left-10 size-4 -translate-y-1/2" />
           <Input
             placeholder="Search tags…"
             value={search}

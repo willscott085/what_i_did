@@ -37,6 +37,7 @@ interface TaskItemProps {
   onUpdate: (task: TaskUpdate) => void;
   onEdit?: (task: Task) => void;
   onDelete?: (taskId: string) => void;
+  hideTags?: boolean;
   dragAttributes?: React.HTMLAttributes<HTMLButtonElement>;
   dragListeners?: React.HTMLAttributes<HTMLButtonElement>;
 }
@@ -47,6 +48,7 @@ export function TaskItem({
   onUpdate,
   onEdit,
   onDelete,
+  hideTags,
   dragAttributes = {},
   dragListeners = {},
 }: TaskItemProps) {
@@ -162,7 +164,7 @@ export function TaskItem({
             children={(field) => (
               <div className="relative flex min-w-0 grow flex-col">
                 <div className="flex items-center gap-2">
-                  {tagNames.length > 0 && (
+                  {!hideTags && tagNames.length > 0 && (
                     <div className="flex shrink-0 items-center gap-1 overflow-hidden">
                       {tagNames.map((name, i) => (
                         <Tooltip key={name}>

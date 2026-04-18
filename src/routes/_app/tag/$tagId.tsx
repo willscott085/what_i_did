@@ -71,6 +71,7 @@ function TagView() {
                   onEdit={handleEdit}
                   onDelete={handleDelete}
                   isDragging={false}
+                  hideTags
                 />
               ))}
             </ul>
@@ -84,6 +85,7 @@ function TagView() {
                   onEdit={handleEdit}
                   onDelete={handleDelete}
                   isDragging={false}
+                  hideTags
                 />
               ))}
             </ul>
