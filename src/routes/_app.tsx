@@ -16,7 +16,10 @@ export const Route = createFileRoute("/_app")({
   component: AppLayout,
 });
 
-const navItems = [{ to: "/backlog", label: "Backlog" }] as const;
+const navItems = [
+  { to: "/backlog", label: "Backlog" },
+  { to: "/tags", label: "Tags" },
+] as const;
 
 function AppLayout() {
   const navigate = useNavigate();
