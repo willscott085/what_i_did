@@ -9,7 +9,7 @@ import {
   PencilIcon,
   Trash2Icon,
 } from "lucide-react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Markdown } from "~/components/Markdown";
 import { SubtaskList } from "~/components/SubtaskList";
@@ -97,6 +97,15 @@ export function TaskItem({
       });
     },
   });
+
+  // Sync form notes when task.notes changes externally (e.g. modal save)
+  useEffect(() => {
+    const currentNotes = form.getFieldValue("notes");
+    const incoming = task.notes ?? "";
+    if (incoming !== currentNotes && !editingNotes) {
+      form.setFieldValue("notes", incoming);
+    }
+  }, [task.notes]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleAddSubtask(title: string) {
     createSubtask({ title, parentTaskId: task.id });
@@ -217,12 +226,7 @@ export function TaskItem({
                 </div>
 
                 {/* Notes */}
-                {!task.dateCompleted && hideEmptyNotes && task.notes && (
-                  <div className="text-muted-foreground mb-1 line-clamp-3 text-xs leading-normal break-all">
-                    <Markdown className="[&_p]:m-0">{task.notes}</Markdown>
-                  </div>
-                )}
-                {!task.dateCompleted && !hideEmptyNotes && (
+                {!task.dateCompleted && !(hideEmptyNotes && !task.notes) && (
                   <form.Field
                     name="notes"
                     listeners={{
@@ -282,7 +286,7 @@ export function TaskItem({
                                 {notesField.state.value}
                               </Markdown>
                             </div>
-                          ) : (
+                          ) : !hideEmptyNotes ? (
                             <button
                               type="button"
                               onClick={() => {
@@ -295,7 +299,7 @@ export function TaskItem({
                             >
                               Add notes…
                             </button>
-                          ))}
+                          ) : null)}
                       </div>
                     )}
                   />
