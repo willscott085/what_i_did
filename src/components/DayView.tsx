@@ -148,8 +148,13 @@ export function DayView({
         </div>
 
         {/* Notes for this date */}
+        {dayNotes.length > 0 && tasks.length > 0 && (
+          <div className="text-muted-foreground/20 py-1 pl-8 tracking-[0.3em] select-none">
+            ·······························································
+          </div>
+        )}
         {dayNotes.length > 0 && (
-          <div className="mt-4">
+          <div>
             <DraggableList
               items={dayNotes}
               onDropOnDate={handleNoteDropOnDate}

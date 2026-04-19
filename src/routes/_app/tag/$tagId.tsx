@@ -204,8 +204,13 @@ function TagView() {
         </div>
 
         {/* Notes with this tag */}
+        {tagNotes.length > 0 && tasks.length > 0 && (
+          <div className="text-muted-foreground/20 py-1 pl-8 tracking-[0.3em] select-none">
+            ·······························································
+          </div>
+        )}
         {tagNotes.length > 0 && (
-          <div className="mt-4">
+          <div>
             <DraggableList
               items={tagNotes}
               onDropOnDate={handleNoteDropOnDate}

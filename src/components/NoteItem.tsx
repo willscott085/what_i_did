@@ -77,7 +77,7 @@ export function NoteItem({
 
         {/* Note icon */}
         <div className="flex h-[30px] items-center">
-          <StickyNoteIcon className="text-muted-foreground size-5" />
+          <StickyNoteIcon className="text-muted-foreground/50 size-5" />
         </div>
 
         {/* Content area */}

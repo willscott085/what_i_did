@@ -7,6 +7,8 @@ import {
   ChevronRightIcon,
   GripVertical,
   PencilIcon,
+  SquareIcon,
+  SquareCheckBigIcon,
   Trash2Icon,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -14,7 +16,6 @@ import { toast } from "sonner";
 import { Markdown } from "~/components/Markdown";
 import { SubtaskList } from "~/components/SubtaskList";
 import { Button } from "~/components/ui/button";
-import { Checkbox } from "~/components/ui/checkbox";
 import { FieldError } from "~/components/ui/field";
 import { Input } from "~/components/ui/input";
 import {
@@ -160,15 +161,23 @@ export function TaskItem({
             name="completed"
             children={(field) => (
               <div className="flex h-7.5 items-center">
-                <Checkbox
+                <button
+                  type="button"
                   id={`${task.id}-completed`}
-                  checked={field.state.value}
-                  onCheckedChange={(checked) => {
-                    field.handleChange(checked === true);
+                  role="checkbox"
+                  aria-checked={field.state.value}
+                  onClick={() => {
+                    field.handleChange(!field.state.value);
                     form.handleSubmit();
                   }}
-                  className="size-5"
-                />
+                  className="text-muted-foreground/50 hover:text-muted-foreground cursor-pointer transition-colors"
+                >
+                  {field.state.value ? (
+                    <SquareCheckBigIcon className="size-5" />
+                  ) : (
+                    <SquareIcon className="size-5" />
+                  )}
+                </button>
               </div>
             )}
           />
