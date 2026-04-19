@@ -12,7 +12,7 @@ import { relations } from "drizzle-orm";
 // Custom Types
 // =====================
 
-const bytea = customType<{ data: Buffer; dpiverType: Buffer }>({
+const bytea = customType<{ data: Buffer; driverData: Buffer }>({
   dataType() {
     return "bytea";
   },

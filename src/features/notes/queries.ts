@@ -37,7 +37,7 @@ export const fetchNoteQueryOptions = (noteId: string) =>
 
 export const searchNotesQueryOptions = (query: string, tagIds?: string[]) =>
   queryOptions({
-    queryKey: notesQueryKeys.search(query),
+    queryKey: notesQueryKeys.search(query, tagIds),
     queryFn: () =>
       searchNotes({ data: { userId: DEFAULT_USER_ID, query, tagIds } }),
     enabled: query.length > 0,

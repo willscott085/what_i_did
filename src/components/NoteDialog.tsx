@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import {
   BoldIcon,
   CodeIcon,
@@ -22,10 +22,12 @@ import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { TagMultiSelect } from "~/components/TagMultiSelect";
-import { useCreateNote, useUpdateNote } from "~/features/notes/mutations";
-import { notesQueryKeys } from "~/features/notes/consts";
+import {
+  useCreateNote,
+  useProcessNoteWithAI,
+  useUpdateNote,
+} from "~/features/notes/mutations";
 import { fetchNoteQueryOptions } from "~/features/notes/queries";
-import { processNoteWithAI } from "~/features/notes/ai";
 import { Note } from "~/features/notes/types";
 
 interface NoteDialogProps {
@@ -111,7 +113,6 @@ function NoteDialogForm({
   onOpenChange: (open: boolean) => void;
 }) {
   const isEditing = !!note;
-  const queryClient = useQueryClient();
 
   const [content, setContent] = useState(note?.content ?? "");
   const [title, setTitle] = useState(note?.title ?? "");
@@ -123,6 +124,7 @@ function NoteDialogForm({
 
   const { mutateAsync: createNote, isPending: isCreating } = useCreateNote();
   const { mutateAsync: updateNote, isPending: isUpdating } = useUpdateNote();
+  const { mutate: triggerAI } = useProcessNoteWithAI();
 
   const isPending = isCreating || isUpdating;
 
@@ -141,11 +143,7 @@ function NoteDialogForm({
 
       // Re-trigger AI if content changed and title was AI-generated (user didn't set one)
       if (content.trim() !== note.content && !title.trim()) {
-        processNoteWithAI({ data: { noteId: note.id } })
-          .then(() => {
-            queryClient.invalidateQueries({ queryKey: notesQueryKeys.all });
-          })
-          .catch(() => {});
+        triggerAI(note.id);
       }
     } else {
       const result = await createNote({
@@ -155,13 +153,9 @@ function NoteDialogForm({
         tagIds: tagIds.length > 0 ? tagIds : undefined,
       });
 
-      // Fire-and-forget AI processing, then invalidate cache
+      // Fire-and-forget AI processing — cache invalidation handled by the mutation hook
       if (result?.id) {
-        processNoteWithAI({ data: { noteId: result.id } })
-          .then(() => {
-            queryClient.invalidateQueries({ queryKey: notesQueryKeys.all });
-          })
-          .catch(() => {});
+        triggerAI(result.id);
       }
     }
 

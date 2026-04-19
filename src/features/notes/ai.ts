@@ -1,12 +1,14 @@
 import { createServerFn } from "@tanstack/react-start";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import z from "zod";
 import { db } from "~/db";
 import { noteMetadata, notes } from "~/db/schema";
 import { getAIProvider } from "~/features/ai/provider";
 
 export const processNoteWithAI = createServerFn({ method: "POST" })
-  .inputValidator(z.object({ noteId: z.string().min(1) }))
+  .inputValidator(
+    z.object({ noteId: z.string().min(1), userId: z.string().min(1) }),
+  )
   .handler(async ({ data }) => {
     const provider = getAIProvider();
     if (!provider) {
@@ -15,7 +17,7 @@ export const processNoteWithAI = createServerFn({ method: "POST" })
     }
 
     const note = await db.query.notes.findFirst({
-      where: eq(notes.id, data.noteId),
+      where: and(eq(notes.id, data.noteId), eq(notes.userId, data.userId)),
     });
 
     if (!note) return { updated: false };
@@ -40,7 +42,7 @@ export const processNoteWithAI = createServerFn({ method: "POST" })
         await db
           .update(notes)
           .set({ title, dateUpdated: new Date().toISOString() })
-          .where(eq(notes.id, data.noteId));
+          .where(and(eq(notes.id, data.noteId), eq(notes.userId, data.userId)));
       }
 
       await db

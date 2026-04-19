@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { DEFAULT_USER_ID, notesQueryKeys } from "./consts";
 import { createNote, deleteNote, reorderNotes, updateNote } from "./server";
+import { processNoteWithAI } from "./ai";
 import { Note } from "./types";
 
 export const useCreateNote = () => {
@@ -95,6 +96,21 @@ export const useReorderNotes = () => {
       reorderNotes({ data: { noteIds, userId: DEFAULT_USER_ID } }),
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: notesQueryKeys.all });
+    },
+  });
+};
+
+export const useProcessNoteWithAI = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (noteId: string) =>
+      processNoteWithAI({ data: { noteId, userId: DEFAULT_USER_ID } }),
+    onSuccess: (_data, noteId) => {
+      queryClient.invalidateQueries({ queryKey: notesQueryKeys.all });
+      queryClient.invalidateQueries({
+        queryKey: notesQueryKeys.byId(noteId),
+      });
     },
   });
 };
