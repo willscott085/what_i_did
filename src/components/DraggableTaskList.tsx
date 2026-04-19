@@ -9,29 +9,28 @@ import {
   useSensors,
 } from "@dnd-kit/core";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Task } from "~/features/tasks/types";
 
-interface DraggableTaskListProps {
-  tasks: Task[];
-  onDropOnDate: (taskId: string, date: string) => void;
+interface DraggableListProps<T extends { id: string }> {
+  items: T[];
+  onDropOnDate: (itemId: string, date: string) => void;
   onDragOverDate?: (date: string | null) => void;
   children: (
-    task: Task,
+    item: T,
     isDragging: boolean,
     dragAttributes: React.HTMLAttributes<HTMLElement>,
     dragListeners: React.HTMLAttributes<HTMLElement>,
   ) => React.ReactNode;
-  overlay?: (task: Task) => React.ReactNode;
+  overlay?: (item: T) => React.ReactNode;
 }
 
-export function DraggableTaskList({
-  tasks,
+export function DraggableList<T extends { id: string }>({
+  items,
   onDropOnDate,
   onDragOverDate,
   children,
   overlay,
-}: DraggableTaskListProps) {
-  const taskMap = new Map(tasks.map((t) => [t.id, t]));
+}: DraggableListProps<T>) {
+  const itemMap = new Map(items.map((t) => [t.id, t]));
   const [activeId, setActiveId] = useState<string | null>(null);
   const hoveredDateRef = useRef<string | null>(null);
   const pointerHandlerRef = useRef<((e: PointerEvent) => void) | null>(null);
@@ -98,7 +97,7 @@ export function DraggableTaskList({
     };
   }, []);
 
-  const activeTask = activeId ? taskMap.get(activeId) : null;
+  const activeItem = activeId ? itemMap.get(activeId) : null;
 
   return (
     <DndContext
@@ -108,12 +107,12 @@ export function DraggableTaskList({
       onDragCancel={handleDragCancel}
     >
       <ul>
-        {tasks.map((task) => (
-          <DraggableItem key={task.id} id={task.id}>
+        {items.map((item) => (
+          <DraggableItem key={item.id} id={item.id}>
             {({ isDragging, attributes, listeners }) =>
               children(
-                task,
-                isDragging || task.id === activeId,
+                item,
+                isDragging || item.id === activeId,
                 attributes,
                 listeners,
               )
@@ -123,13 +122,16 @@ export function DraggableTaskList({
       </ul>
 
       <DragOverlay dropAnimation={null}>
-        {activeTask
-          ? (overlay?.(activeTask) ?? children(activeTask, true, {}, {}))
+        {activeItem
+          ? (overlay?.(activeItem) ?? children(activeItem, true, {}, {}))
           : null}
       </DragOverlay>
     </DndContext>
   );
 }
+
+/** @deprecated Use DraggableList instead */
+export const DraggableTaskList = DraggableList;
 
 function DraggableItem({
   id,

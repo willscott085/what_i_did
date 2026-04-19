@@ -2,6 +2,8 @@ import { z } from "zod";
 
 const serverSchema = z.object({
   NODE_ENV: z.enum(["development", "production", "test"]),
+  AI_PROVIDER: z.enum(["xai"]).default("xai").optional(),
+  AI_API_KEY: z.string().min(1).optional(),
 });
 
 export const serverEnv = (() => {

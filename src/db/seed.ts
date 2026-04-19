@@ -12,6 +12,9 @@ const client = postgres(DATABASE_URL);
 const db = drizzle(client, { schema });
 
 // Clear existing data
+await db.delete(schema.noteMetadata);
+await db.delete(schema.noteTags);
+await db.delete(schema.notes);
 await db.delete(schema.taskTags);
 await db.delete(schema.tasks);
 await db.delete(schema.tags);
@@ -195,9 +198,90 @@ await db.insert(schema.taskTags).values([
   { taskId: "tsk_008", tagId: "tag_001" },
 ]);
 
+// Seed sample notes
+const sampleNotes = [
+  {
+    id: "nte_001",
+    content:
+      "Spoke with Sarah about the Jenkins pipeline failing on staging. She thinks it's a Docker image caching issue. Need to check the build logs.",
+    title: "Jenkins Pipeline Staging Issue",
+    date: todayStr,
+    sortOrder: 0,
+    userId: "1",
+    dateCreated: "2026-04-18T09:30:00.000Z",
+    dateUpdated: "2026-04-18T09:30:00.000Z",
+  },
+  {
+    id: "nte_002",
+    content:
+      "Meeting with design team — agreed on new colour palette for dashboard. Moving away from blue-heavy scheme to more neutral tones with accent colours per feature area.",
+    title: "Dashboard Redesign Colour Palette",
+    date: todayStr,
+    sortOrder: 1,
+    userId: "1",
+    dateCreated: "2026-04-17T14:15:00.000Z",
+    dateUpdated: "2026-04-17T14:15:00.000Z",
+  },
+  {
+    id: "nte_003",
+    content:
+      "Idea: add keyboard shortcuts for common actions — Cmd+N for new task, Cmd+Shift+N for new note, Cmd+K for search. Check what VS Code and Linear use for reference.",
+    title: null,
+    date: null,
+    sortOrder: 0,
+    userId: "1",
+    dateCreated: "2026-04-16T11:00:00.000Z",
+    dateUpdated: "2026-04-16T11:00:00.000Z",
+  },
+  {
+    id: "nte_004",
+    content:
+      "Performance review prep: shipped task system, calendar integration, and drag-drop. Contributed to design system tokens. Mentored two junior devs on React Query patterns.",
+    title: "Q1 Performance Review Notes",
+    date: null,
+    sortOrder: 1,
+    userId: "1",
+    dateCreated: "2026-04-10T16:45:00.000Z",
+    dateUpdated: "2026-04-15T10:20:00.000Z",
+  },
+];
+
+await db.insert(schema.notes).values(sampleNotes);
+
+// Seed note-tag relationships
+await db.insert(schema.noteTags).values([
+  { noteId: "nte_001", tagId: "tag_002" }, // Jenkins note → backend
+  { noteId: "nte_001", tagId: "tag_003" }, // Jenkins note → urgent
+  { noteId: "nte_002", tagId: "tag_001" }, // Design note → frontend
+  { noteId: "nte_003", tagId: "tag_001" }, // Keyboard shortcuts → frontend
+]);
+
+// Seed note metadata (AI-generated keywords)
+await db.insert(schema.noteMetadata).values([
+  {
+    noteId: "nte_001",
+    keywords:
+      "Jenkins, CI/CD, pipeline, staging, Docker, caching, build, Sarah, DevOps, infrastructure",
+  },
+  {
+    noteId: "nte_002",
+    keywords:
+      "design, dashboard, colour, palette, UI, redesign, meeting, neutral, accent",
+  },
+  { noteId: "nte_003", keywords: null },
+  {
+    noteId: "nte_004",
+    keywords:
+      "performance, review, accomplishments, React Query, mentoring, design system, drag-drop",
+  },
+]);
+
 console.info("Database seeded successfully.");
 console.info(`  - ${sampleTasks.length} tasks (including ${2} subtasks)`);
 console.info(`  - ${4} tags`);
 console.info(`  - ${9} task-tag relationships`);
+console.info(`  - ${sampleNotes.length} notes`);
+console.info(`  - ${4} note-tag relationships`);
+console.info(`  - ${4} note metadata entries`);
 
 await client.end();

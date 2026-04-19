@@ -4,30 +4,27 @@
 
 ## Key Decisions
 
-| Decision        | Choice                                                 | Rationale                                                                                             |
-| --------------- | ------------------------------------------------------ | ----------------------------------------------------------------------------------------------------- |
-| Backend         | TanStack Start server functions + Drizzle ORM + SQLite | No separate API framework — server functions already exist, just swap data layer                      |
-| ORM             | Drizzle                                                | Lightweight, type-safe, SQL-like syntax                                                               |
-| Database        | SQLite (local file)                                    | Local-first personal tool, simple deployment                                                          |
-| AI Provider     | Provider-agnostic abstraction                          | Start with OpenAI, design to swap to Ollama/Claude                                                    |
-| AI Notes        | Metadata + semantic search                             | Auto-tag on save, vector search via sqlite-vec. No full chat UI (can add later)                       |
-| Auth            | Deferred (Phase 9)                                     | userId column baked in from day one, hardcode '1' for now                                             |
-| Priority System | Configurable categories                                | Seed 4 defaults (Business-Critical, Momentum Builders, Nice-to-Haves, Noise), user can add more       |
-| Tags            | Separate from categories                               | Orthogonal organization — a task has one priority category + many tags                                |
-| Notes Format    | Basic rich text / markdown                             | Tiptap editor recommended                                                                             |
-| Deployment      | Local only for now                                     | SQLite is perfect for this                                                                            |
-| Codebase        | Evolve existing — don't start fresh                    | Reuse TanStack Start, React Query, dnd-kit, Tailwind foundations                                      |
-| Testing         | Vitest (unit/integration) + Playwright (E2E)           | Vitest already set up; Playwright pairs well with Vite stack, cross-browser, great TypeScript support |
-| Dev Environment | Dev container (Docker)                                 | Reproducible setup, Playwright browsers pre-installed, Codespaces-ready                               |
+| Decision        | Choice                                                     | Rationale                                                                                                 |
+| --------------- | ---------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| Backend         | TanStack Start server functions + Drizzle ORM + PostgreSQL | No separate API framework — server functions already exist, just swap data layer                          |
+| ORM             | Drizzle                                                    | Lightweight, type-safe, SQL-like syntax                                                                   |
+| Database        | PostgreSQL (via docker-compose)                            | Relational, full-text search built-in, dev container provides it                                          |
+| AI Provider     | Provider-agnostic abstraction                              | Start with xAI/Grok, design to swap to OpenAI/Ollama/Anthropic. Uses `openai` SDK with custom base URL    |
+| AI Notes        | Metadata table + PostgreSQL full-text search               | AI generates title (if none given) + keywords on save. `tsvector`/`tsquery` for search, no embeddings yet |
+| Auth            | Deferred (Phase 8)                                         | userId column baked in from day one, hardcode '1' for now                                                 |
+| Tags            | Flat tag system                                            | Tags are the sole organizational mechanism — flexible, orthogonal, many-to-many                           |
+| Notes Format    | Tiptap rich text editor, stored as markdown                | Tiptap for editing, markdown for portable storage and full-text indexing                                  |
+| Deployment      | Local only for now                                         | Docker Compose with PostgreSQL, simple local setup                                                        |
+| Codebase        | Evolve existing — don't start fresh                        | Reuse TanStack Start, React Query, dnd-kit, Tailwind foundations                                          |
+| Testing         | Vitest (unit/integration) + Playwright (E2E)               | Vitest already set up; Playwright pairs well with Vite stack, cross-browser, great TypeScript support     |
+| Dev Environment | Dev container (Docker)                                     | Reproducible setup, Playwright browsers pre-installed, Codespaces-ready                                   |
 
-## Priority Category Definitions
+### Simplification Decisions (Post-Phase 5)
 
-These are the default seed categories. Users can add/rename/remove later.
-
-1. **Business-Critical** — Work that directly drives company/team OKRs and outcomes
-2. **Momentum Builders** — Unblocks or supports critical work & progress (ex: prep work)
-3. **Nice-to-Haves** — Good ideas, but not tied to impact or timing (helpful, but not essential)
-4. **Noise** — Low-leverage work that clutters your focus (distractions)
+- **Priority categories removed** — original plan had configurable priority categories (Business-Critical, Momentum Builders, etc.). Simplified to just tags for organization.
+- **Recurrence removed** — `rrule` engine and `RecurrencePicker` were cut. Tasks use `startDate` only.
+- **Lists removed** — `lists` and `listItems` tables were never implemented. Backlog + day view replaces static lists.
+- **`dueDate` → `startDate`** — renamed to better reflect the concept: the day a task appears in your day view.
 
 ---
 
@@ -86,26 +83,21 @@ These are the default seed categories. Users can add/rename/remove later.
 
 ## Phase 3: Backend Migration (Foundation) ✅
 
-> Replace json-server with SQLite + Drizzle ORM. All existing functionality must keep working.
+> Replace json-server with PostgreSQL + Drizzle ORM. All existing functionality must keep working.
 
-- [x] Install `drizzle-orm`, `better-sqlite3`, `drizzle-kit`, `@types/better-sqlite3`
+- [x] Install `drizzle-orm`, `postgres`, `drizzle-kit`
 - [x] Create `drizzle.config.ts` at project root
-- [x] Create `src/db/schema.ts` — initial tables:
-  - `tasks`: id, title, dateCreated, dateCompleted, dueDate, userId, notes, priorityCategoryId, parentTaskId (subtasks), recurrenceRule, sortOrder
-  - `lists`: id, title, userId
-  - `listItems`: id, listId, taskId, sortOrder (junction table for ordered tasks in lists)
-  - `priorityCategories`: id, name, description, color, sortOrder, userId
-  - `tags`: id, name, color, userId
-  - `taskTags`: taskId, tagId (junction table)
+- [x] Create `src/db/schema.ts` — tables:
+  - `tasks`: id, title, notes, dateCreated, dateCompleted, startDate, userId, parentTaskId (subtasks), sortOrder
+  - `tags`: id, name, description, color, userId, dateCreated, updatedAt
+  - `taskTags`: taskId, tagId (junction table, CASCADE deletes)
 - [x] Create `src/db/index.ts` — Drizzle client singleton
-- [x] Create `src/db/seed.ts` — seed script (4 default priority categories, default lists: inbox/upcoming/completed, sample tasks)
+- [x] Create `src/db/seed.ts` — seed script (sample tasks, tags, task-tag relationships)
 - [x] Create `src/db/migrate.ts` — migration runner script
 - [x] Add scripts to `package.json`: `db:generate`, `db:migrate`, `db:seed`, `db:studio`
 - [x] Generate initial migration, run it, seed data
 - [x] Swap `src/features/tasks/server.ts` — replace axios calls with Drizzle queries
-- [x] Swap `src/features/lists/server.ts` — replace axios calls with Drizzle queries
-- [x] Update `src/features/tasks/types.ts` — expand Task type with new fields
-- [x] Update `src/features/lists/types.ts` — expand List type (+ ListItem type)
+- [x] Update `src/features/tasks/types.ts` — Task type with startDate, subtaskCount, tags
 - [x] Remove `json-server`, `redaxios` from dependencies
 - [x] Update `start` script in `package.json` (just `vite dev`, no more json-server)
 - [x] Update `.env` — remove API_URL
@@ -119,7 +111,7 @@ These are the default seed categories. Users can add/rename/remove later.
 - `src/db/schema.ts`, `src/db/index.ts`, `src/db/seed.ts`
 - `drizzle.config.ts`
 - Updated server functions (Drizzle instead of axios)
-- `data/` directory removed
+- PostgreSQL database provided by docker-compose service
 
 ---
 
@@ -172,46 +164,41 @@ These are the default seed categories. Users can add/rename/remove later.
 
 ## Phase 5: Task System Core ✅
 
-> CRUD for tasks, priority categories, tags, subtasks, and recurrence.
+> CRUD for tasks, tags, and subtasks. Tags are the sole organizational mechanism.
 
-- [x] Create `src/features/categories/` — types, server, queries, mutations, consts
-  - CRUD server functions for priority categories
-  - Category management UI (inline in task dialog — CategorySelect component)
 - [x] Create `src/features/tags/` — types, server, queries, mutations, consts
   - CRUD server functions for tags
   - Tag creation inline (type-to-create in multi-select — TagMultiSelect component)
 - [x] Expand task server functions:
-  - `createTask` — full creation with all fields (tags, priority, recurrence, subtasks)
-  - `updateTask` — full update with tag sync (delete + re-insert in transaction)
-  - `deleteTask` — hard delete (subtasks deleted first, FK cascade handles junctions)
-  - `fetchTaskWithRelations` — single task with priority category, tags, subtasks
+  - `fetchTasks` — all tasks for user
+  - `fetchInboxTasks` — root-level incomplete tasks with startDate ≤ today (auto-rolls forward stale tasks)
+  - `fetchCompletedTasks` — all completed tasks, ordered by dateCompleted ASC
+  - `fetchTasksForDate` — tasks where startDate falls on a given date
+  - `fetchBacklogTasks` — root-level tasks with no startDate
+  - `fetchTasksByTag` — all tasks with a specific tag
+  - `fetchTaskWithRelations` — single task with full tags + subtasks
   - `fetchSubtasks` — direct children by parentTaskId
-  - Inbox/upcoming queries now exclude subtasks (filter `parentTaskId IS NULL`)
-- [x] Implement recurrence engine (`src/utils/recurrence.ts`):
-  - Uses `rrule` npm package for RRULE-compatible strings
-  - Presets: daily, weekdays, weekly, biweekly, monthly, yearly
-  - Custom: every Nth day/week/month/year, specific weekdays
-  - Auto-generate next occurrence when recurring task is completed (in `completeTask` handler)
-  - `detectPreset()` for round-tripping RRULE → UI preset selection
+  - `createTask` — full creation with tags
+  - `updateTask` — full update with tag sync (delete + re-insert in transaction)
+  - `deleteTask` — hard delete (subtasks deleted first)
+  - `completeTask` — toggle completion with timestamp
+  - `updateTaskOrder` / `reorderTasks` — drag-drop ordering
 - [x] Build **Create/Edit Task Dialog** (`src/components/TaskDialog.tsx`):
-  - Fields: title, due date, priority category (CategorySelect), tags (TagMultiSelect), notes (textarea), recurrence (RecurrencePicker)
+  - Fields: title, start date, tags (TagMultiSelect), notes (textarea)
   - Subtasks list (inline add/complete/delete — SubtaskList component, edit mode only)
   - Radix Dialog wrapper
+  - Fetches full task via `fetchTaskQueryOptions(task.id)` when editing to load tags
 - [x] Build **SubtaskList** component — single-level only (subtasks cannot have subtasks)
-- [x] Build **RecurrencePicker** component — preset buttons + custom builder
-- [x] Build **CategorySelect** component — inline CRUD (add/edit/delete categories from dropdown)
 - [x] Build **TagMultiSelect** component — multi-select with inline tag creation
 - [x] Update `TaskItem.tsx`:
-  - Priority category color indicator (colored bar)
-  - Due date badge (overdue=red, today=amber, future=muted)
-  - Subtask count badge with expand/collapse
-  - Inline SubtaskList on expand
+  - Tag badges before title
+  - Subtask count badge with expand/collapse (lazy-load subtasks on expand)
   - Edit button → opens TaskDialog; Delete button → hard delete
   - Notes preview below task title (max 3 lines, `line-clamp-3`, `break-all` for long URLs)
   - URLs in notes auto-linkified (clickable `<a>` tags via `Linkify` component)
   - Notes hidden for completed tasks
-- [x] Update `/tasks/` route — "+" button opens TaskDialog, edit/delete wired up
-- [x] Update seed data — tags, task-tag relationships, category assignments, subtasks, recurring task
+  - Click-to-copy on completed tasks (copies title to clipboard with sonner toast)
+- [x] Update seed data — tags, task-tag relationships, subtasks
 - [x] **Verify**: `pnpm typecheck` passes — zero errors
 - [x] **Verify**: `pnpm test` passes — existing unit tests still green
 - [x] **Verify**: `pnpm db:seed` runs successfully
@@ -220,119 +207,99 @@ These are the default seed categories. Users can add/rename/remove later.
 
 - **Task deletion**: Hard delete (no soft delete)
 - **Subtask depth**: Single level only (subtasks cannot have subtasks)
-- **Recurrence**: Full `rrule` implementation with auto-generation on completion
-- **Category management**: Inline in the task dialog (CategorySelect with add/edit/delete)
+- **No priority categories**: Simplified from original plan — tags serve this purpose
+- **No recurrence**: Removed from scope — tasks use `startDate` only
+- **No lists**: Backlog + day view replaces static lists
 
 ### Outputs
 
-- `src/features/categories/` (types, consts, server, queries, mutations)
 - `src/features/tags/` (types, consts, server, queries, mutations)
-- `src/utils/recurrence.ts`
-- `src/components/TaskDialog.tsx`, `RecurrencePicker.tsx`, `SubtaskList.tsx`, `TagMultiSelect.tsx`, `CategorySelect.tsx`
-- Updated `src/components/TaskItem.tsx`, `src/routes/tasks/index.tsx`, `src/db/seed.ts`
+- `src/components/TaskDialog.tsx`, `SubtaskList.tsx`, `TagMultiSelect.tsx`
+- Updated `src/components/TaskItem.tsx`, `src/db/seed.ts`
 - Updated `src/features/tasks/` (types, server, consts, queries, mutations)
 
 ---
 
 ## Phase 6: Calendar + Day View UI ✅
 
-> The main app interface — a 3-month mini calendar sidebar with a scrollable day view.
+> The main app interface — a mini calendar sidebar with a day view for the selected date.
 
 ### Layout
 
 - **Left sidebar** (fixed ~240px, hidden on mobile): 3-month stacked mini calendar (prev/current/next month)
-- **Right main area** (flex-1): Day view for the selected date with 3 vertical sections:
-  - **Top**: Recently completed tasks from previous days (grouped by date, muted/read-only)
-  - **Middle**: Active day panel — current `/tasks/` style with category-grouped tasks, drag-drop, inline completions
-  - **Bottom**: Upcoming tasks from future days (grouped by due date, read-only)
+- **Top nav**: Links to Tags and Backlog views
+- **Main area** (flex-1, max-w-2xl centered): Day view for the selected date — sortable task list with drag-drop, inline completions, subtask expansion
 
 ### 6A: Server Functions & Queries
 
-- [x] Add `fetchTasksForDate` server function — tasks where `dueDate` falls on a given calendar day
-  - Reuses `fetchInboxTasks` ordering logic (incomplete first, category sort, completed last)
-- [x] Add `fetchRecentCompletedTasks` server function — tasks completed _before_ the selected date
-  - Input: `{ userId, beforeDate, limit? }`, ordered by `dateCompleted DESC`, excludes subtasks
-- [x] Add `fetchUpcomingTasksFromDate` server function — incomplete tasks with `dueDate > selectedDate`
-  - Input: `{ userId, afterDate, limit? }`, ordered by `dueDate ASC`, excludes subtasks
-- [x] Add `fetchDaysWithTasks` server function — distinct dates with tasks in a date range (for calendar dot indicators)
-  - Input: `{ userId, startDate, endDate }`, returns `string[]` of date strings
+- [x] Add `fetchTasksForDate` server function — tasks where `startDate` falls on a given calendar day
+  - Includes auto-roll-forward of stale tasks (gated to only run when date = today)
+- [x] Add `fetchBacklogTasks` server function — root-level tasks with no `startDate`
+- [x] Add `fetchTasksByTag` server function — tasks with a specific tag
 - [x] Add corresponding query options in `src/features/tasks/queries.ts`
-- [x] Add new query keys in `src/features/tasks/consts.ts` (`byDate`, `recentCompleted`, `upcomingFrom`, `daysWithTasks`)
+- [x] Add new query keys in `src/features/tasks/consts.ts` (`byDate`, `backlog`, `byTag`)
 
 ### 6B: Calendar Component
 
 - [x] Build `src/components/MiniCalendar.tsx` — custom CSS grid, no external dependencies
-  - Props: `selectedDate`, `onSelectDate`, `daysWithTasks: Set<string>`
+  - Props: `selectedDate`, `onSelectDate`, `dragOverDate`
   - 3 stacked `MonthGrid` sub-components (prev month, current month, next month)
-  - Indicators: **today** (ring), **selected day** (primary bg), **days with tasks** (small dot)
-  - Calendar centers on the selected date's month (shifts as user navigates to different months)
-  - Click a day cell → calls `onSelectDate(date)`
+  - Indicators: **today** (ring), **selected day** (primary bg)
+  - Calendar centers on the selected date's month
+  - Click a day cell → navigates to `/day/$date`
+  - "Today" button to jump back to current date
 
-### 6C: Day View Panels
+### 6C: Day View
 
-- [x] Build `src/components/DayView.tsx` — scrollable container with 3 vertical sections
-- [x] Build `ActiveDayPanel` (middle section):
-  - Reuses `CategoryGroupedList`, `TaskItem`, drag-drop, mutations from current `/tasks/` route
-  - Header: formatted date (e.g., "Monday, 14 April 2026") + "+" button → `TaskDialog` with selected date pre-filled
-  - Completed tasks for _that day_ appear inline (same as current behavior)
-- [x] Build `RecentCompletedPanel` (top section):
-  - Tasks completed before the selected date, grouped by completion date (e.g., "Yesterday", "April 8")
-  - Strikethrough/muted styling, compact read-only items (no drag-drop, no edit/delete inline)
-- [x] Build `UpcomingPanel` (bottom section):
-  - Incomplete tasks with future due dates, grouped by due date
-  - Read-only list with task title + priority dot
-  - Clicking a task's date navigates to that day
+- [x] Build `src/components/DayView.tsx` — single sortable task list for the selected date
+  - Header: formatted date (e.g., "Monday, 14 April 2026") + "+" button → TaskDialog with date pre-filled
+  - `SortableTaskList` with drag-drop reordering
+  - Completed tasks appear inline with strikethrough styling
+  - Incomplete/completed split within the same list
 
-### 6D: Scroll-to-Navigate
+### 6D: Routes
 
-- [x] Implement scroll boundary navigation in `src/routes/index.tsx`:
-  - Scroll event listener on main container detects top/bottom boundaries
-  - Scroll to top → decrement `selectedDate` by 1 day; scroll to bottom → increment by 1 day
-  - 300ms debounce to prevent rapid-fire day changes
-  - Calendar selection updates to match
-
-### 6E: Route Wiring & Cleanup
-
-- [x] Update `src/routes/index.tsx` — replace `<>Yolo</>` with calendar + day view layout
-  - Side-by-side: `MiniCalendar` (left) + `DayView` (right)
-  - `selectedDate` state lifted here, passed to both components
-  - Route loader pre-fetches today's data (tasks for date, recent completed, upcoming, days with tasks for 3 months)
-- [ ] Remove or redirect `/tasks/` route to `/` (deferred — kept for now)
-- [x] Responsive: calendar wrapper `hidden lg:block`, day view full width on mobile
+- [x] Create `/day/$date` route (`src/routes/_app/day/$date.tsx`) — date param drives task fetching and page title
+- [x] Index route (`/_app/`) redirects to `/day/{today}` via `beforeLoad` + `throw redirect`
+- [x] Create `/backlog` route (`src/routes/_app/backlog.tsx`) — tasks with no startDate, sortable
+- [x] Create `/tags` route (`src/routes/_app/tags.tsx`) — tag list with search filter
+- [x] Create `/tag/$tagId` route (`src/routes/_app/tag/$tagId.tsx`) — tag detail with inline name/description editing, shows tasks with this tag
+- [x] Responsive: calendar sidebar `hidden lg:block`, day view full width on mobile
 
 ### Decisions
 
 - **No external calendar library** — custom CSS grid keeps bundle small, fully styled with design tokens
-- **Calendar centers on selected date's month** — shifts as user navigates, not locked to today's month
-- **Recently completed** = completed _before_ selected date; that day's completions stay inline in middle panel
-- **`/tasks/` route removed** — all task management moves to home page (`/`)
-- **Quick filter chips deferred** — not in this phase
-- **Mobile calendar toggle deferred** — hidden on mobile for now
+- **Calendar centers on selected date's month** — shifts as user navigates
+- **URL-driven dates** — `/day/$date` is the source of truth for selected date (no local state)
+- **Simplified DayView** — single sortable list per day, no three-panel layout (recent/active/upcoming panels were cut)
+- **Scroll-to-navigate removed** — day changes happen via calendar clicks or URL navigation only
 
 ### Outputs
 
 - `src/components/MiniCalendar.tsx`
-- `src/components/DayView.tsx` (with `ActiveDayPanel`, `RecentCompletedPanel`, `UpcomingPanel`)
-- Updated `src/routes/index.tsx`
-- 4 new server functions + query options in `src/features/tasks/`
-- Responsive layout (calendar hidden on mobile)
+- `src/components/DayView.tsx`
+- `src/routes/_app/day/$date.tsx`, `src/routes/_app/backlog.tsx`, `src/routes/_app/tags.tsx`, `src/routes/_app/tag/$tagId.tsx`
+- `src/routes/_app/index.tsx` (redirect to today)
+- `src/routes/_app.tsx` (app layout with sidebar, nav, dialog state)
+- `src/components/AppLayoutContext.tsx` (drag state, default start date, dialog handlers)
+- Server functions + query options for by-date, backlog, by-tag queries
 
 ---
 
-## Phase 6F: Simplification & Routing Overhaul ✅
+## Phase 6F: Simplification & Bug Fixes ✅
 
-> Simplify the task model, fix tag handling, improve UX, and move to URL-driven date routing.
+> Tag fixes, ordering consistency, UX polish, and sonner toast integration.
 
 ### Tag Fixes
 
-- [x] Fix `tagNames` subquery in `taskColumns` — Drizzle `${tasks.id}` resolved to unqualified `"id"` in subqueries, causing the `GROUP_CONCAT` join to always return null. Fixed by hardcoding `"tasks"."id"` in the SQL template.
-- [x] Fix `TaskDialog` not loading tags when editing — list queries return plain `Task` objects without tags. Dialog now fetches the full task via `fetchTaskQueryOptions(task.id)` when opened for edit, so `useState` initializers see the correct tag list.
-- [x] Display tag badges on `TaskItem` — small muted badges rendered before the title input. Input uses `min-w-0 flex-1` to fill remaining space after tags.
+- [x] Fix `tagNames` subquery in `taskColumns` — Drizzle `${tasks.id}` resolved to unqualified `"id"` in subqueries, causing `GROUP_CONCAT` to always return null. Fixed by hardcoding `"tasks"."id"` in the SQL template.
+- [x] Fix `TaskDialog` not loading tags when editing — list queries return plain `Task` objects without tags. Dialog now fetches the full task via `fetchTaskQueryOptions(task.id)` when opened for edit.
+- [x] Display tag badges on `TaskItem` — small muted badges rendered before the title input.
 
 ### Ordering Consistency
 
-- [x] Standardize completed task ordering — all queries (`fetchCompletedTasks`, `fetchInboxTasks`, `fetchTasksForDate`, `fetchSubtasks`) now use `asc(tasks.dateCompleted)` (most recently completed last).
-- [x] Remove redundant client-side sort in `SortableTaskList` — was re-sorting completed tasks client-side which conflicted with server order during hydration, causing a flash on page load.
+- [x] Standardize completed task ordering — all queries now use `asc(tasks.dateCompleted)` (most recently completed last).
+- [x] Remove redundant client-side sort in `SortableTaskList` — was re-sorting completed tasks client-side which conflicted with server order during hydration.
 
 ### Side Effect Fix
 
@@ -340,28 +307,12 @@ These are the default seed categories. Users can add/rename/remove later.
 
 ### UX Improvements
 
-- [x] Click-to-copy on completed tasks — clicking a completed task's label copies text to clipboard with a sonner toast confirmation ("Copied task label") and `cursor-copy` cursor.
+- [x] Click-to-copy on completed tasks — clicking a completed task's label copies text to clipboard with a sonner toast confirmation.
 - [x] Install `sonner` toast library — `<Toaster>` added to `__root.tsx` at bottom-center position.
 - [x] Native `title` attribute on task title input for browser tooltip on hover.
 
-### URL-Driven Date Routing
-
-- [x] Create `/day/$date` route (`src/routes/_app/day/$date.tsx`) — date param drives task fetching and page title (`${date} - whatIdid`).
-- [x] Index route (`/_app/`) now redirects to `/day/{today}` via `beforeLoad` + `throw redirect`.
-- [x] Calendar `onSelectDate` navigates to `/day/$date` instead of updating local state.
-- [x] `selectedDate` in `MiniCalendar` driven by URL param — `_app.tsx` reads `$date` param via `useParams({ strict: false })` and passes it as a prop.
-- [x] Removed `selectedDate`/`setSelectedDate` from `AppLayoutContext` (no longer needed — URL is the source of truth).
-
-### Calendar Cleanup
-
-- [x] Removed `daysWithTasks` dot indicators from `MiniCalendar` — no longer fetch or display task-presence dots on calendar days.
-- [x] Removed `fetchDaysWithTasks` server function, query options, and query key.
-- [x] "Today" button now also shows when today's month isn't in the generated months list (e.g., viewing a date months away).
-
 ### Outputs
 
-- `src/routes/_app/day/$date.tsx` (new)
-- Updated: `src/routes/_app.tsx`, `src/routes/_app/index.tsx`, `src/components/MiniCalendar.tsx`, `src/components/AppLayoutContext.tsx`
 - Updated: `src/components/TaskItem.tsx`, `src/components/TaskDialog.tsx`, `src/components/SortableTaskList.tsx`
 - Updated: `src/features/tasks/server.ts`, `src/features/tasks/queries.ts`, `src/features/tasks/consts.ts`
 - Updated: `src/routes/__root.tsx` (sonner Toaster)
@@ -369,82 +320,130 @@ These are the default seed categories. Users can add/rename/remove later.
 
 ---
 
-## Phase 7: Notes System Core
+## Phase 7: Notes System + AI Integration
 
-> Quick-capture notes with markdown editing and organization.
+> Quick-capture notes with Tiptap editing, AI auto-titling via Grok, and keyword search. Notes share the same tag pool as tasks via a separate `noteTags` junction table. Notes display in day view, tag view, and a dedicated `/notes` route.
+
+### 7A: Database & Feature Scaffold
 
 - [ ] Add to `src/db/schema.ts`:
-  - `notes`: id, content (markdown), title, userId, dateCreated, dateUpdated
-  - `noteTags`: noteId, tagId (reuse tags system)
-  - `noteMetadata`: noteId, summary, category, aiGenerated (boolean), embedding (blob)
-- [ ] Generate migration, run it
-- [ ] Create `src/features/notes/` — types, server, queries, mutations, consts
-  - CRUD server functions
-  - List notes with pagination/infinite scroll
-  - Search notes by title/content (basic text search first)
-- [ ] Choose and install rich text editor (Tiptap recommended):
-  - `@tiptap/react`, `@tiptap/starter-kit`, `@tiptap/extension-markdown`
-  - Markdown serialization (store as markdown, render as rich text)
-- [ ] Build **QuickNote** component (`src/components/QuickNote.tsx`):
-  - Floating action button or Cmd+N keyboard shortcut
-  - Minimal overlay: text area + save button
-  - Auto-saves on close
-- [ ] Build notes list route `/notes/`:
-  - Search/filter bar
-  - Note cards with title, preview, tags, date
-  - Sort by date created/updated
-- [ ] Build individual note route `/notes/$noteId`:
-  - Tiptap editor for content
-  - Title field (auto-generated from first line if blank)
-  - Tags display (manual for now, AI-generated in Phase 8)
-  - Created/updated timestamps
-- [ ] Optional: Task ↔ Note linking (simple `noteId` FK on tasks)
+  - `notes`: id (`nte_` prefix), content (text, markdown from Tiptap), title (text, nullable — user-provided or AI-generated), date (text, nullable — display date for day view, updated by drag-to-calendar), sortOrder (integer, default 0), userId, dateCreated, dateUpdated
+  - `noteTags`: noteId (FK → notes.id CASCADE), tagId (FK → tags.id CASCADE), composite PK — mirrors `taskTags` pattern, same tags pool
+  - `noteMetadata`: noteId (FK → notes.id CASCADE, PK — one-to-one), keywords (text, nullable — AI-generated comma-separated search terms), embedding (blob, nullable — future vector search)
+- [ ] Add relations: `notesRelations` (many noteTags, one noteMetadata), `noteTagsRelations`, `noteMetadataRelations`. Update `tagsRelations` to include `noteTags`
+- [ ] Generate migration (`pnpm db:generate`), run it (`pnpm db:migrate`)
+- [ ] Create `src/features/notes/` — types, consts, server, queries, mutations
+- [ ] Update `src/db/seed.ts` with sample notes, note-tag relationships, and noteMetadata
+
+### 7B: Server Functions
+
+- [ ] CRUD in `src/features/notes/server.ts`:
+  - `fetchNotes(userId, { page, limit })` — paginated, 50/page, ordered by dateUpdated DESC. Returns `{ notes, total, page, totalPages }`
+  - `fetchNotesForDate(userId, date)` — notes where `date` = given date, ordered by sortOrder
+  - `fetchNotesByTag(userId, tagId)` — notes with a specific tag (mirrors `fetchTasksByTag`)
+  - `fetchNote(userId, noteId)` — single note with tags + metadata
+  - `createNote({ content, title?, date?, tagIds? })` — creates note + noteTags. Triggers AI processing if title is null
+  - `updateNote({ id, content?, title?, date?, tagIds?, sortOrder? })` — tag sync in transaction (same pattern as `updateTask`)
+  - `deleteNote(noteId)` — hard delete (CASCADE handles noteTags + noteMetadata)
+  - `reorderNotes(noteIds)` — batch reorder by position (mirrors `reorderTasks`)
+  - `searchNotes(userId, query, tagIds?)` — PostgreSQL full-text search (`tsvector`/`tsquery`) + optional tag filter
+- [ ] Set up PostgreSQL full-text search on notes:
+  - `tsvector` column on notes or use `to_tsvector()` at query time on content + title + keywords
+  - `searchNotes` uses `plainto_tsquery` with `ts_rank` for relevance ranking
+  - Combine with tag filtering via `noteTags` join
+
+### 7C: AI Integration (Provider-Agnostic)
+
+- [ ] Create `src/features/ai/`:
+  - `types.ts` — `AIProvider` interface: `generateTitle(content)`, `generateKeywords(content)`
+  - `xai.ts` — xAI/Grok implementation using `openai` npm package with base URL `https://api.x.ai/v1`
+  - `provider.ts` — factory function `getAIProvider()` reads `AI_PROVIDER` env var, returns implementation
+  - Easy to add `openai.ts`, `ollama.ts`, `anthropic.ts` by implementing the interface
+- [ ] Add env vars to `src/config/env.server.ts`:
+  - `AI_API_KEY` (optional — AI features degrade gracefully if missing)
+  - `AI_PROVIDER` (optional, default: `xai`)
+- [ ] `processNoteWithAI(noteId)` server function — fire-and-forget after save:
+  - **Title**: only generated if `note.title` is null/empty (user-provided title never overwritten)
+  - **Keywords**: always generated — 5-10 terms including synonyms, related concepts, contextual terms
+  - Updates `notes.title` (if was null) and `noteMetadata.keywords`
+  - Graceful degradation: no API key → skip silently
+
+### 7D: UI Components
+
+- [ ] Install Tiptap: `@tiptap/react`, `@tiptap/starter-kit`, `@tiptap/pm`
+  - Markdown serialization for storage (store as markdown, edit as rich text)
+- [ ] Build `src/components/NoteItem.tsx` — mirrors TaskItem layout:
+  - Drag handle (`GripVertical`, visible on hover — same as TaskItem)
+  - Note icon (`StickyNote` or `FileText` from lucide) instead of checkbox
+  - Title as primary text (AI-generated or user-provided, "Processing..." while AI pending)
+  - Content truncated to 1-2 lines (`line-clamp-2`), chevron expands full content inline
+  - Tag badges (same styling as TaskItem)
+  - Edit button → NoteDialog, Delete button
+- [ ] Build `src/components/NoteDialog.tsx` — create/edit dialog:
+  - Content: Tiptap editor (main field, autofocus)
+  - Title: text input (optional — placeholder "AI will generate a title")
+  - Date: date input (pre-filled from context)
+  - Tags: `TagMultiSelect` (reused directly)
+  - On create: save, trigger AI if no title
+  - On edit: update, re-trigger AI if content changed and title was AI-generated
+- [ ] Hot corner button — fixed bottom-right, muted gray, `StickyNote` icon:
+  - On `/day/$date` → pre-fills date
+  - On `/tag/$tagId` → pre-fills tag
+  - Keyboard shortcut: Cmd/Ctrl+N with same context rules
+
+### 7E: Routes & View Integration
+
+- [ ] Update `src/components/DayView.tsx`:
+  - Fetch notes for date alongside tasks
+  - Render notes section (each as `NoteItem`) with drag-drop reordering
+  - Drag note to calendar date → updates `date` field
+- [ ] Update `src/routes/_app/tag/$tagId.tsx`:
+  - Fetch + render notes by tag alongside tasks
+- [ ] Add `/notes` route (`src/routes/_app/notes.tsx`):
+  - Search bar (full-text search, debounced)
+  - Tag filter (multi-select)
+  - Paginated note list: 50 per page, ordered by dateUpdated DESC
+  - Each result as `NoteItem`
+- [ ] Update app layout (`src/routes/_app.tsx`):
+  - "Notes" nav link
+  - Note dialog state in `AppLayoutContext`
+  - Hot corner button
+  - Cmd/Ctrl+N keyboard shortcut
+
+### 7F: Testing & Verification
+
+- [ ] Unit tests: `src/features/notes/mutations.test.ts`, `src/features/ai/xai.test.ts`
+- [ ] E2E: `e2e/notes.spec.ts` — create note, verify in day view, expand, search
+- [ ] **Verify**: `pnpm typecheck`, `pnpm test`, `pnpm test:e2e` all pass
+- [ ] **Verify**: `pnpm db:seed` creates sample notes with tags and metadata
+
+### Decisions
+
+- **Separate `noteTags` table** — same tags pool as tasks, clean FK constraints, no polymorphic complexity
+- **`noteMetadata` table** — isolates AI-generated data (keywords, future embeddings), extensible
+- **AI title only if none given** — user intent takes precedence
+- **No AI tag suggestions** — avoids sending full tag list on every AI request
+- **`date` field** (not `startDate`) — display-only for day view, updated by drag-to-calendar
+- **Drag handles on notes** — reorderable within day view, draggable to calendar dates
+- **Tiptap + markdown storage** — rich editing, portable storage, full-text searchable
+- **PostgreSQL full-text search + AI keywords** — AI generates search terms at save time, `tsvector`/`tsquery` at query time, no API calls needed for search
+- **Tasks ↔ Notes linked only via shared tags** — no direct FK
+- **Provider-agnostic AI** — interface in `types.ts`, xAI implementation first. `openai` npm package works with xAI's OpenAI-compatible API
+- **Pagination on `/notes`** — 50 per page to prevent slow loads
 
 ### Outputs
 
-- `src/features/notes/`
-- `src/components/QuickNote.tsx`
-- `src/routes/notes/index.tsx`, `src/routes/notes/$noteId.tsx`
-- Tiptap integration
+- `src/db/schema.ts` — notes, noteTags, noteMetadata tables + relations
+- `src/features/notes/` — types, consts, server, queries, mutations
+- `src/features/ai/` — types, provider, xai, config
+- `src/components/NoteItem.tsx`, `NoteDialog.tsx`
+- `src/routes/_app/notes.tsx`
+- Updated: `DayView.tsx`, `tag/$tagId.tsx`, `_app.tsx`, `AppLayoutContext.tsx`
+- Tiptap integration (`@tiptap/react`, `@tiptap/starter-kit`, `@tiptap/pm`)
 
 ---
 
-## Phase 8: AI Integration
-
-> Auto-categorize notes with AI, semantic search across your note library.
-
-- [ ] Create `src/features/ai/` — provider abstraction:
-  - `provider.ts` — interface: `generateTags(text)`, `generateSummary(text)`, `generateEmbedding(text)`
-  - `openai.ts` — OpenAI implementation (gpt-4o-mini for text, text-embedding-3-small for vectors)
-  - `config.ts` — provider selection and API key management
-  - Easy to add `ollama.ts`, `anthropic.ts` later
-- [ ] Install `sqlite-vec` for vector similarity search in SQLite
-- [ ] On note save (server-side, async — don't block save):
-  - Call `generateTags()` → auto-create and assign tags on `noteTags`
-  - Call `generateSummary()` → store on `noteMetadata`
-  - Call `generateEmbedding()` → store vector on `noteMetadata`
-  - Show "processing" indicator on note while AI runs
-- [ ] Smart search server function:
-  - Text query → generate query embedding → `sqlite-vec` cosine similarity → ranked results
-  - Combine with keyword/tag/date filtering
-  - Return relevance scores
-- [ ] Search UI on notes page:
-  - Search bar with instant results
-  - Results ranked by semantic relevance
-  - Highlighted matched tags and summary snippets
-- [ ] Add env vars: `AI_PROVIDER`, `OPENAI_API_KEY` (server-only)
-- [ ] Graceful degradation: if no AI key configured, skip auto-tagging, use basic text search
-
-### Outputs
-
-- `src/features/ai/`
-- AI-powered auto-tagging pipeline
-- Semantic search endpoint and UI
-- Updated note save flow
-
----
-
-## Phase 9: Multi-User & Auth (Future)
+## Phase 8: Multi-User & Auth (Future)
 
 > Add authentication so it can be shared or self-hosted for multiple users.
 
@@ -464,30 +463,30 @@ These are the default seed categories. Users can add/rename/remove later.
 ### Database Schema (ERD Summary)
 
 ```
-tasks ──┬── taskTags ──── tags
-        ├── listItems ──── lists
-        └── priorityCategories
+tasks ──── taskTags ──── tags ──── noteTags ──── notes
+                                                   │
+                                              noteMetadata
 
-notes ──┬── noteTags ──── tags (shared)
-        └── noteMetadata (AI-generated)
+tasks self-reference (parentTaskId → tasks.id) for subtasks
+notes + tasks share the same tags pool via separate junction tables
+noteMetadata is one-to-one with notes (AI-generated keywords, future embeddings)
 ```
 
 ### Environment Variables
 
-| Variable         | Scope  | Phase | Description                                         |
-| ---------------- | ------ | ----- | --------------------------------------------------- |
-| `DATABASE_URL`   | Server | 3     | Path to SQLite file (default: `./data/whatidid.db`) |
-| `AI_PROVIDER`    | Server | 8     | `openai`, `ollama`, `anthropic`                     |
-| `OPENAI_API_KEY` | Server | 8     | OpenAI API key for auto-tagging + embeddings        |
+| Variable       | Scope  | Phase | Description                                                                          |
+| -------------- | ------ | ----- | ------------------------------------------------------------------------------------ |
+| `DATABASE_URL` | Server | 3     | PostgreSQL connection string (e.g., `postgres://whatidid:whatidid@db:5432/whatidid`) |
+| `AI_PROVIDER`  | Server | 7     | `xai` (default), `openai`, `ollama`, `anthropic`                                     |
+| `AI_API_KEY`   | Server | 7     | xAI API key for Grok (optional — AI degrades gracefully)                             |
 
 ### New npm Packages by Phase
 
-| Phase | Packages                                                                |
-| ----- | ----------------------------------------------------------------------- |
-| 2     | `@playwright/test`                                                      |
-| 3     | `drizzle-orm`, `better-sqlite3`, `drizzle-kit`, `@types/better-sqlite3` |
-| 4     | None (CSS-only — uses existing Tailwind CSS 4 `@theme` system)          |
-| 5     | `rrule`                                                                 |
-| 7     | `@tiptap/react`, `@tiptap/starter-kit`, `@tiptap/extension-markdown`    |
-| 8     | `sqlite-vec`, `openai` (or provider SDK)                                |
-| 9     | TBD (auth library)                                                      |
+| Phase | Packages                                                       |
+| ----- | -------------------------------------------------------------- |
+| 2     | `@playwright/test`                                             |
+| 3     | `drizzle-orm`, `postgres`, `drizzle-kit`                       |
+| 4     | None (CSS-only — uses existing Tailwind CSS 4 `@theme` system) |
+| 5     | `sonner` (toast notifications)                                 |
+| 7     | `openai`, `@tiptap/react`, `@tiptap/starter-kit`, `@tiptap/pm` |
+| 8     | TBD (auth library)                                             |

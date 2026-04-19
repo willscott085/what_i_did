@@ -2,9 +2,15 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { PlusIcon } from "lucide-react";
 import { useSyncExternalStore } from "react";
+import { useAppLayout } from "~/components/AppLayoutContext";
+import { DraggableList } from "~/components/DraggableTaskList";
+import { NoteItem } from "~/components/NoteItem";
 import { SortableTaskList } from "~/components/SortableTaskList";
 import { TaskItem } from "~/components/TaskItem";
 import { Button } from "~/components/ui/button";
+import { useDeleteNote, useUpdateNote } from "~/features/notes/mutations";
+import { fetchNotesForDateQueryOptions } from "~/features/notes/queries";
+import { Note } from "~/features/notes/types";
 import {
   useDeleteTask,
   useReorderTasks,
@@ -28,12 +34,18 @@ export function DayView({
   onDragOverDate,
 }: DayViewProps) {
   const dateStr = format(selectedDate, "yyyy-MM-dd");
+  const { handleOpenNoteDialog } = useAppLayout();
   const { data: tasks = [] } = useQuery(fetchTasksForDateQueryOptions(dateStr));
+  const { data: dayNotes = [] } = useQuery(
+    fetchNotesForDateQueryOptions(dateStr),
+  );
 
   const { mutate: updateTask } = useMutation(
     useUpdateTaskMutationOptions({ onError: () => {} }),
   );
   const { mutate: updateFullTask } = useUpdateFullTask();
+  const { mutate: deleteNoteMutation } = useDeleteNote();
+  const { mutate: updateNoteMutation } = useUpdateNote();
 
   const hydrated = useSyncExternalStore(
     () => () => {},
@@ -54,6 +66,18 @@ export function DayView({
 
   function handleDropOnDate(taskId: string, date: string) {
     updateFullTask({ id: taskId, startDate: date });
+  }
+
+  function handleEditNote(note: Note) {
+    handleOpenNoteDialog(note);
+  }
+
+  function handleDeleteNote(noteId: string) {
+    deleteNoteMutation(noteId);
+  }
+
+  function handleNoteDropOnDate(noteId: string, date: string) {
+    updateNoteMutation({ id: noteId, date });
   }
 
   return (
@@ -119,6 +143,34 @@ export function DayView({
             </ul>
           )}
         </div>
+
+        {/* Notes for this date */}
+        {dayNotes.length > 0 && (
+          <div className="mt-4">
+            <h3 className="text-muted-foreground pl-8 text-xs font-medium tracking-wide uppercase">
+              Notes
+            </h3>
+            <div className="mt-1">
+              <DraggableList
+                items={dayNotes}
+                onDropOnDate={handleNoteDropOnDate}
+                onDragOverDate={onDragOverDate}
+              >
+                {(note, isDragging, dragAttributes, dragListeners) => (
+                  <NoteItem
+                    key={note.id}
+                    note={note}
+                    onEdit={handleEditNote}
+                    onDelete={handleDeleteNote}
+                    isDragging={isDragging}
+                    dragAttributes={dragAttributes}
+                    dragListeners={dragListeners}
+                  />
+                )}
+              </DraggableList>
+            </div>
+          </div>
+        )}
       </section>
     </div>
   );

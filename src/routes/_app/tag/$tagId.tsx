@@ -3,10 +3,14 @@ import { createFileRoute } from "@tanstack/react-router";
 import { PlusIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useAppLayout } from "~/components/AppLayoutContext";
-import { DraggableTaskList } from "~/components/DraggableTaskList";
+import { DraggableList } from "~/components/DraggableTaskList";
 import { Markdown } from "~/components/Markdown";
+import { NoteItem } from "~/components/NoteItem";
 import { TaskItem } from "~/components/TaskItem";
 import { Button } from "~/components/ui/button";
+import { useDeleteNote, useUpdateNote } from "~/features/notes/mutations";
+import { fetchNotesByTagQueryOptions } from "~/features/notes/queries";
+import { Note } from "~/features/notes/types";
 import { useUpdateTag } from "~/features/tags/mutations";
 import {
   useDeleteTask,
@@ -21,9 +25,14 @@ export const Route = createFileRoute("/_app/tag/$tagId")({
     meta: [{ title: "Tag - whatIdid" }],
   }),
   loader: async ({ context, params }) => {
-    await context.queryClient.ensureQueryData(
-      fetchTasksByTagQueryOptions(params.tagId),
-    );
+    await Promise.all([
+      context.queryClient.ensureQueryData(
+        fetchTasksByTagQueryOptions(params.tagId),
+      ),
+      context.queryClient.ensureQueryData(
+        fetchNotesByTagQueryOptions(params.tagId),
+      ),
+    ]);
     return null;
   },
   component: TagView,
@@ -36,6 +45,7 @@ function TagView() {
     setDefaultStartDate,
     setDefaultTagIds,
     handleOpenDialog,
+    handleOpenNoteDialog,
   } = useAppLayout();
 
   useEffect(() => {
@@ -45,6 +55,7 @@ function TagView() {
   }, [setDefaultStartDate, setDefaultTagIds, tagId]);
 
   const { data } = useQuery(fetchTasksByTagQueryOptions(tagId));
+  const { data: tagNotes = [] } = useQuery(fetchNotesByTagQueryOptions(tagId));
   const tagName = data?.tag?.name ?? "Tag";
   const tagDescription = data?.tag?.description ?? null;
   const tasks = data?.tasks ?? [];
@@ -55,6 +66,8 @@ function TagView() {
   const { mutate: deleteTaskMutation } = useDeleteTask();
   const { mutate: updateFullTask } = useUpdateFullTask();
   const { mutate: updateTagMutation } = useUpdateTag();
+  const { mutate: deleteNoteMutation } = useDeleteNote();
+  const { mutate: updateNoteMutation } = useUpdateNote();
 
   // ─── Inline title editing ─────────────────────────────────────────
   const [editingTitle, setEditingTitle] = useState(false);
@@ -117,6 +130,18 @@ function TagView() {
 
   function handleDelete(taskId: string) {
     deleteTaskMutation(taskId);
+  }
+
+  function handleEditNote(note: Note) {
+    handleOpenNoteDialog(note);
+  }
+
+  function handleDeleteNote(noteId: string) {
+    deleteNoteMutation(noteId);
+  }
+
+  function handleNoteDropOnDate(noteId: string, date: string) {
+    updateNoteMutation({ id: noteId, date });
   }
 
   return (
@@ -216,8 +241,8 @@ function TagView() {
         </div>
 
         <div className="mt-4">
-          <DraggableTaskList
-            tasks={tasks}
+          <DraggableList
+            items={tasks}
             onDropOnDate={handleDropOnDate}
             onDragOverDate={setDragOverDate}
           >
@@ -234,13 +259,42 @@ function TagView() {
                 hideTags
               />
             )}
-          </DraggableTaskList>
+          </DraggableList>
           {tasks.length === 0 && (
             <p className="text-muted-foreground py-8 text-center text-sm">
               No tasks with this tag.
             </p>
           )}
         </div>
+
+        {/* Notes with this tag */}
+        {tagNotes.length > 0 && (
+          <div className="mt-4">
+            <h3 className="text-muted-foreground pl-8 text-xs font-medium tracking-wide uppercase">
+              Notes
+            </h3>
+            <div className="mt-1">
+              <DraggableList
+                items={tagNotes}
+                onDropOnDate={handleNoteDropOnDate}
+                onDragOverDate={setDragOverDate}
+              >
+                {(note, isDragging, dragAttributes, dragListeners) => (
+                  <NoteItem
+                    key={note.id}
+                    note={note}
+                    onEdit={handleEditNote}
+                    onDelete={handleDeleteNote}
+                    isDragging={isDragging}
+                    dragAttributes={dragAttributes}
+                    dragListeners={dragListeners}
+                    hideTags
+                  />
+                )}
+              </DraggableList>
+            </div>
+          </div>
+        )}
       </section>
     </div>
   );
