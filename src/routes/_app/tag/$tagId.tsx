@@ -1,6 +1,6 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Trash2Icon } from "lucide-react";
+import { PlusIcon, Trash2Icon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useAppLayout } from "~/components/AppLayoutContext";
 import { DraggableList } from "~/components/DraggableTaskList";
@@ -173,6 +173,14 @@ function TagView() {
               {titleDraft}
             </h2>
           )}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => handleOpenDialog(null)}
+            aria-label="Add task"
+          >
+            <PlusIcon className="size-5" />
+          </Button>
         </header>
 
         <div className="mt-4">

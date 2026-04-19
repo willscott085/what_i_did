@@ -202,6 +202,8 @@ function TaskDialogForm({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               autoFocus
+              spellCheck
+              autoComplete="off"
             />
           </div>
 
@@ -241,6 +243,7 @@ function TaskDialogForm({
               placeholder="Add notes…"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
+              spellCheck
             />
           </div>
 

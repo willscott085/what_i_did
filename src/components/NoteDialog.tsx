@@ -153,8 +153,8 @@ function NoteDialogForm({
         tagIds: tagIds.length > 0 ? tagIds : undefined,
       });
 
-      // Fire-and-forget AI processing — cache invalidation handled by the mutation hook
-      if (result?.id) {
+      // Fire-and-forget AI processing — only when no title is set
+      if (result?.id && !title.trim()) {
         triggerAI(result.id);
       }
     }
@@ -286,6 +286,7 @@ function NoteDialogForm({
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
                 autoFocus
+                spellCheck
                 className="placeholder:text-muted-foreground dark:bg-input/30 block min-h-[200px] w-full resize-y bg-transparent px-3 py-2 text-sm outline-none"
               />
             </div>
@@ -300,6 +301,8 @@ function NoteDialogForm({
               placeholder="AI will generate a title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
+              spellCheck
+              autoComplete="off"
             />
           </div>
 
