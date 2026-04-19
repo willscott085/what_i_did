@@ -6,10 +6,19 @@ import {
   useParams,
 } from "@tanstack/react-router";
 import { format, isValid, parseISO } from "date-fns";
-import { useMemo, useState, useSyncExternalStore } from "react";
+import { StickyNoteIcon } from "lucide-react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { AppLayoutProvider } from "~/components/AppLayoutContext";
 import { MiniCalendar } from "~/components/MiniCalendar";
+import { NoteDialog } from "~/components/NoteDialog";
 import { TaskDialog } from "~/components/TaskDialog";
+import { Note } from "~/features/notes/types";
 import { Task } from "~/features/tasks/types";
 
 export const Route = createFileRoute("/_app")({
@@ -17,6 +26,7 @@ export const Route = createFileRoute("/_app")({
 });
 
 const navItems = [
+  { to: "/notes", label: "Notes" },
   { to: "/tags", label: "Tags" },
   { to: "/backlog", label: "Backlog" },
 ] as const;
@@ -65,6 +75,32 @@ function AppLayout() {
     if (!open) setEditingTask(null);
   }
 
+  // ─── Note dialog state ──────────────────────────────────────────
+  const [noteDialogOpen, setNoteDialogOpen] = useState(false);
+  const [editingNote, setEditingNote] = useState<Note | null>(null);
+
+  const handleOpenNoteDialog = useCallback((note?: Note | null) => {
+    setEditingNote(note ?? null);
+    setNoteDialogOpen(true);
+  }, []);
+
+  function handleNoteDialogClose(open: boolean) {
+    setNoteDialogOpen(open);
+    if (!open) setEditingNote(null);
+  }
+
+  // ─── Keyboard shortcut: Cmd/Ctrl+N → new note ──────────────────
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key === "n") {
+        e.preventDefault();
+        handleOpenNoteDialog(null);
+      }
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [handleOpenNoteDialog]);
+
   const layoutCtx = useMemo(
     () => ({
       dragOverDate,
@@ -74,8 +110,9 @@ function AppLayout() {
       defaultTagIds,
       setDefaultTagIds,
       handleOpenDialog,
+      handleOpenNoteDialog,
     }),
-    [dragOverDate, defaultStartDate, defaultTagIds],
+    [dragOverDate, defaultStartDate, defaultTagIds, handleOpenNoteDialog],
   );
 
   return (
@@ -121,6 +158,25 @@ function AppLayout() {
           defaultStartDate={defaultStartDate}
           defaultTagIds={defaultTagIds}
         />
+
+        <NoteDialog
+          open={noteDialogOpen}
+          onOpenChange={handleNoteDialogClose}
+          note={editingNote}
+          defaultDate={defaultStartDate}
+          defaultTagIds={defaultTagIds}
+        />
+
+        {/* Hot corner — fixed bottom-right note button */}
+        <button
+          type="button"
+          onClick={() => handleOpenNoteDialog(null)}
+          className="bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground fixed right-4 bottom-4 z-40 flex size-10 items-center justify-center rounded-full shadow-md transition-all hover:scale-110"
+          aria-label="New note (Ctrl+N)"
+          title="New note (Ctrl+N)"
+        >
+          <StickyNoteIcon className="size-5" />
+        </button>
       </div>
     </AppLayoutProvider>
   );

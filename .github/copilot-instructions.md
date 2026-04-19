@@ -13,7 +13,7 @@
 - **Routing:** TanStack Router (file-based routes in `src/routes/`)
 - **Data Fetching:** TanStack React Query (queries, mutations, optimistic updates)
 - **Forms:** TanStack React Form
-- **Database:** SQLite via Drizzle ORM (migrating from json-server)
+- **Database:** PostgreSQL via Drizzle ORM
 - **Styling:** Tailwind CSS 4, tailwind-variants
 - **UI Primitives:** Radix UI (headless, accessible components — dialog, select, checkbox, tooltip, etc.)
 - **Drag & Drop:** dnd-kit (core, sortable)
@@ -56,7 +56,7 @@ export const myFunction = createServerFn({ method: "GET" })
   });
 ```
 
-### Database Pattern (Drizzle + SQLite)
+### Database Pattern (Drizzle + PostgreSQL)
 
 - Schema defined in `src/db/schema.ts`
 - Drizzle client singleton in `src/db/index.ts`
@@ -65,7 +65,7 @@ export const myFunction = createServerFn({ method: "GET" })
 
 ## File & Folder Organization
 
-- `src/features/{domain}/` — Feature modules (tasks, lists, categories, tags, notes, ai)
+- `src/features/{domain}/` — Feature modules (tasks, tags, notes, ai)
 - `src/components/` — Shared UI components
 - `src/components/ui/` — Primitive UI components (button, dialog, input, etc.)
 - `src/routes/` — File-based routes (TanStack Router)

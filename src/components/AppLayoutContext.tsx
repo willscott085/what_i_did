@@ -1,4 +1,5 @@
 import { createContext, useContext } from "react";
+import { Note } from "~/features/notes/types";
 import { Task } from "~/features/tasks/types";
 
 interface AppLayoutContextValue {
@@ -9,6 +10,7 @@ interface AppLayoutContextValue {
   defaultTagIds: string[] | undefined;
   setDefaultTagIds: (tagIds: string[] | undefined) => void;
   handleOpenDialog: (task?: Task | null) => void;
+  handleOpenNoteDialog: (note?: Note | null) => void;
 }
 
 const AppLayoutContext = createContext<AppLayoutContextValue | null>(null);
