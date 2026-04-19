@@ -126,7 +126,7 @@ export function TaskItem({
         {task.dateCompleted ? (
           <span className="-ml-2 size-8 shrink-0" aria-hidden="true" />
         ) : (
-          <div className="flex h-9 items-center">
+          <div className="flex h-7.5 items-center">
             <button
               type="button"
               {...dragAttributes}
@@ -150,7 +150,7 @@ export function TaskItem({
           <form.Field
             name="completed"
             children={(field) => (
-              <div className="flex h-9 items-center">
+              <div className="flex h-7.5 items-center">
                 <Checkbox
                   id={`${task.id}-completed`}
                   checked={field.state.value}
@@ -202,7 +202,7 @@ export function TaskItem({
                     readOnly={!!task.dateCompleted}
                     tabIndex={task.dateCompleted ? -1 : undefined}
                     className={clsx(
-                      "truncate border-0 p-0 shadow-none focus-visible:ring-0 dark:bg-transparent",
+                      "h-7.5 truncate border-0 p-0 shadow-none focus-visible:ring-0 dark:bg-transparent",
                       "min-w-0 flex-1",
                       form.state.values.completed &&
                         "text-muted-foreground cursor-copy line-through",
@@ -217,7 +217,12 @@ export function TaskItem({
                 </div>
 
                 {/* Notes */}
-                {!task.dateCompleted && !(hideEmptyNotes && !task.notes) && (
+                {!task.dateCompleted && hideEmptyNotes && task.notes && (
+                  <div className="text-muted-foreground mb-1 line-clamp-3 text-xs leading-normal break-all">
+                    <Markdown className="[&_p]:m-0">{task.notes}</Markdown>
+                  </div>
+                )}
+                {!task.dateCompleted && !hideEmptyNotes && (
                   <form.Field
                     name="notes"
                     listeners={{
@@ -271,7 +276,7 @@ export function TaskItem({
                                   );
                                 }
                               }}
-                              className="text-muted-foreground line-clamp-3 cursor-text text-xs leading-normal break-all"
+                              className="text-muted-foreground mb-1 line-clamp-3 cursor-text text-xs leading-normal break-all"
                             >
                               <Markdown className="[&_p]:m-0">
                                 {notesField.state.value}
@@ -296,7 +301,7 @@ export function TaskItem({
                   />
                 )}
                 {task.notes && task.dateCompleted && (
-                  <div className="text-muted-foreground line-clamp-3 text-xs leading-normal break-all">
+                  <div className="text-muted-foreground mb-1 line-clamp-3 text-xs leading-normal break-all">
                     <Markdown className="[&_p]:m-0">{task.notes}</Markdown>
                   </div>
                 )}
@@ -320,7 +325,7 @@ export function TaskItem({
 
         {/* Subtask count */}
         {subtaskCount > 0 && (
-          <div className="flex h-9 items-center">
+          <div className="flex h-7.5 items-center">
             <button
               type="button"
               onClick={() => setExpanded(!expanded)}
@@ -332,7 +337,7 @@ export function TaskItem({
         )}
 
         {/* Expand/collapse toggle */}
-        <div className="flex h-9 items-center">
+        <div className="flex h-7.5 items-center">
           <button
             type="button"
             onClick={() => setExpanded(!expanded)}
@@ -349,7 +354,7 @@ export function TaskItem({
 
         {/* Action buttons */}
         {onEdit && (
-          <div className="flex h-9 items-center">
+          <div className="flex h-7.5 items-center">
             <Button
               type="button"
               variant="ghost"
@@ -363,7 +368,7 @@ export function TaskItem({
           </div>
         )}
         {onDelete && (
-          <div className="flex h-9 items-center">
+          <div className="flex h-7.5 items-center">
             <Button
               type="button"
               variant="ghost"

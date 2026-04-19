@@ -63,7 +63,7 @@ export function NoteItem({
     >
       <div className="flex min-w-0 items-start gap-2">
         {/* Drag Handle */}
-        <div className="flex h-9 items-center">
+        <div className="flex h-[30px] items-center">
           <button
             type="button"
             {...dragAttributes}
@@ -76,7 +76,7 @@ export function NoteItem({
         </div>
 
         {/* Note icon */}
-        <div className="flex h-9 items-center">
+        <div className="flex h-[30px] items-center">
           <StickyNoteIcon className="text-muted-foreground size-5" />
         </div>
 
@@ -93,13 +93,13 @@ export function NoteItem({
             )}
             {hasTitle ? (
               <span
-                className="flex h-9 min-w-0 flex-1 items-center truncate text-sm"
+                className="flex h-[30px] min-w-0 flex-1 items-center truncate text-sm"
                 title={note.title!}
               >
                 {note.title}
               </span>
             ) : (
-              <span className="text-muted-foreground flex h-9 min-w-0 flex-1 items-center truncate text-sm">
+              <span className="text-muted-foreground flex h-[30px] min-w-0 flex-1 items-center truncate text-sm">
                 {note.content}
               </span>
             )}
@@ -109,11 +109,11 @@ export function NoteItem({
           {hasTitle && note.content && (
             <div>
               {expanded ? (
-                <div className="text-muted-foreground pb-2 text-xs leading-normal break-words">
+                <div className="text-muted-foreground mb-1 pb-2 text-xs leading-normal break-words">
                   <Markdown className="[&_p]:m-0">{note.content}</Markdown>
                 </div>
               ) : (
-                <div className="text-muted-foreground line-clamp-2 text-xs leading-normal break-words">
+                <div className="text-muted-foreground mb-1 line-clamp-2 text-xs leading-normal break-words">
                   <Markdown className="[&_p]:m-0">{note.content}</Markdown>
                 </div>
               )}
@@ -130,7 +130,7 @@ export function NoteItem({
 
         {/* Expand/collapse toggle */}
         {note.content && (
-          <div className="flex h-9 items-center">
+          <div className="flex h-[30px] items-center">
             <button
               type="button"
               onClick={() => setExpanded(!expanded)}
@@ -148,7 +148,7 @@ export function NoteItem({
 
         {/* Action buttons */}
         {onEdit && (
-          <div className="flex h-9 items-center">
+          <div className="flex h-[30px] items-center">
             <Button
               type="button"
               variant="ghost"
@@ -161,7 +161,7 @@ export function NoteItem({
             </Button>
           </div>
         )}
-        <div className="flex h-9 items-center">
+        <div className="flex h-[30px] items-center">
           <Button
             type="button"
             variant="ghost"

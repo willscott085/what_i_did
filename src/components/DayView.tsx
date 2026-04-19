@@ -112,6 +112,7 @@ export function DayView({
                   onEdit={handleEdit}
                   onDelete={handleDelete}
                   isDragging={false}
+                  hideEmptyNotes
                 />
               )}
             >
@@ -125,6 +126,7 @@ export function DayView({
                   isDragging={isDragging}
                   dragAttributes={dragAttributes}
                   dragListeners={dragListeners}
+                  hideEmptyNotes
                 />
               )}
             </SortableTaskList>
@@ -138,6 +140,7 @@ export function DayView({
                   onEdit={handleEdit}
                   onDelete={handleDelete}
                   isDragging={false}
+                  hideEmptyNotes
                 />
               ))}
             </ul>

@@ -1,8 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, createFileRoute } from "@tanstack/react-router";
-import { SearchIcon } from "lucide-react";
-import { useState } from "react";
+import { PlusIcon, SearchIcon } from "lucide-react";
+import { useRef, useState } from "react";
+import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
+import { useCreateTag } from "~/features/tags/mutations";
 import { fetchTagsQueryOptions } from "~/features/tags/queries";
 
 export const Route = createFileRoute("/_app/tags")({
@@ -19,17 +21,65 @@ export const Route = createFileRoute("/_app/tags")({
 function Tags() {
   const { data: tags = [] } = useQuery(fetchTagsQueryOptions());
   const [search, setSearch] = useState("");
+  const [adding, setAdding] = useState(false);
+  const [newTagName, setNewTagName] = useState("");
+  const addInputRef = useRef<HTMLInputElement>(null);
+  const { mutate: createTag } = useCreateTag();
 
   const filtered = search
     ? tags.filter((t) => t.name.toLowerCase().includes(search.toLowerCase()))
     : tags;
+
+  function handleAdd() {
+    const trimmed = newTagName.trim();
+    if (!trimmed) {
+      setAdding(false);
+      setNewTagName("");
+      return;
+    }
+    createTag({ name: trimmed });
+    setNewTagName("");
+    setAdding(false);
+  }
 
   return (
     <div className="flex min-h-full flex-col justify-center">
       <section>
         <header className="flex items-center justify-start gap-2">
           <h2 className="pl-8 text-lg font-medium">Tags</h2>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => {
+              setAdding(true);
+              requestAnimationFrame(() => addInputRef.current?.focus());
+            }}
+            aria-label="Add tag"
+          >
+            <PlusIcon className="size-5" />
+          </Button>
         </header>
+
+        {adding && (
+          <div className="mt-2 pl-8">
+            <Input
+              ref={addInputRef}
+              aria-label="New tag name"
+              placeholder="Tag name…"
+              value={newTagName}
+              onChange={(e) => setNewTagName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleAdd();
+                if (e.key === "Escape") {
+                  setAdding(false);
+                  setNewTagName("");
+                }
+              }}
+              onBlur={handleAdd}
+              className="max-w-xs"
+            />
+          </div>
+        )}
 
         <div className="relative mt-4 pl-8">
           <SearchIcon className="text-muted-foreground absolute top-1/2 left-10 size-4 -translate-y-1/2" />

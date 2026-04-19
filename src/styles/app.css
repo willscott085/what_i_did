@@ -6,6 +6,8 @@
 @import "./tokens/component.css";
 
 @layer base {
+  html,
+  body,
   #root,
   #app {
     @apply bg-background min-h-screen;

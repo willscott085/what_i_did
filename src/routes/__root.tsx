@@ -75,7 +75,7 @@ function RootComponent() {
 
 function RootDocument({ children }: { children: React.ReactNode }) {
   return (
-    <html className="font-sans antialiased">
+    <html className="bg-background font-sans antialiased">
       <head>
         <HeadContent />
       </head>
