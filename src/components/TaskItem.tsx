@@ -43,6 +43,7 @@ interface TaskItemProps {
   onEdit?: (task: Task) => void;
   onDelete?: (taskId: string) => void;
   hideTags?: boolean;
+  hideEmptyNotes?: boolean;
   dragAttributes?: React.HTMLAttributes<HTMLButtonElement>;
   dragListeners?: React.HTMLAttributes<HTMLButtonElement>;
 }
@@ -54,6 +55,7 @@ export function TaskItem({
   onEdit,
   onDelete,
   hideTags,
+  hideEmptyNotes,
   dragAttributes = {},
   dragListeners = {},
 }: TaskItemProps) {
@@ -215,7 +217,7 @@ export function TaskItem({
                 </div>
 
                 {/* Notes */}
-                {!task.dateCompleted && (
+                {!task.dateCompleted && !(hideEmptyNotes && !task.notes) && (
                   <form.Field
                     name="notes"
                     listeners={{

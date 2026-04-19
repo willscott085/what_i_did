@@ -147,28 +147,23 @@ export function DayView({
         {/* Notes for this date */}
         {dayNotes.length > 0 && (
           <div className="mt-4">
-            <h3 className="text-muted-foreground pl-8 text-xs font-medium tracking-wide uppercase">
-              Notes
-            </h3>
-            <div className="mt-1">
-              <DraggableList
-                items={dayNotes}
-                onDropOnDate={handleNoteDropOnDate}
-                onDragOverDate={onDragOverDate}
-              >
-                {(note, isDragging, dragAttributes, dragListeners) => (
-                  <NoteItem
-                    key={note.id}
-                    note={note}
-                    onEdit={handleEditNote}
-                    onDelete={handleDeleteNote}
-                    isDragging={isDragging}
-                    dragAttributes={dragAttributes}
-                    dragListeners={dragListeners}
-                  />
-                )}
-              </DraggableList>
-            </div>
+            <DraggableList
+              items={dayNotes}
+              onDropOnDate={handleNoteDropOnDate}
+              onDragOverDate={onDragOverDate}
+            >
+              {(note, isDragging, dragAttributes, dragListeners) => (
+                <NoteItem
+                  key={note.id}
+                  note={note}
+                  onEdit={handleEditNote}
+                  onDelete={handleDeleteNote}
+                  isDragging={isDragging}
+                  dragAttributes={dragAttributes}
+                  dragListeners={dragListeners}
+                />
+              )}
+            </DraggableList>
           </div>
         )}
       </section>

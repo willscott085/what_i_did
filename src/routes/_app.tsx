@@ -5,6 +5,7 @@ import {
   useNavigate,
   useParams,
 } from "@tanstack/react-router";
+import { ArrowLeftIcon } from "lucide-react";
 import { format, isValid, parseISO } from "date-fns";
 import { StickyNoteIcon } from "lucide-react";
 import {
@@ -61,6 +62,9 @@ function AppLayout() {
     undefined,
   );
 
+  // ─── Back link (child routes set this) ────────────────────────────
+  const [backLabel, setBackLabel] = useState<string | null>(null);
+
   // ─── Dialog state ────────────────────────────────────────────────
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
@@ -109,10 +113,18 @@ function AppLayout() {
       setDefaultStartDate,
       defaultTagIds,
       setDefaultTagIds,
+      backLabel,
+      setBackLabel,
       handleOpenDialog,
       handleOpenNoteDialog,
     }),
-    [dragOverDate, defaultStartDate, defaultTagIds, handleOpenNoteDialog],
+    [
+      dragOverDate,
+      defaultStartDate,
+      defaultTagIds,
+      backLabel,
+      handleOpenNoteDialog,
+    ],
   );
 
   return (
@@ -130,18 +142,32 @@ function AppLayout() {
         {/* Main content */}
         <div className="flex flex-1 flex-col overflow-hidden">
           {/* Top nav */}
-          <nav className="flex items-center justify-end px-4 py-2">
-            {navItems.map((item, i) => (
-              <span key={item.to} className="flex items-center">
-                {i > 0 && <span className="bg-border mx-3 h-4 w-px" />}
-                <Link
-                  to={item.to}
-                  className="text-muted-foreground hover:text-foreground [&.active]:text-foreground text-sm transition-colors [&.active]:font-medium"
+          <nav className="flex items-center justify-between px-4 py-2">
+            <div>
+              {backLabel && (
+                <button
+                  type="button"
+                  onClick={() => window.history.back()}
+                  className="text-muted-foreground hover:text-foreground inline-flex cursor-pointer items-center gap-1 text-sm transition-colors"
                 >
-                  {item.label}
-                </Link>
-              </span>
-            ))}
+                  <ArrowLeftIcon className="size-4" />
+                  {backLabel}
+                </button>
+              )}
+            </div>
+            <div className="flex items-center">
+              {navItems.map((item, i) => (
+                <span key={item.to} className="flex items-center">
+                  {i > 0 && <span className="bg-border mx-3 h-4 w-px" />}
+                  <Link
+                    to={item.to}
+                    className="text-muted-foreground hover:text-foreground [&.active]:text-foreground text-sm transition-colors [&.active]:font-medium"
+                  >
+                    {item.label}
+                  </Link>
+                </span>
+              ))}
+            </div>
           </nav>
 
           <main className="flex-1 overflow-y-auto">

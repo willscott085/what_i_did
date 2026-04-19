@@ -113,7 +113,7 @@ function NotesView() {
               )}
             </DraggableList>
           ) : (
-            <p className="text-muted-foreground py-8 text-center text-sm">
+            <p className="text-muted-foreground py-8 pl-8 text-sm">
               {isSearching ? "No matching notes." : "No notes yet."}
             </p>
           )}

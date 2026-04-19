@@ -1,17 +1,16 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
-import { PlusIcon } from "lucide-react";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { Trash2Icon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useAppLayout } from "~/components/AppLayoutContext";
 import { DraggableList } from "~/components/DraggableTaskList";
-import { Markdown } from "~/components/Markdown";
 import { NoteItem } from "~/components/NoteItem";
 import { TaskItem } from "~/components/TaskItem";
 import { Button } from "~/components/ui/button";
 import { useDeleteNote, useUpdateNote } from "~/features/notes/mutations";
 import { fetchNotesByTagQueryOptions } from "~/features/notes/queries";
 import { Note } from "~/features/notes/types";
-import { useUpdateTag } from "~/features/tags/mutations";
+import { useDeleteTag, useUpdateTag } from "~/features/tags/mutations";
 import {
   useDeleteTask,
   useUpdateFullTask,
@@ -44,6 +43,7 @@ function TagView() {
     setDragOverDate,
     setDefaultStartDate,
     setDefaultTagIds,
+    setBackLabel,
     handleOpenDialog,
     handleOpenNoteDialog,
   } = useAppLayout();
@@ -51,13 +51,16 @@ function TagView() {
   useEffect(() => {
     setDefaultStartDate(undefined);
     setDefaultTagIds([tagId]);
-    return () => setDefaultTagIds(undefined);
-  }, [setDefaultStartDate, setDefaultTagIds, tagId]);
+    setBackLabel("Back");
+    return () => {
+      setDefaultTagIds(undefined);
+      setBackLabel(null);
+    };
+  }, [setDefaultStartDate, setDefaultTagIds, setBackLabel, tagId]);
 
   const { data } = useQuery(fetchTasksByTagQueryOptions(tagId));
   const { data: tagNotes = [] } = useQuery(fetchNotesByTagQueryOptions(tagId));
   const tagName = data?.tag?.name ?? "Tag";
-  const tagDescription = data?.tag?.description ?? null;
   const tasks = data?.tasks ?? [];
 
   const { mutate: updateTask } = useMutation(
@@ -68,6 +71,10 @@ function TagView() {
   const { mutate: updateTagMutation } = useUpdateTag();
   const { mutate: deleteNoteMutation } = useDeleteNote();
   const { mutate: updateNoteMutation } = useUpdateNote();
+  const { mutate: deleteTagMutation } = useDeleteTag();
+  const navigate = useNavigate();
+
+  const hasNoAssociations = tasks.length === 0 && tagNotes.length === 0;
 
   // ─── Inline title editing ─────────────────────────────────────────
   const [editingTitle, setEditingTitle] = useState(false);
@@ -94,29 +101,6 @@ function TagView() {
     setEditingTitle(false);
     if (trimmed !== tagName) {
       updateTagMutation({ id: tagId, name: trimmed });
-    }
-  }
-
-  // ─── Inline description editing ───────────────────────────────────
-  const [editingDescription, setEditingDescription] = useState(false);
-  const [descriptionDraft, setDescriptionDraft] = useState(
-    tagDescription ?? "",
-  );
-  const descriptionRef = useRef<HTMLTextAreaElement>(null);
-
-  useEffect(() => {
-    setDescriptionDraft(tagDescription ?? "");
-  }, [tagDescription]);
-
-  useEffect(() => {
-    if (editingDescription) descriptionRef.current?.focus();
-  }, [editingDescription]);
-
-  function handleDescriptionSave() {
-    setEditingDescription(false);
-    const value = descriptionDraft.trim() || null;
-    if (value !== (tagDescription ?? null)) {
-      updateTagMutation({ id: tagId, description: value });
     }
   }
 
@@ -189,56 +173,7 @@ function TagView() {
               {titleDraft}
             </h2>
           )}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => handleOpenDialog(null)}
-            aria-label="Add task"
-          >
-            <PlusIcon className="size-5" />
-          </Button>
         </header>
-
-        <div className="mt-1 pl-8">
-          {editingDescription ? (
-            <textarea
-              ref={descriptionRef}
-              value={descriptionDraft}
-              onChange={(e) => setDescriptionDraft(e.target.value)}
-              onBlur={handleDescriptionSave}
-              onKeyDown={(e) => {
-                if (e.key === "Escape") {
-                  setDescriptionDraft(tagDescription ?? "");
-                  setEditingDescription(false);
-                }
-              }}
-              placeholder="Add a description…"
-              className="text-muted-foreground field-sizing-content w-full resize-none border-none bg-transparent p-0 text-sm leading-normal whitespace-pre-wrap outline-none"
-            />
-          ) : (
-            <div
-              role="button"
-              tabIndex={0}
-              className="text-muted-foreground cursor-pointer text-sm whitespace-pre-wrap"
-              onClick={() => setEditingDescription(true)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  setEditingDescription(true);
-                }
-              }}
-              title="Click to edit"
-            >
-              {descriptionDraft ? (
-                <Markdown className="text-muted-foreground text-sm">
-                  {descriptionDraft}
-                </Markdown>
-              ) : (
-                <span className="italic opacity-50">Add a description…</span>
-              )}
-            </div>
-          )}
-        </div>
 
         <div className="mt-4">
           <DraggableList
@@ -257,11 +192,12 @@ function TagView() {
                 dragAttributes={dragAttributes}
                 dragListeners={dragListeners}
                 hideTags
+                hideEmptyNotes
               />
             )}
           </DraggableList>
           {tasks.length === 0 && (
-            <p className="text-muted-foreground py-8 text-center text-sm">
+            <p className="text-muted-foreground py-8 pl-8 text-sm">
               No tasks with this tag.
             </p>
           )}
@@ -270,29 +206,41 @@ function TagView() {
         {/* Notes with this tag */}
         {tagNotes.length > 0 && (
           <div className="mt-4">
-            <h3 className="text-muted-foreground pl-8 text-xs font-medium tracking-wide uppercase">
-              Notes
-            </h3>
-            <div className="mt-1">
-              <DraggableList
-                items={tagNotes}
-                onDropOnDate={handleNoteDropOnDate}
-                onDragOverDate={setDragOverDate}
-              >
-                {(note, isDragging, dragAttributes, dragListeners) => (
-                  <NoteItem
-                    key={note.id}
-                    note={note}
-                    onEdit={handleEditNote}
-                    onDelete={handleDeleteNote}
-                    isDragging={isDragging}
-                    dragAttributes={dragAttributes}
-                    dragListeners={dragListeners}
-                    hideTags
-                  />
-                )}
-              </DraggableList>
-            </div>
+            <DraggableList
+              items={tagNotes}
+              onDropOnDate={handleNoteDropOnDate}
+              onDragOverDate={setDragOverDate}
+            >
+              {(note, isDragging, dragAttributes, dragListeners) => (
+                <NoteItem
+                  key={note.id}
+                  note={note}
+                  onEdit={handleEditNote}
+                  onDelete={handleDeleteNote}
+                  isDragging={isDragging}
+                  dragAttributes={dragAttributes}
+                  dragListeners={dragListeners}
+                  hideTags
+                />
+              )}
+            </DraggableList>
+          </div>
+        )}
+
+        {hasNoAssociations && (
+          <div className="mt-6 pl-8">
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => {
+                deleteTagMutation(tagId, {
+                  onSuccess: () => navigate({ to: "/tags" }),
+                });
+              }}
+            >
+              <Trash2Icon className="size-4" />
+              Delete tag
+            </Button>
           </div>
         )}
       </section>

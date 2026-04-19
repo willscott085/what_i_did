@@ -9,6 +9,8 @@ interface AppLayoutContextValue {
   setDefaultStartDate: (date: string | undefined) => void;
   defaultTagIds: string[] | undefined;
   setDefaultTagIds: (tagIds: string[] | undefined) => void;
+  backLabel: string | null;
+  setBackLabel: (label: string | null) => void;
   handleOpenDialog: (task?: Task | null) => void;
   handleOpenNoteDialog: (note?: Note | null) => void;
 }
