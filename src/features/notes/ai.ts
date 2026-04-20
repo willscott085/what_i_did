@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { and, eq } from "drizzle-orm";
 import z from "zod";
 import { db } from "~/db";
-import { noteMetadata, notes } from "~/db/schema";
+import { items, itemMetadata } from "~/db/schema";
 import { getAIProvider } from "~/features/ai/provider";
 
 export const processNoteWithAI = createServerFn({ method: "POST" })
@@ -16,8 +16,12 @@ export const processNoteWithAI = createServerFn({ method: "POST" })
       return { updated: false };
     }
 
-    const note = await db.query.notes.findFirst({
-      where: and(eq(notes.id, data.noteId), eq(notes.userId, data.userId)),
+    const note = await db.query.items.findFirst({
+      where: and(
+        eq(items.id, data.noteId),
+        eq(items.userId, data.userId),
+        eq(items.type, "note"),
+      ),
     });
 
     if (!note) return { updated: false };
@@ -25,13 +29,13 @@ export const processNoteWithAI = createServerFn({ method: "POST" })
     try {
       // Only generate title if none was provided by the user
       let title: string | undefined;
-      if (!note.title) {
-        title = await provider.generateTitle(note.content);
+      if (!note.title || note.title === "Untitled") {
+        title = await provider.generateTitle(note.content ?? "");
         console.info(`AI generated title for ${data.noteId}: "${title}"`);
       }
 
       // Always generate keywords
-      const keywords = await provider.generateKeywords(note.content);
+      const keywords = await provider.generateKeywords(note.content ?? "");
       const keywordsStr = keywords.join(", ");
       console.info(
         `AI generated ${keywords.length} keywords for ${data.noteId}`,
@@ -40,15 +44,15 @@ export const processNoteWithAI = createServerFn({ method: "POST" })
       // Update note title (if generated) and metadata keywords
       if (title) {
         await db
-          .update(notes)
+          .update(items)
           .set({ title, dateUpdated: new Date().toISOString() })
-          .where(and(eq(notes.id, data.noteId), eq(notes.userId, data.userId)));
+          .where(and(eq(items.id, data.noteId), eq(items.userId, data.userId)));
       }
 
       await db
-        .update(noteMetadata)
+        .update(itemMetadata)
         .set({ keywords: keywordsStr })
-        .where(eq(noteMetadata.noteId, data.noteId));
+        .where(eq(itemMetadata.itemId, data.noteId));
 
       return { updated: true, title };
     } catch (err) {

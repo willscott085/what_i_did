@@ -61,6 +61,7 @@ function TagView() {
   const { data } = useQuery(fetchTasksByTagQueryOptions(tagId));
   const { data: tagNotes = [] } = useQuery(fetchNotesByTagQueryOptions(tagId));
   const tagName = data?.tag?.name ?? "Tag";
+  const tagDescription = data?.tag?.description ?? null;
   const tasks = data?.tasks ?? [];
 
   const { mutate: updateTask } = useMutation(
@@ -90,6 +91,19 @@ function TagView() {
     if (editingTitle) titleInputRef.current?.focus();
   }, [editingTitle]);
 
+  // ─── Inline description editing ──────────────────────────────────
+  const [editingDescription, setEditingDescription] = useState(false);
+  const [descDraft, setDescDraft] = useState(tagDescription ?? "");
+  const descTextareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    setDescDraft(tagDescription ?? "");
+  }, [tagDescription]);
+
+  useEffect(() => {
+    if (editingDescription) descTextareaRef.current?.focus();
+  }, [editingDescription]);
+
   function handleTitleSave() {
     const trimmed = titleDraft.trim();
     if (!trimmed) {
@@ -101,6 +115,15 @@ function TagView() {
     setEditingTitle(false);
     if (trimmed !== tagName) {
       updateTagMutation({ id: tagId, name: trimmed });
+    }
+  }
+
+  function handleDescriptionSave() {
+    const trimmed = descDraft.trim();
+    setEditingDescription(false);
+    const newDesc = trimmed || null;
+    if (newDesc !== tagDescription) {
+      updateTagMutation({ id: tagId, description: newDesc });
     }
   }
 
@@ -186,6 +209,42 @@ function TagView() {
             <PlusIcon className="size-5" />
           </Button>
         </header>
+
+        {/* Inline description editing */}
+        <div className="mt-1 pr-4 pl-8">
+          {editingDescription ? (
+            <textarea
+              ref={descTextareaRef}
+              value={descDraft}
+              placeholder="Add a description…"
+              onChange={(e) => setDescDraft(e.target.value)}
+              onBlur={handleDescriptionSave}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") {
+                  setDescDraft(tagDescription ?? "");
+                  setEditingDescription(false);
+                }
+              }}
+              className="text-muted-foreground w-full resize-none border-none bg-transparent text-sm outline-none"
+              rows={2}
+            />
+          ) : (
+            <p
+              role="button"
+              tabIndex={0}
+              className={`cursor-pointer text-sm ${tagDescription ? "text-muted-foreground" : "text-muted-foreground/50 italic"}`}
+              onClick={() => setEditingDescription(true)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  setEditingDescription(true);
+                }
+              }}
+            >
+              {tagDescription || "Add a description…"}
+            </p>
+          )}
+        </div>
 
         <div className="mt-4">
           <DraggableList

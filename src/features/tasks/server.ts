@@ -6,7 +6,6 @@ import {
   eq,
   isNotNull,
   isNull,
-  lt,
   lte,
   or,
   sql,
@@ -14,101 +13,46 @@ import {
 import { generateKeyBetween, generateNKeysBetween } from "fractional-indexing";
 import z from "zod";
 import { db } from "~/db";
-import { tags, tasks, taskTags } from "~/db/schema";
+import { items, itemTags, tags } from "~/db/schema";
+import { itemColumns, rollForwardStaleTasks } from "~/features/items/server";
+import type { Task } from "./types";
 
 const userIdInput = z.object({ userId: z.string().min(1) });
 
 const formatLocalDate = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
-/**
- * Roll forward any incomplete tasks whose startDate is in the past to today.
- * Re-keys their sortOrder so they appear after today's existing tasks.
- * Runs lazily before task fetches — no background process needed.
- */
-async function rollForwardStaleTasks(userId: string) {
-  const todayStr = formatLocalDate(new Date());
+// ─── Item → Task mapping ─────────────────────────────────────────────
 
-  // Find stale tasks (past startDate, incomplete)
-  const staleTasks = await db
-    .select({ id: tasks.id, sortOrder: tasks.sortOrder })
-    .from(tasks)
-    .where(
-      and(
-        eq(tasks.userId, userId),
-        isNull(tasks.dateCompleted),
-        isNotNull(tasks.startDate),
-        lt(tasks.startDate, todayStr),
-      ),
-    )
-    .orderBy(asc(tasks.sortOrder));
-
-  if (staleTasks.length === 0) return;
-
-  // Find the max sortOrder among today's existing incomplete tasks
-  const [maxRow] = await db
-    .select({ max: sql<string | null>`MAX(${tasks.sortOrder})` })
-    .from(tasks)
-    .where(
-      and(
-        eq(tasks.userId, userId),
-        isNull(tasks.dateCompleted),
-        isNull(tasks.parentTaskId),
-        eq(tasks.startDate, todayStr),
-      ),
-    );
-
-  const lastKey = maxRow?.max ?? null;
-
-  // Generate keys for the stale tasks that sort after today's last task
-  const newKeys = generateNKeysBetween(lastKey, null, staleTasks.length);
-
-  // Batch update: move to today and assign new sort keys
-  const valuesList = sql.join(
-    staleTasks.map((t, i) => sql`(${t.id}, ${todayStr}, ${newKeys[i]})`),
-    sql`, `,
-  );
-
-  await db.execute(
-    sql`UPDATE tasks SET start_date = v.start_date, sort_order = v.sort_order
-        FROM (VALUES ${valuesList}) AS v(id, start_date, sort_order)
-        WHERE tasks.id = v.id AND tasks.user_id = ${userId}`,
-  );
+function toTask(row: Record<string, unknown>): Task {
+  const r = row as Record<string, unknown>;
+  return {
+    id: r.id as string,
+    title: r.title as string,
+    notes: (r.content as string | null) ?? null,
+    dateCreated: r.dateCreated as string,
+    dateCompleted: (r.dateCompleted as string | null) ?? null,
+    startDate: (r.date as string | null) ?? null,
+    userId: r.userId as string,
+    parentTaskId: (r.parentItemId as string | null) ?? null,
+    sortOrder: r.sortOrder as string,
+    subtaskCount: r.subtaskCount as number,
+    completedSubtaskCount: r.completedSubtaskCount as number,
+    tags: r.tags as { id: string; name: string }[],
+  };
 }
 
-const taskColumns = {
-  id: tasks.id,
-  title: tasks.title,
-  notes: tasks.notes,
-  dateCreated: tasks.dateCreated,
-  dateCompleted: tasks.dateCompleted,
-  startDate: tasks.startDate,
-  userId: tasks.userId,
-  parentTaskId: tasks.parentTaskId,
-  sortOrder: tasks.sortOrder,
-  subtaskCount:
-    sql<number>`(SELECT COUNT(*) FROM tasks st WHERE st.parent_task_id = "tasks"."id")`.as(
-      "subtask_count",
-    ),
-  completedSubtaskCount:
-    sql<number>`(SELECT COUNT(*) FROM tasks st WHERE st.parent_task_id = "tasks"."id" AND st.date_completed IS NOT NULL)`.as(
-      "completed_subtask_count",
-    ),
-  tags: sql<
-    { id: string; name: string }[]
-  >`(SELECT COALESCE(json_agg(json_build_object('id', t.id, 'name', t.name) ORDER BY t.name), '[]') FROM task_tags tt JOIN tags t ON t.id = tt.tag_id WHERE tt.task_id = "tasks"."id")`.as(
-    "tags",
-  ),
-};
+// ─── List & Fetch ────────────────────────────────────────────────────
 
 export const fetchTasks = createServerFn({ method: "GET" })
   .inputValidator(userIdInput)
   .handler(async ({ data }) => {
-    return db
-      .select(taskColumns)
-      .from(tasks)
-      .where(eq(tasks.userId, data.userId))
-      .orderBy(asc(tasks.sortOrder));
+    const rows = await db
+      .select(itemColumns)
+      .from(items)
+      .where(and(eq(items.userId, data.userId), eq(items.type, "task")))
+      .orderBy(asc(items.sortOrder));
+    return rows.map(toTask);
   });
 
 export const fetchInboxTasks = createServerFn({ method: "GET" })
@@ -118,32 +62,41 @@ export const fetchInboxTasks = createServerFn({ method: "GET" })
 
     const todayStr = formatLocalDate(new Date());
 
-    return db
-      .select(taskColumns)
-      .from(tasks)
+    const rows = await db
+      .select(itemColumns)
+      .from(items)
       .where(
         and(
-          eq(tasks.userId, data.userId),
-          isNull(tasks.parentTaskId),
-          or(isNull(tasks.startDate), lte(tasks.startDate, todayStr)),
+          eq(items.userId, data.userId),
+          eq(items.type, "task"),
+          isNull(items.parentItemId),
+          or(isNull(items.date), lte(items.date, todayStr)),
         ),
       )
       .orderBy(
-        desc(isNull(tasks.dateCompleted)),
-        sql`CASE WHEN ${tasks.dateCompleted} IS NOT NULL THEN 1 ELSE 0 END`,
-        asc(tasks.sortOrder),
-        asc(tasks.dateCompleted),
+        desc(isNull(items.dateCompleted)),
+        sql`CASE WHEN ${items.dateCompleted} IS NOT NULL THEN 1 ELSE 0 END`,
+        asc(items.sortOrder),
+        asc(items.dateCompleted),
       );
+    return rows.map(toTask);
   });
 
 export const fetchCompletedTasks = createServerFn({ method: "GET" })
   .inputValidator(userIdInput)
   .handler(async ({ data }) => {
-    return db
-      .select(taskColumns)
-      .from(tasks)
-      .where(and(eq(tasks.userId, data.userId), isNotNull(tasks.dateCompleted)))
-      .orderBy(asc(tasks.dateCompleted));
+    const rows = await db
+      .select(itemColumns)
+      .from(items)
+      .where(
+        and(
+          eq(items.userId, data.userId),
+          eq(items.type, "task"),
+          isNotNull(items.dateCompleted),
+        ),
+      )
+      .orderBy(asc(items.dateCompleted));
+    return rows.map(toTask);
   });
 
 export const completeTask = createServerFn({ method: "POST" })
@@ -157,13 +110,16 @@ export const completeTask = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     console.info(`Completing task ${data.taskId}...`);
 
-    const result = await db
-      .update(tasks)
-      .set({ dateCompleted: data.dateCompleted })
-      .where(and(eq(tasks.id, data.taskId), eq(tasks.userId, data.userId)))
+    const [result] = await db
+      .update(items)
+      .set({
+        dateCompleted: data.dateCompleted,
+        dateUpdated: new Date().toISOString(),
+      })
+      .where(and(eq(items.id, data.taskId), eq(items.userId, data.userId)))
       .returning();
 
-    return result[0];
+    return result;
   });
 
 export const updateTask = createServerFn({ method: "POST" })
@@ -185,26 +141,38 @@ export const updateTask = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     console.info(`Updating task ${data.id}...`);
 
-    const { id, userId, tagIds, ...updates } = data;
+    const {
+      id,
+      userId,
+      tagIds,
+      notes: content,
+      startDate: date,
+      ...rest
+    } = data;
+
+    // Map task field names → item field names
+    const updates: Record<string, unknown> = { ...rest };
+    if (content !== undefined) updates.content = content;
+    if (date !== undefined) updates.date = date;
 
     const result = await db.transaction(async (tx) => {
-      const [taskResult] = await tx
-        .update(tasks)
-        .set(updates)
-        .where(and(eq(tasks.id, id), eq(tasks.userId, userId)))
+      const [itemResult] = await tx
+        .update(items)
+        .set({ ...updates, dateUpdated: new Date().toISOString() })
+        .where(and(eq(items.id, id), eq(items.userId, userId)))
         .returning();
 
       if (tagIds !== undefined) {
-        await tx.delete(taskTags).where(eq(taskTags.taskId, id));
+        await tx.delete(itemTags).where(eq(itemTags.itemId, id));
 
         if (tagIds.length > 0) {
           await tx
-            .insert(taskTags)
-            .values(tagIds.map((tagId) => ({ taskId: id, tagId })));
+            .insert(itemTags)
+            .values(tagIds.map((tagId) => ({ itemId: id, tagId })));
         }
       }
 
-      return taskResult;
+      return itemResult;
     });
 
     return result;
@@ -220,7 +188,6 @@ export const reorderTasks = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     console.info(`Reordering ${data.taskIds.length} tasks...`);
 
-    // Generate fresh fractional keys for the entire reordered group
     const newKeys = generateNKeysBetween(null, null, data.taskIds.length);
 
     const valuesList = sql.join(
@@ -229,9 +196,9 @@ export const reorderTasks = createServerFn({ method: "POST" })
     );
 
     await db.execute(
-      sql`UPDATE tasks SET sort_order = v.sort_order
+      sql`UPDATE items SET sort_order = v.sort_order
           FROM (VALUES ${valuesList}) AS v(id, sort_order)
-          WHERE tasks.id = v.id AND tasks.user_id = ${data.userId}`,
+          WHERE items.id = v.id AND items.user_id = ${data.userId}`,
     );
   });
 
@@ -253,52 +220,64 @@ export const createTask = createServerFn({ method: "POST" })
     console.info("Creating task...");
 
     const id = `tsk_${crypto.randomUUID()}`;
+    const now = new Date().toISOString();
 
     const result = await db.transaction(async (tx) => {
-      // Get the max sortOrder for tasks in the same context (same date or backlog)
       const dateCondition = data.startDate
-        ? eq(tasks.startDate, data.startDate)
-        : isNull(tasks.startDate);
+        ? eq(items.date, data.startDate)
+        : isNull(items.date);
 
       const [maxRow] = await tx
-        .select({ max: sql<string | null>`MAX(${tasks.sortOrder})` })
-        .from(tasks)
+        .select({ max: sql<string | null>`MAX(${items.sortOrder})` })
+        .from(items)
         .where(
           and(
-            eq(tasks.userId, data.userId),
-            isNull(tasks.parentTaskId),
-            isNull(tasks.dateCompleted),
+            eq(items.userId, data.userId),
+            eq(items.type, "task"),
+            isNull(items.parentItemId),
+            isNull(items.dateCompleted),
             dateCondition,
           ),
         );
 
       const nextSortOrder = generateKeyBetween(maxRow?.max ?? null, null);
 
-      const [taskResult] = await tx
-        .insert(tasks)
+      const [itemResult] = await tx
+        .insert(items)
         .values({
           id,
+          type: "task",
           title: data.title,
-          notes: data.notes ?? null,
-          startDate: data.startDate ?? null,
-          parentTaskId: data.parentTaskId ?? null,
-          dateCreated: new Date().toISOString(),
+          content: data.notes ?? null,
+          date: data.startDate ?? null,
           dateCompleted: null,
-          userId: data.userId,
+          parentItemId: data.parentTaskId ?? null,
           sortOrder: nextSortOrder,
+          userId: data.userId,
+          dateCreated: now,
+          dateUpdated: now,
         })
         .returning();
 
       if (data.tagIds && data.tagIds.length > 0) {
         await tx
-          .insert(taskTags)
-          .values(data.tagIds.map((tagId) => ({ taskId: id, tagId })));
+          .insert(itemTags)
+          .values(data.tagIds.map((tagId) => ({ itemId: id, tagId })));
       }
 
-      return taskResult;
+      return itemResult;
     });
 
-    return result;
+    // Map raw item → Task shape
+    return {
+      ...result,
+      notes: result.content,
+      startDate: result.date,
+      parentTaskId: result.parentItemId,
+      subtaskCount: 0,
+      completedSubtaskCount: 0,
+      tags: [] as { id: string; name: string }[],
+    };
   });
 
 export const deleteTask = createServerFn({ method: "POST" })
@@ -313,17 +292,17 @@ export const deleteTask = createServerFn({ method: "POST" })
 
     await db.transaction(async (tx) => {
       await tx
-        .delete(tasks)
+        .delete(items)
         .where(
           and(
-            eq(tasks.parentTaskId, data.taskId),
-            eq(tasks.userId, data.userId),
+            eq(items.parentItemId, data.taskId),
+            eq(items.userId, data.userId),
           ),
         );
 
       await tx
-        .delete(tasks)
-        .where(and(eq(tasks.id, data.taskId), eq(tasks.userId, data.userId)));
+        .delete(items)
+        .where(and(eq(items.id, data.taskId), eq(items.userId, data.userId)));
     });
   });
 
@@ -341,19 +320,19 @@ export const moveTaskToDate = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     console.info(`Moving task ${data.taskId} to date ${data.date}...`);
 
-    // Find the max sortOrder among incomplete tasks on the target date
     const dateCondition = data.date
-      ? eq(tasks.startDate, data.date)
-      : isNull(tasks.startDate);
+      ? eq(items.date, data.date)
+      : isNull(items.date);
 
     const [maxRow] = await db
-      .select({ max: sql<string | null>`MAX(${tasks.sortOrder})` })
-      .from(tasks)
+      .select({ max: sql<string | null>`MAX(${items.sortOrder})` })
+      .from(items)
       .where(
         and(
-          eq(tasks.userId, data.userId),
-          isNull(tasks.parentTaskId),
-          isNull(tasks.dateCompleted),
+          eq(items.userId, data.userId),
+          eq(items.type, "task"),
+          isNull(items.parentItemId),
+          isNull(items.dateCompleted),
           dateCondition,
         ),
       );
@@ -361,9 +340,13 @@ export const moveTaskToDate = createServerFn({ method: "POST" })
     const newKey = generateKeyBetween(maxRow?.max ?? null, null);
 
     const [result] = await db
-      .update(tasks)
-      .set({ startDate: data.date, sortOrder: newKey })
-      .where(and(eq(tasks.id, data.taskId), eq(tasks.userId, data.userId)))
+      .update(items)
+      .set({
+        date: data.date,
+        sortOrder: newKey,
+        dateUpdated: new Date().toISOString(),
+      })
+      .where(and(eq(items.id, data.taskId), eq(items.userId, data.userId)))
       .returning();
 
     return result;
@@ -377,10 +360,10 @@ export const fetchTaskWithRelations = createServerFn({ method: "GET" })
     }),
   )
   .handler(async ({ data }) => {
-    const result = await db.query.tasks.findFirst({
-      where: and(eq(tasks.id, data.taskId), eq(tasks.userId, data.userId)),
+    const result = await db.query.items.findFirst({
+      where: and(eq(items.id, data.taskId), eq(items.userId, data.userId)),
       with: {
-        taskTags: {
+        itemTags: {
           with: {
             tag: true,
           },
@@ -397,9 +380,16 @@ export const fetchTaskWithRelations = createServerFn({ method: "GET" })
 
     return {
       ...result,
-      tags: result.taskTags.map((tt) => tt.tag),
+      // Map to Task field names
+      notes: result.content,
+      startDate: result.date,
+      parentTaskId: result.parentItemId,
+      tags: result.itemTags.map((it) => it.tag),
       subtasks: result.subtasks.map((s) => ({
         ...s,
+        notes: s.content,
+        startDate: s.date,
+        parentTaskId: s.parentItemId,
         subtaskCount: 0,
         completedSubtaskCount: 0,
         tags: [] as { id: string; name: string }[],
@@ -417,29 +407,38 @@ export const fetchSubtasks = createServerFn({ method: "GET" })
     }),
   )
   .handler(async ({ data }) => {
-    return db
+    const rows = await db
       .select({
-        id: tasks.id,
-        title: tasks.title,
-        notes: tasks.notes,
-        dateCreated: tasks.dateCreated,
-        dateCompleted: tasks.dateCompleted,
-        startDate: tasks.startDate,
-        userId: tasks.userId,
-        parentTaskId: tasks.parentTaskId,
-        sortOrder: tasks.sortOrder,
+        id: items.id,
+        type: items.type,
+        title: items.title,
+        content: items.content,
+        date: items.date,
+        dateCompleted: items.dateCompleted,
+        parentItemId: items.parentItemId,
+        sortOrder: items.sortOrder,
+        userId: items.userId,
+        dateCreated: items.dateCreated,
+        dateUpdated: items.dateUpdated,
         subtaskCount: sql<number>`0`.as("subtask_count"),
         completedSubtaskCount: sql<number>`0`.as("completed_subtask_count"),
         tags: sql<{ id: string; name: string }[]>`'[]'::json`.as("tags"),
       })
-      .from(tasks)
+      .from(items)
       .where(
         and(
-          eq(tasks.parentTaskId, data.parentTaskId),
-          eq(tasks.userId, data.userId),
+          eq(items.parentItemId, data.parentTaskId),
+          eq(items.userId, data.userId),
         ),
       )
-      .orderBy(asc(tasks.dateCompleted), asc(tasks.dateCreated));
+      .orderBy(asc(items.dateCompleted), asc(items.dateCreated));
+
+    return rows.map((r) => ({
+      ...r,
+      notes: r.content,
+      startDate: r.date,
+      parentTaskId: r.parentItemId,
+    }));
   });
 
 // ─── Calendar & Day View queries ─────────────────────────────────────
@@ -457,47 +456,49 @@ export const fetchTasksForDate = createServerFn({ method: "GET" })
       await rollForwardStaleTasks(data.userId);
     }
 
-    return db
-      .select(taskColumns)
-      .from(tasks)
+    const rows = await db
+      .select(itemColumns)
+      .from(items)
       .where(
         and(
-          eq(tasks.userId, data.userId),
-          isNull(tasks.parentTaskId),
+          eq(items.userId, data.userId),
+          eq(items.type, "task"),
+          isNull(items.parentItemId),
           or(
-            // Incomplete tasks: only on their exact startDate
-            and(isNull(tasks.dateCompleted), eq(tasks.startDate, data.date)),
-            // Completed tasks: only on the day they were completed
+            and(isNull(items.dateCompleted), eq(items.date, data.date)),
             and(
-              isNotNull(tasks.dateCompleted),
-              eq(sql`CAST(${tasks.dateCompleted} AS date)`, data.date),
+              isNotNull(items.dateCompleted),
+              eq(sql`CAST(${items.dateCompleted} AS date)`, data.date),
             ),
           ),
         ),
       )
       .orderBy(
-        desc(isNull(tasks.dateCompleted)),
-        sql`CASE WHEN ${tasks.dateCompleted} IS NOT NULL THEN 1 ELSE 0 END`,
-        asc(tasks.sortOrder),
-        asc(tasks.dateCompleted),
+        desc(isNull(items.dateCompleted)),
+        sql`CASE WHEN ${items.dateCompleted} IS NOT NULL THEN 1 ELSE 0 END`,
+        asc(items.sortOrder),
+        asc(items.dateCompleted),
       );
+    return rows.map(toTask);
   });
 
 export const fetchBacklogTasks = createServerFn({ method: "GET" })
   .inputValidator(userIdInput)
   .handler(async ({ data }) => {
-    return db
-      .select(taskColumns)
-      .from(tasks)
+    const rows = await db
+      .select(itemColumns)
+      .from(items)
       .where(
         and(
-          eq(tasks.userId, data.userId),
-          isNull(tasks.parentTaskId),
-          isNull(tasks.startDate),
-          isNull(tasks.dateCompleted),
+          eq(items.userId, data.userId),
+          eq(items.type, "task"),
+          isNull(items.parentItemId),
+          isNull(items.date),
+          isNull(items.dateCompleted),
         ),
       )
-      .orderBy(asc(tasks.sortOrder));
+      .orderBy(asc(items.sortOrder));
+    return rows.map(toTask);
   });
 
 export const fetchTasksByTag = createServerFn({ method: "GET" })
@@ -513,22 +514,23 @@ export const fetchTasksByTag = createServerFn({ method: "GET" })
       .from(tags)
       .where(and(eq(tags.id, data.tagId), eq(tags.userId, data.userId)));
 
-    const taskList = await db
-      .select(taskColumns)
-      .from(tasks)
-      .innerJoin(taskTags, eq(taskTags.taskId, tasks.id))
+    const rows = await db
+      .select(itemColumns)
+      .from(items)
+      .innerJoin(itemTags, eq(itemTags.itemId, items.id))
       .where(
         and(
-          eq(tasks.userId, data.userId),
-          eq(taskTags.tagId, data.tagId),
-          isNull(tasks.parentTaskId),
+          eq(items.userId, data.userId),
+          eq(items.type, "task"),
+          eq(itemTags.tagId, data.tagId),
+          isNull(items.parentItemId),
         ),
       )
       .orderBy(
-        sql`CASE WHEN ${tasks.dateCompleted} IS NOT NULL THEN 1 ELSE 0 END`,
-        asc(tasks.sortOrder),
-        asc(tasks.dateCompleted),
+        sql`CASE WHEN ${items.dateCompleted} IS NOT NULL THEN 1 ELSE 0 END`,
+        asc(items.sortOrder),
+        asc(items.dateCompleted),
       );
 
-    return { tag: tag ?? null, tasks: taskList };
+    return { tag: tag ?? null, tasks: rows.map(toTask) };
   });

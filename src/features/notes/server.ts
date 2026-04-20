@@ -2,20 +2,20 @@ import { createServerFn } from "@tanstack/react-start";
 import { and, asc, desc, eq, sql } from "drizzle-orm";
 import z from "zod";
 import { db } from "~/db";
-import { noteMetadata, notes, noteTags } from "~/db/schema";
+import { items, itemTags, itemMetadata } from "~/db/schema";
 
 const noteColumns = {
-  id: notes.id,
-  content: notes.content,
-  title: notes.title,
-  date: notes.date,
-  sortOrder: notes.sortOrder,
-  userId: notes.userId,
-  dateCreated: notes.dateCreated,
-  dateUpdated: notes.dateUpdated,
+  id: items.id,
+  content: sql<string>`COALESCE(${items.content}, '')`.as("content"),
+  title: items.title,
+  date: items.date,
+  sortOrder: sql<number>`CAST(${items.sortOrder} AS integer)`.as("sort_order"),
+  userId: items.userId,
+  dateCreated: items.dateCreated,
+  dateUpdated: items.dateUpdated,
   tags: sql<
     { id: string; name: string }[]
-  >`(SELECT COALESCE(json_agg(json_build_object('id', t.id, 'name', t.name) ORDER BY t.name), '[]') FROM note_tags nt JOIN tags t ON t.id = nt.tag_id WHERE nt.note_id = "notes"."id")`.as(
+  >`(SELECT COALESCE(json_agg(json_build_object('id', t.id, 'name', t.name) ORDER BY t.name), '[]') FROM item_tags it JOIN tags t ON t.id = it.tag_id WHERE it.item_id = "items"."id")`.as(
     "tags",
   ),
 };
@@ -35,16 +35,16 @@ export const fetchNotes = createServerFn({ method: "GET" })
 
     const [countResult] = await db
       .select({ count: sql<number>`COUNT(*)` })
-      .from(notes)
-      .where(eq(notes.userId, data.userId));
+      .from(items)
+      .where(and(eq(items.userId, data.userId), eq(items.type, "note")));
 
     const total = Number(countResult?.count ?? 0);
 
     const noteList = await db
       .select(noteColumns)
-      .from(notes)
-      .where(eq(notes.userId, data.userId))
-      .orderBy(desc(notes.dateUpdated))
+      .from(items)
+      .where(and(eq(items.userId, data.userId), eq(items.type, "note")))
+      .orderBy(desc(items.dateUpdated))
       .limit(data.limit)
       .offset(offset);
 
@@ -66,9 +66,15 @@ export const fetchNotesForDate = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     return db
       .select(noteColumns)
-      .from(notes)
-      .where(and(eq(notes.userId, data.userId), eq(notes.date, data.date)))
-      .orderBy(asc(notes.sortOrder));
+      .from(items)
+      .where(
+        and(
+          eq(items.userId, data.userId),
+          eq(items.type, "note"),
+          eq(items.date, data.date),
+        ),
+      )
+      .orderBy(asc(items.sortOrder));
   });
 
 export const fetchNotesByTag = createServerFn({ method: "GET" })
@@ -81,10 +87,16 @@ export const fetchNotesByTag = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     return db
       .select(noteColumns)
-      .from(notes)
-      .innerJoin(noteTags, eq(noteTags.noteId, notes.id))
-      .where(and(eq(notes.userId, data.userId), eq(noteTags.tagId, data.tagId)))
-      .orderBy(desc(notes.dateUpdated));
+      .from(items)
+      .innerJoin(itemTags, eq(itemTags.itemId, items.id))
+      .where(
+        and(
+          eq(items.userId, data.userId),
+          eq(items.type, "note"),
+          eq(itemTags.tagId, data.tagId),
+        ),
+      )
+      .orderBy(desc(items.dateUpdated));
   });
 
 export const fetchNote = createServerFn({ method: "GET" })
@@ -95,10 +107,14 @@ export const fetchNote = createServerFn({ method: "GET" })
     }),
   )
   .handler(async ({ data }) => {
-    const result = await db.query.notes.findFirst({
-      where: and(eq(notes.id, data.noteId), eq(notes.userId, data.userId)),
+    const result = await db.query.items.findFirst({
+      where: and(
+        eq(items.id, data.noteId),
+        eq(items.userId, data.userId),
+        eq(items.type, "note"),
+      ),
       with: {
-        noteTags: {
+        itemTags: {
           with: {
             tag: true,
           },
@@ -111,7 +127,8 @@ export const fetchNote = createServerFn({ method: "GET" })
 
     return {
       ...result,
-      tags: result.noteTags.map((nt) => nt.tag),
+      content: result.content ?? "",
+      tags: result.itemTags.map((it) => it.tag),
       metadata: result.metadata,
     };
   });
@@ -138,26 +155,29 @@ export const createNote = createServerFn({ method: "POST" })
     const now = new Date().toISOString();
 
     const result = await db.transaction(async (tx) => {
-      // Get max sortOrder for notes on this date
       const [maxRow] = await tx
-        .select({ max: sql<number>`COALESCE(MAX(${notes.sortOrder}), -1)` })
-        .from(notes)
+        .select({ max: sql<string | null>`MAX(${items.sortOrder})` })
+        .from(items)
         .where(
           and(
-            eq(notes.userId, data.userId),
-            data.date ? eq(notes.date, data.date) : sql`${notes.date} IS NULL`,
+            eq(items.userId, data.userId),
+            eq(items.type, "note"),
+            data.date ? eq(items.date, data.date) : sql`${items.date} IS NULL`,
           ),
         );
 
-      const nextSortOrder = (maxRow?.max ?? -1) + 1;
+      const nextSortOrder = String((Number(maxRow?.max ?? "-1") || 0) + 1);
 
       const [noteResult] = await tx
-        .insert(notes)
+        .insert(items)
         .values({
           id,
+          type: "note",
+          title: data.title ?? "Untitled",
           content: data.content,
-          title: data.title ?? null,
           date: data.date ?? null,
+          dateCompleted: null,
+          parentItemId: null,
           sortOrder: nextSortOrder,
           userId: data.userId,
           dateCreated: now,
@@ -167,12 +187,12 @@ export const createNote = createServerFn({ method: "POST" })
 
       if (data.tagIds && data.tagIds.length > 0) {
         await tx
-          .insert(noteTags)
-          .values(data.tagIds.map((tagId) => ({ noteId: id, tagId })));
+          .insert(itemTags)
+          .values(data.tagIds.map((tagId) => ({ itemId: id, tagId })));
       }
 
-      // Create empty noteMetadata row for AI to fill later
-      await tx.insert(noteMetadata).values({ noteId: id });
+      // Create empty metadata row for AI to fill later
+      await tx.insert(itemMetadata).values({ itemId: id });
 
       return noteResult;
     });
@@ -201,22 +221,31 @@ export const updateNote = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     console.info(`Updating note ${data.id}...`);
 
-    const { id, userId, tagIds, ...updates } = data;
+    const { id, userId, tagIds, sortOrder, ...updates } = data;
+
+    // Convert integer sortOrder to text for items table
+    const setValues: Record<string, unknown> = {
+      ...updates,
+      dateUpdated: new Date().toISOString(),
+    };
+    if (sortOrder !== undefined) {
+      setValues.sortOrder = String(sortOrder);
+    }
 
     const result = await db.transaction(async (tx) => {
       const [noteResult] = await tx
-        .update(notes)
-        .set({ ...updates, dateUpdated: new Date().toISOString() })
-        .where(and(eq(notes.id, id), eq(notes.userId, userId)))
+        .update(items)
+        .set(setValues)
+        .where(and(eq(items.id, id), eq(items.userId, userId)))
         .returning();
 
       if (tagIds !== undefined) {
-        await tx.delete(noteTags).where(eq(noteTags.noteId, id));
+        await tx.delete(itemTags).where(eq(itemTags.itemId, id));
 
         if (tagIds.length > 0) {
           await tx
-            .insert(noteTags)
-            .values(tagIds.map((tagId) => ({ noteId: id, tagId })));
+            .insert(itemTags)
+            .values(tagIds.map((tagId) => ({ itemId: id, tagId })));
         }
       }
 
@@ -239,8 +268,8 @@ export const deleteNote = createServerFn({ method: "POST" })
     console.info(`Deleting note ${data.noteId}...`);
 
     await db
-      .delete(notes)
-      .where(and(eq(notes.id, data.noteId), eq(notes.userId, data.userId)));
+      .delete(items)
+      .where(and(eq(items.id, data.noteId), eq(items.userId, data.userId)));
   });
 
 // ─── Reorder ─────────────────────────────────────────────────────────
@@ -256,14 +285,14 @@ export const reorderNotes = createServerFn({ method: "POST" })
     console.info(`Reordering ${data.noteIds.length} notes...`);
 
     const valuesList = sql.join(
-      data.noteIds.map((id, i) => sql`(${id}, ${i})`),
+      data.noteIds.map((id, i) => sql`(${id}, ${String(i)})`),
       sql`, `,
     );
 
     await db.execute(
-      sql`UPDATE notes SET sort_order = v.sort_order
+      sql`UPDATE items SET sort_order = v.sort_order
           FROM (VALUES ${valuesList}) AS v(id, sort_order)
-          WHERE notes.id = v.id AND notes.user_id = ${data.userId}`,
+          WHERE items.id = v.id AND items.user_id = ${data.userId}`,
     );
   });
 
@@ -281,28 +310,27 @@ export const searchNotes = createServerFn({ method: "GET" })
     const tsQuery = sql`plainto_tsquery('english', ${data.query})`;
     const likePattern = `%${data.query}%`;
 
-    // Build search with ts_rank across content, title, and keywords
-    // Fall back to ILIKE for partial/short queries that tsvector misses
     let query = db
       .select({
         ...noteColumns,
         rank: sql<number>`GREATEST(
           ts_rank(
-            to_tsvector('english', COALESCE("notes"."content", '') || ' ' || COALESCE("notes"."title", '') || ' ' || COALESCE("note_metadata"."keywords", '')),
+            to_tsvector('english', COALESCE("items"."content", '') || ' ' || COALESCE("items"."title", '') || ' ' || COALESCE("item_metadata"."keywords", '')),
             ${tsQuery}
           ),
-          CASE WHEN "notes"."content" ILIKE ${likePattern} OR "notes"."title" ILIKE ${likePattern} THEN 0.1 ELSE 0 END
+          CASE WHEN "items"."content" ILIKE ${likePattern} OR "items"."title" ILIKE ${likePattern} THEN 0.1 ELSE 0 END
         )`.as("rank"),
       })
-      .from(notes)
-      .leftJoin(noteMetadata, eq(noteMetadata.noteId, notes.id))
+      .from(items)
+      .leftJoin(itemMetadata, eq(itemMetadata.itemId, items.id))
       .where(
         and(
-          eq(notes.userId, data.userId),
+          eq(items.userId, data.userId),
+          eq(items.type, "note"),
           sql`(
-            to_tsvector('english', COALESCE("notes"."content", '') || ' ' || COALESCE("notes"."title", '') || ' ' || COALESCE("note_metadata"."keywords", '')) @@ ${tsQuery}
-            OR "notes"."content" ILIKE ${likePattern}
-            OR "notes"."title" ILIKE ${likePattern}
+            to_tsvector('english', COALESCE("items"."content", '') || ' ' || COALESCE("items"."title", '') || ' ' || COALESCE("item_metadata"."keywords", '')) @@ ${tsQuery}
+            OR "items"."content" ILIKE ${likePattern}
+            OR "items"."title" ILIKE ${likePattern}
           )`,
         ),
       )
@@ -311,7 +339,7 @@ export const searchNotes = createServerFn({ method: "GET" })
     if (data.tagIds && data.tagIds.length > 0) {
       for (const tagId of data.tagIds) {
         query = query.where(
-          sql`EXISTS (SELECT 1 FROM note_tags WHERE note_tags.note_id = "notes"."id" AND note_tags.tag_id = ${tagId})`,
+          sql`EXISTS (SELECT 1 FROM item_tags WHERE item_tags.item_id = "items"."id" AND item_tags.tag_id = ${tagId})`,
         );
       }
     }
