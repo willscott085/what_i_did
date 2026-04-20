@@ -16,9 +16,9 @@ vi.mock("./server", () => ({
   completeTask: vi.fn(),
   createTask: vi.fn(),
   deleteTask: vi.fn(),
+  moveTaskToDate: vi.fn(),
   reorderTasks: vi.fn(),
   updateTask: vi.fn(),
-  updateTaskOrder: vi.fn(),
 }));
 
 import {
@@ -45,7 +45,7 @@ function makeFakeTask(overrides: Partial<Task> = {}): Task {
     startDate: "2026-04-18",
     userId: "1",
     parentTaskId: null,
-    sortOrder: 0,
+    sortOrder: "a0",
     subtaskCount: 0,
     completedSubtaskCount: 0,
     tags: [],
@@ -210,9 +210,9 @@ describe("useDeleteTask", () => {
 describe("useReorderTasks", () => {
   it("should optimistically reorder tasks in inbox cache", async () => {
     const tasks = [
-      makeFakeTask({ id: "tsk_1", sortOrder: 0 }),
-      makeFakeTask({ id: "tsk_2", sortOrder: 1 }),
-      makeFakeTask({ id: "tsk_3", sortOrder: 2 }),
+      makeFakeTask({ id: "tsk_1", sortOrder: "a0" }),
+      makeFakeTask({ id: "tsk_2", sortOrder: "a1" }),
+      makeFakeTask({ id: "tsk_3", sortOrder: "a2" }),
     ];
     seedInbox(tasks);
     mockedReorderTasks.mockResolvedValue(undefined as never);
@@ -229,16 +229,17 @@ describe("useReorderTasks", () => {
     await waitFor(() => {
       const inbox = getInbox();
       expect(inbox?.map((t) => t.id)).toEqual(["tsk_3", "tsk_1", "tsk_2"]);
-      expect(inbox?.[0]?.sortOrder).toBe(0);
-      expect(inbox?.[1]?.sortOrder).toBe(1);
-      expect(inbox?.[2]?.sortOrder).toBe(2);
+      // sortOrder should be string fractional keys in correct order
+      const keys = inbox?.map((t) => t.sortOrder) ?? [];
+      expect(keys[0] < keys[1]).toBe(true);
+      expect(keys[1] < keys[2]).toBe(true);
     });
   });
 
   it("should rollback on error", async () => {
     const tasks = [
-      makeFakeTask({ id: "tsk_1", sortOrder: 0 }),
-      makeFakeTask({ id: "tsk_2", sortOrder: 1 }),
+      makeFakeTask({ id: "tsk_1", sortOrder: "a0" }),
+      makeFakeTask({ id: "tsk_2", sortOrder: "a1" }),
     ];
     seedInbox(tasks);
     mockedReorderTasks.mockRejectedValue(new Error("Server error"));

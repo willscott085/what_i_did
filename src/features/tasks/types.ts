@@ -9,7 +9,7 @@ export type Task = {
   startDate: string | null;
   userId: string;
   parentTaskId: string | null;
-  sortOrder: number;
+  sortOrder: string;
   subtaskCount: number;
   completedSubtaskCount: number;
   tags: { id: string; name: string }[];

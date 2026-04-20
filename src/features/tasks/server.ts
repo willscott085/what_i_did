@@ -11,6 +11,7 @@ import {
   or,
   sql,
 } from "drizzle-orm";
+import { generateKeyBetween, generateNKeysBetween } from "fractional-indexing";
 import z from "zod";
 import { db } from "~/db";
 import { tags, tasks, taskTags } from "~/db/schema";
@@ -22,14 +23,16 @@ const formatLocalDate = (d: Date) =>
 
 /**
  * Roll forward any incomplete tasks whose startDate is in the past to today.
+ * Re-keys their sortOrder so they appear after today's existing tasks.
  * Runs lazily before task fetches — no background process needed.
  */
 async function rollForwardStaleTasks(userId: string) {
   const todayStr = formatLocalDate(new Date());
 
-  await db
-    .update(tasks)
-    .set({ startDate: todayStr })
+  // Find stale tasks (past startDate, incomplete)
+  const staleTasks = await db
+    .select({ id: tasks.id, sortOrder: tasks.sortOrder })
+    .from(tasks)
     .where(
       and(
         eq(tasks.userId, userId),
@@ -37,7 +40,40 @@ async function rollForwardStaleTasks(userId: string) {
         isNotNull(tasks.startDate),
         lt(tasks.startDate, todayStr),
       ),
+    )
+    .orderBy(asc(tasks.sortOrder));
+
+  if (staleTasks.length === 0) return;
+
+  // Find the max sortOrder among today's existing incomplete tasks
+  const [maxRow] = await db
+    .select({ max: sql<string | null>`MAX(${tasks.sortOrder})` })
+    .from(tasks)
+    .where(
+      and(
+        eq(tasks.userId, userId),
+        isNull(tasks.dateCompleted),
+        isNull(tasks.parentTaskId),
+        eq(tasks.startDate, todayStr),
+      ),
     );
+
+  const lastKey = maxRow?.max ?? null;
+
+  // Generate keys for the stale tasks that sort after today's last task
+  const newKeys = generateNKeysBetween(lastKey, null, staleTasks.length);
+
+  // Batch update: move to today and assign new sort keys
+  const valuesList = sql.join(
+    staleTasks.map((t, i) => sql`(${t.id}, ${todayStr}, ${newKeys[i]})`),
+    sql`, `,
+  );
+
+  await db.execute(
+    sql`UPDATE tasks SET start_date = v.start_date, sort_order = v.sort_order
+        FROM (VALUES ${valuesList}) AS v(id, start_date, sort_order)
+        WHERE tasks.id = v.id AND tasks.user_id = ${userId}`,
+  );
 }
 
 const taskColumns = {
@@ -174,26 +210,6 @@ export const updateTask = createServerFn({ method: "POST" })
     return result;
   });
 
-export const updateTaskOrder = createServerFn({ method: "POST" })
-  .inputValidator(
-    z.object({
-      taskId: z.string().min(1),
-      order: z.number(),
-      userId: z.string().min(1),
-    }),
-  )
-  .handler(async ({ data }) => {
-    console.info(`Updating task order with id ${data.taskId}...`);
-
-    const result = await db
-      .update(tasks)
-      .set({ sortOrder: data.order })
-      .where(and(eq(tasks.id, data.taskId), eq(tasks.userId, data.userId)))
-      .returning();
-
-    return result[0];
-  });
-
 export const reorderTasks = createServerFn({ method: "POST" })
   .inputValidator(
     z.object({
@@ -204,8 +220,11 @@ export const reorderTasks = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     console.info(`Reordering ${data.taskIds.length} tasks...`);
 
+    // Generate fresh fractional keys for the entire reordered group
+    const newKeys = generateNKeysBetween(null, null, data.taskIds.length);
+
     const valuesList = sql.join(
-      data.taskIds.map((id, i) => sql`(${id}, ${i})`),
+      data.taskIds.map((id, i) => sql`(${id}, ${newKeys[i]})`),
       sql`, `,
     );
 
@@ -236,19 +255,24 @@ export const createTask = createServerFn({ method: "POST" })
     const id = `tsk_${crypto.randomUUID()}`;
 
     const result = await db.transaction(async (tx) => {
-      // Get the max sortOrder so the new task goes to the bottom
+      // Get the max sortOrder for tasks in the same context (same date or backlog)
+      const dateCondition = data.startDate
+        ? eq(tasks.startDate, data.startDate)
+        : isNull(tasks.startDate);
+
       const [maxRow] = await tx
-        .select({ max: sql<number>`COALESCE(MAX(${tasks.sortOrder}), -1)` })
+        .select({ max: sql<string | null>`MAX(${tasks.sortOrder})` })
         .from(tasks)
         .where(
           and(
             eq(tasks.userId, data.userId),
             isNull(tasks.parentTaskId),
             isNull(tasks.dateCompleted),
+            dateCondition,
           ),
         );
 
-      const nextSortOrder = (maxRow?.max ?? -1) + 1;
+      const nextSortOrder = generateKeyBetween(maxRow?.max ?? null, null);
 
       const [taskResult] = await tx
         .insert(tasks)
@@ -301,6 +325,48 @@ export const deleteTask = createServerFn({ method: "POST" })
         .delete(tasks)
         .where(and(eq(tasks.id, data.taskId), eq(tasks.userId, data.userId)));
     });
+  });
+
+export const moveTaskToDate = createServerFn({ method: "POST" })
+  .inputValidator(
+    z.object({
+      taskId: z.string().min(1),
+      date: z
+        .string()
+        .regex(/^\d{4}-\d{2}-\d{2}$/)
+        .or(z.null()),
+      userId: z.string().min(1),
+    }),
+  )
+  .handler(async ({ data }) => {
+    console.info(`Moving task ${data.taskId} to date ${data.date}...`);
+
+    // Find the max sortOrder among incomplete tasks on the target date
+    const dateCondition = data.date
+      ? eq(tasks.startDate, data.date)
+      : isNull(tasks.startDate);
+
+    const [maxRow] = await db
+      .select({ max: sql<string | null>`MAX(${tasks.sortOrder})` })
+      .from(tasks)
+      .where(
+        and(
+          eq(tasks.userId, data.userId),
+          isNull(tasks.parentTaskId),
+          isNull(tasks.dateCompleted),
+          dateCondition,
+        ),
+      );
+
+    const newKey = generateKeyBetween(maxRow?.max ?? null, null);
+
+    const [result] = await db
+      .update(tasks)
+      .set({ startDate: data.date, sortOrder: newKey })
+      .where(and(eq(tasks.id, data.taskId), eq(tasks.userId, data.userId)))
+      .returning();
+
+    return result;
   });
 
 export const fetchTaskWithRelations = createServerFn({ method: "GET" })

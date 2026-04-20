@@ -5,17 +5,10 @@ import {
   fetchCompletedTasks,
   fetchInboxTasks,
   fetchSubtasks,
-  fetchTasks,
   fetchTasksByTag,
   fetchTasksForDate,
   fetchTaskWithRelations,
 } from "./server";
-
-export const fetchTasksQueryOptions = () =>
-  queryOptions({
-    queryKey: tasksQueryKeys.all,
-    queryFn: () => fetchTasks({ data: { userId: DEFAULT_USER_ID } }),
-  });
 
 export const fetchInboxTasksQueryOptions = () =>
   queryOptions({

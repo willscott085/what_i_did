@@ -9,8 +9,8 @@ import { TaskItem } from "~/components/TaskItem";
 import { Button } from "~/components/ui/button";
 import {
   useDeleteTask,
+  useMoveTaskToDate,
   useReorderTasks,
-  useUpdateFullTask,
   useUpdateTaskMutationOptions,
 } from "~/features/tasks/mutations";
 import { fetchBacklogTasksQueryOptions } from "~/features/tasks/queries";
@@ -40,7 +40,7 @@ function Backlog() {
   const { mutate: updateTask } = useMutation(
     useUpdateTaskMutationOptions({ onError: () => {} }),
   );
-  const { mutate: updateFullTask } = useUpdateFullTask();
+  const { mutate: moveTaskToDate } = useMoveTaskToDate();
 
   const hydrated = useSyncExternalStore(
     () => () => {},
@@ -60,7 +60,7 @@ function Backlog() {
   }
 
   function handleDropOnDate(taskId: string, date: string) {
-    updateFullTask({ id: taskId, startDate: date });
+    moveTaskToDate({ taskId, date });
   }
 
   return (

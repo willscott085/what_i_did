@@ -13,7 +13,7 @@ import { Note } from "~/features/notes/types";
 import { useDeleteTag, useUpdateTag } from "~/features/tags/mutations";
 import {
   useDeleteTask,
-  useUpdateFullTask,
+  useMoveTaskToDate,
   useUpdateTaskMutationOptions,
 } from "~/features/tasks/mutations";
 import { fetchTasksByTagQueryOptions } from "~/features/tasks/queries";
@@ -67,7 +67,7 @@ function TagView() {
     useUpdateTaskMutationOptions({ onError: () => {} }),
   );
   const { mutate: deleteTaskMutation } = useDeleteTask();
-  const { mutate: updateFullTask } = useUpdateFullTask();
+  const { mutate: moveTaskToDate } = useMoveTaskToDate();
   const { mutate: updateTagMutation } = useUpdateTag();
   const { mutate: deleteNoteMutation } = useDeleteNote();
   const { mutate: updateNoteMutation } = useUpdateNote();
@@ -105,7 +105,7 @@ function TagView() {
   }
 
   function handleDropOnDate(taskId: string, date: string) {
-    updateFullTask({ id: taskId, startDate: date });
+    moveTaskToDate({ taskId, date });
   }
 
   function handleEdit(task: Task) {
@@ -137,6 +137,10 @@ function TagView() {
               <input
                 ref={titleInputRef}
                 value={titleDraft}
+                autoComplete="off"
+                data-lpignore="true"
+                data-1p-ignore
+                data-form-type="other"
                 onChange={(e) => {
                   setTitleDraft(e.target.value);
                   if (titleError) setTitleError(null);

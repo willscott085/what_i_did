@@ -303,6 +303,9 @@ function NoteDialogForm({
               onChange={(e) => setTitle(e.target.value)}
               spellCheck
               autoComplete="off"
+              data-lpignore="true"
+              data-1p-ignore
+              data-form-type="other"
             />
           </div>
 

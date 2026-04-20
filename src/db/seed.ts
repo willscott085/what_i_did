@@ -1,5 +1,6 @@
 import postgres from "postgres";
 import { drizzle } from "drizzle-orm/postgres-js";
+import { generateNKeysBetween } from "fractional-indexing";
 import * as schema from "./schema";
 
 const DATABASE_URL = process.env.DATABASE_URL;
@@ -26,6 +27,10 @@ const formatDate = (d: Date) =>
 const today = new Date();
 const todayStr = formatDate(today);
 
+// Generate fractional-indexing keys for seed tasks
+const rootKeys = generateNKeysBetween(null, null, 10);
+const subtaskKeys = generateNKeysBetween(null, null, 2);
+
 const sampleTasks = [
   {
     id: "tsk_001",
@@ -35,7 +40,7 @@ const sampleTasks = [
     dateCompleted: null,
     startDate: todayStr,
     userId: "1",
-    sortOrder: 0,
+    sortOrder: rootKeys[0],
   },
   {
     id: "tsk_002",
@@ -45,7 +50,7 @@ const sampleTasks = [
     dateCompleted: null,
     startDate: todayStr,
     userId: "1",
-    sortOrder: 1,
+    sortOrder: rootKeys[1],
   },
   {
     id: "tsk_003",
@@ -54,7 +59,7 @@ const sampleTasks = [
     dateCreated: "2025-09-29T11:05:47.000Z",
     dateCompleted: null,
     userId: "1",
-    sortOrder: 2,
+    sortOrder: rootKeys[2],
   },
   {
     id: "tsk_004",
@@ -63,7 +68,7 @@ const sampleTasks = [
     dateCreated: "2025-09-18T08:44:55.000Z",
     dateCompleted: null,
     userId: "1",
-    sortOrder: 3,
+    sortOrder: rootKeys[3],
   },
   {
     id: "tsk_005",
@@ -73,7 +78,7 @@ const sampleTasks = [
     dateCompleted: null,
     startDate: todayStr,
     userId: "1",
-    sortOrder: 4,
+    sortOrder: rootKeys[4],
   },
   {
     id: "tsk_006",
@@ -82,7 +87,7 @@ const sampleTasks = [
     dateCreated: "2025-09-30T07:22:39.000Z",
     dateCompleted: null,
     userId: "1",
-    sortOrder: 5,
+    sortOrder: rootKeys[5],
   },
   {
     id: "tsk_007",
@@ -91,7 +96,7 @@ const sampleTasks = [
     dateCreated: "2025-09-27T15:50:33.000Z",
     dateCompleted: "2025-11-17T17:46:50.189Z",
     userId: "1",
-    sortOrder: 6,
+    sortOrder: rootKeys[6],
   },
   {
     id: "tsk_008",
@@ -100,7 +105,7 @@ const sampleTasks = [
     dateCreated: "2025-09-23T09:05:14.000Z",
     dateCompleted: null,
     userId: "1",
-    sortOrder: 7,
+    sortOrder: rootKeys[7],
   },
   {
     id: "tsk_009",
@@ -109,7 +114,7 @@ const sampleTasks = [
     dateCreated: "2025-09-26T12:14:57.000Z",
     dateCompleted: "2026-04-10T12:00:00.000Z",
     userId: "1",
-    sortOrder: 8,
+    sortOrder: rootKeys[8],
   },
   {
     id: "tsk_010",
@@ -118,7 +123,7 @@ const sampleTasks = [
     dateCreated: "2025-10-03T13:43:22.000Z",
     dateCompleted: null,
     userId: "1",
-    sortOrder: 9,
+    sortOrder: rootKeys[9],
   },
   // Subtasks of tsk_001
   {
@@ -129,7 +134,7 @@ const sampleTasks = [
     dateCompleted: null,
     parentTaskId: "tsk_001",
     userId: "1",
-    sortOrder: 0,
+    sortOrder: subtaskKeys[0],
   },
   {
     id: "tsk_013",
@@ -139,7 +144,7 @@ const sampleTasks = [
     dateCompleted: "2025-10-02T11:00:00.000Z",
     parentTaskId: "tsk_001",
     userId: "1",
-    sortOrder: 1,
+    sortOrder: subtaskKeys[1],
   },
 ];
 

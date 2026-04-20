@@ -12,7 +12,7 @@ export const handlers = [
         startDate: null,
         userId: "1",
         parentTaskId: null,
-        sortOrder: 0,
+        sortOrder: "a0",
         subtaskCount: 0,
         completedSubtaskCount: 0,
         tags: [],

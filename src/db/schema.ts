@@ -47,7 +47,7 @@ export const tasks = pgTable(
     startDate: text("start_date"),
     userId: text("user_id").notNull(),
     parentTaskId: text("parent_task_id"),
-    sortOrder: integer("sort_order").notNull().default(0),
+    sortOrder: text("sort_order").notNull().default("a0"),
   },
   (table) => [
     foreignKey({

@@ -13,8 +13,8 @@ import { fetchNotesForDateQueryOptions } from "~/features/notes/queries";
 import { Note } from "~/features/notes/types";
 import {
   useDeleteTask,
+  useMoveTaskToDate,
   useReorderTasks,
-  useUpdateFullTask,
   useUpdateTaskMutationOptions,
 } from "~/features/tasks/mutations";
 import { fetchTasksForDateQueryOptions } from "~/features/tasks/queries";
@@ -43,7 +43,7 @@ export function DayView({
   const { mutate: updateTask } = useMutation(
     useUpdateTaskMutationOptions({ onError: () => {} }),
   );
-  const { mutate: updateFullTask } = useUpdateFullTask();
+  const { mutate: moveTaskToDate } = useMoveTaskToDate();
   const { mutate: deleteNoteMutation } = useDeleteNote();
   const { mutate: updateNoteMutation } = useUpdateNote();
 
@@ -68,7 +68,7 @@ export function DayView({
   }
 
   function handleDropOnDate(taskId: string, date: string) {
-    updateFullTask({ id: taskId, startDate: date });
+    moveTaskToDate({ taskId, date });
   }
 
   function handleEditNote(note: Note) {

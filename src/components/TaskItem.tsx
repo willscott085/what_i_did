@@ -217,6 +217,9 @@ export function TaskItem({
                       }
                     }}
                     autoComplete="off"
+                    data-lpignore="true"
+                    data-1p-ignore
+                    data-form-type="other"
                     readOnly={!!task.dateCompleted}
                     tabIndex={task.dateCompleted ? -1 : undefined}
                     className={clsx(
@@ -312,11 +315,6 @@ export function TaskItem({
                       </div>
                     )}
                   />
-                )}
-                {task.notes && task.dateCompleted && (
-                  <div className="text-muted-foreground mb-1 line-clamp-3 text-xs leading-normal break-all">
-                    <Markdown className="[&_p]:m-0">{task.notes}</Markdown>
-                  </div>
                 )}
 
                 {/* Expanded subtasks area */}

@@ -59,7 +59,7 @@ export function SortableTaskList({
     () =>
       allTasks
         .filter((t) => !t.dateCompleted)
-        .sort((a, b) => a.sortOrder - b.sortOrder),
+        .sort((a, b) => a.sortOrder.localeCompare(b.sortOrder)),
     [allTasks],
   );
   const completedTasks = useMemo(
