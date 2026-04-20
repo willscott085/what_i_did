@@ -79,7 +79,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       <head>
         <HeadContent />
       </head>
-      <body>
+      <body data-lpignore="true" data-1p-ignore data-form-type="other">
         {children}
         <Toaster position="bottom-center" />
         <Scripts />

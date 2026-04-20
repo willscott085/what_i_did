@@ -216,10 +216,6 @@ export function TaskItem({
                         );
                       }
                     }}
-                    autoComplete="off"
-                    data-lpignore="true"
-                    data-1p-ignore
-                    data-form-type="other"
                     readOnly={!!task.dateCompleted}
                     tabIndex={task.dateCompleted ? -1 : undefined}
                     className={clsx(

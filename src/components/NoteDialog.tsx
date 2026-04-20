@@ -287,6 +287,10 @@ function NoteDialogForm({
                 onChange={(e) => setContent(e.target.value)}
                 autoFocus
                 spellCheck
+                autoComplete="off"
+                data-lpignore="true"
+                data-1p-ignore
+                data-form-type="other"
                 className="placeholder:text-muted-foreground dark:bg-input/30 block min-h-[200px] w-full resize-y bg-transparent px-3 py-2 text-sm outline-none"
               />
             </div>
@@ -302,10 +306,6 @@ function NoteDialogForm({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               spellCheck
-              autoComplete="off"
-              data-lpignore="true"
-              data-1p-ignore
-              data-form-type="other"
             />
           </div>
 

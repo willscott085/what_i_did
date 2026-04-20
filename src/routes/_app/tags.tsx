@@ -66,10 +66,6 @@ function Tags() {
               ref={addInputRef}
               aria-label="New tag name"
               placeholder="Tag name…"
-              autoComplete="off"
-              data-lpignore="true"
-              data-1p-ignore
-              data-form-type="other"
               value={newTagName}
               onChange={(e) => setNewTagName(e.target.value)}
               onKeyDown={(e) => {
