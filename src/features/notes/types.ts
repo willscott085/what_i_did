@@ -5,7 +5,7 @@ export type Note = {
   content: string;
   title: string | null;
   date: string | null;
-  sortOrder: number;
+  sortOrder: string;
   userId: string;
   dateCreated: string;
   dateUpdated: string;
@@ -32,7 +32,7 @@ export type UpdateNoteInput = {
   title?: string | null;
   date?: string | null;
   tagIds?: string[];
-  sortOrder?: number;
+  sortOrder?: string;
 };
 
 export type PaginatedNotes = {

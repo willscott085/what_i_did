@@ -13,11 +13,9 @@ const client = postgres(DATABASE_URL);
 const db = drizzle(client, { schema });
 
 // Clear existing data
-await db.delete(schema.noteMetadata);
-await db.delete(schema.noteTags);
-await db.delete(schema.notes);
-await db.delete(schema.taskTags);
-await db.delete(schema.tasks);
+await db.delete(schema.itemMetadata);
+await db.delete(schema.itemTags);
+await db.delete(schema.items);
 await db.delete(schema.tags);
 
 // Seed sample tasks
@@ -31,124 +29,232 @@ const todayStr = formatDate(today);
 const rootKeys = generateNKeysBetween(null, null, 10);
 const subtaskKeys = generateNKeysBetween(null, null, 2);
 
-const sampleTasks = [
+const sampleItems = [
+  // ── Tasks ──────────────────────────────────────────────────────────
   {
     id: "tsk_001",
+    type: "task",
     title: "Plan Q4 roadmap",
-    notes: "Outline key deliverables and milestones.",
+    content: "Outline key deliverables and milestones.",
     dateCreated: "2025-09-25T09:12:03.000Z",
+    dateUpdated: "2025-09-25T09:12:03.000Z",
     dateCompleted: null,
-    startDate: todayStr,
+    date: todayStr,
     userId: "1",
     sortOrder: rootKeys[0],
+    parentItemId: null,
   },
   {
     id: "tsk_002",
+    type: "task",
     title: "Refactor legacy auth module",
-    notes: "Improve readability and add missing tests.",
+    content: "Improve readability and add missing tests.",
     dateCreated: "2025-09-20T14:31:10.000Z",
+    dateUpdated: "2025-09-20T14:31:10.000Z",
     dateCompleted: null,
-    startDate: todayStr,
+    date: todayStr,
     userId: "1",
     sortOrder: rootKeys[1],
+    parentItemId: null,
   },
   {
     id: "tsk_003",
+    type: "task",
     title: "Write unit tests for task utils",
-    notes: "Focus on edge cases around completion toggling.",
+    content: "Focus on edge cases around completion toggling.",
     dateCreated: "2025-09-29T11:05:47.000Z",
+    dateUpdated: "2025-09-29T11:05:47.000Z",
     dateCompleted: null,
+    date: null,
     userId: "1",
     sortOrder: rootKeys[2],
+    parentItemId: null,
   },
   {
     id: "tsk_004",
+    type: "task",
     title: "Update README deployment section",
-    notes: "Add staging environment notes.",
+    content: "Add staging environment notes.",
     dateCreated: "2025-09-18T08:44:55.000Z",
+    dateUpdated: "2025-09-18T08:44:55.000Z",
     dateCompleted: null,
+    date: null,
     userId: "1",
     sortOrder: rootKeys[3],
+    parentItemId: null,
   },
   {
     id: "tsk_005",
+    type: "task",
     title: "Design notification settings UI",
-    notes: "Keep components accessible with proper ARIA.",
+    content: "Keep components accessible with proper ARIA.",
     dateCreated: "2025-10-01T10:02:11.000Z",
+    dateUpdated: "2025-10-01T10:02:11.000Z",
     dateCompleted: null,
-    startDate: todayStr,
+    date: todayStr,
     userId: "1",
     sortOrder: rootKeys[4],
+    parentItemId: null,
   },
   {
     id: "tsk_006",
+    type: "task",
     title: "Fix timezone bug in date picker",
-    notes: "Occurs when user switches locale mid-session.",
+    content: "Occurs when user switches locale mid-session.",
     dateCreated: "2025-09-30T07:22:39.000Z",
+    dateUpdated: "2025-09-30T07:22:39.000Z",
     dateCompleted: null,
+    date: null,
     userId: "1",
     sortOrder: rootKeys[5],
+    parentItemId: null,
   },
   {
     id: "tsk_007",
+    type: "task",
     title: "Add API error handling tests",
-    notes: "Cover error states (500, 404).",
+    content: "Cover error states (500, 404).",
     dateCreated: "2025-09-27T15:50:33.000Z",
+    dateUpdated: "2025-11-17T17:46:50.189Z",
     dateCompleted: "2025-11-17T17:46:50.189Z",
+    date: null,
     userId: "1",
     sortOrder: rootKeys[6],
+    parentItemId: null,
   },
   {
     id: "tsk_008",
+    type: "task",
     title: "Optimize bundle size",
-    notes: "Investigate code splitting for feature routes.",
+    content: "Investigate code splitting for feature routes.",
     dateCreated: "2025-09-23T09:05:14.000Z",
+    dateUpdated: "2025-09-23T09:05:14.000Z",
     dateCompleted: null,
+    date: null,
     userId: "1",
     sortOrder: rootKeys[7],
+    parentItemId: null,
   },
   {
     id: "tsk_009",
+    type: "task",
     title: "Create productivity tips blog draft",
-    notes: "Reference reputable sources.",
+    content: "Reference reputable sources.",
     dateCreated: "2025-09-26T12:14:57.000Z",
+    dateUpdated: "2026-04-10T12:00:00.000Z",
     dateCompleted: "2026-04-10T12:00:00.000Z",
+    date: null,
     userId: "1",
     sortOrder: rootKeys[8],
+    parentItemId: null,
   },
   {
     id: "tsk_010",
+    type: "task",
     title: "Build task filtering system",
-    notes: "Use client-side filtering first pass.",
+    content: "Use client-side filtering first pass.",
     dateCreated: "2025-10-03T13:43:22.000Z",
+    dateUpdated: "2025-10-03T13:43:22.000Z",
     dateCompleted: null,
+    date: null,
     userId: "1",
     sortOrder: rootKeys[9],
+    parentItemId: null,
   },
   // Subtasks of tsk_001
   {
     id: "tsk_012",
+    type: "task",
     title: "Gather team input on priorities",
-    notes: null,
+    content: null,
     dateCreated: "2025-09-25T09:15:00.000Z",
+    dateUpdated: "2025-09-25T09:15:00.000Z",
     dateCompleted: null,
-    parentTaskId: "tsk_001",
+    date: null,
+    parentItemId: "tsk_001",
     userId: "1",
     sortOrder: subtaskKeys[0],
   },
   {
     id: "tsk_013",
+    type: "task",
     title: "Draft milestone timeline",
-    notes: null,
+    content: null,
     dateCreated: "2025-09-25T09:16:00.000Z",
+    dateUpdated: "2025-10-02T11:00:00.000Z",
     dateCompleted: "2025-10-02T11:00:00.000Z",
-    parentTaskId: "tsk_001",
+    date: null,
+    parentItemId: "tsk_001",
     userId: "1",
     sortOrder: subtaskKeys[1],
   },
+  // ── Notes ──────────────────────────────────────────────────────────
+  {
+    id: "nte_001",
+    type: "note",
+    title: "Jenkins Pipeline Staging Issue",
+    content:
+      "Spoke with Sarah about the Jenkins pipeline failing on staging. She thinks it's a Docker image caching issue. Need to check the build logs.",
+    date: todayStr,
+    dateCompleted: null,
+    parentItemId: null,
+    sortOrder: "0",
+    userId: "1",
+    dateCreated: "2026-04-18T09:30:00.000Z",
+    dateUpdated: "2026-04-18T09:30:00.000Z",
+  },
+  {
+    id: "nte_002",
+    type: "note",
+    title: "Dashboard Redesign Colour Palette",
+    content:
+      "Meeting with design team — agreed on new colour palette for dashboard. Moving away from blue-heavy scheme to more neutral tones with accent colours per feature area.",
+    date: todayStr,
+    dateCompleted: null,
+    parentItemId: null,
+    sortOrder: "1",
+    userId: "1",
+    dateCreated: "2026-04-17T14:15:00.000Z",
+    dateUpdated: "2026-04-17T14:15:00.000Z",
+  },
+  {
+    id: "nte_003",
+    type: "note",
+    title: "Untitled",
+    content:
+      "Idea: add keyboard shortcuts for common actions — Cmd+N for new task, Cmd+Shift+N for new note, Cmd+K for search. Check what VS Code and Linear use for reference.",
+    date: null,
+    dateCompleted: null,
+    parentItemId: null,
+    sortOrder: "0",
+    userId: "1",
+    dateCreated: "2026-04-16T11:00:00.000Z",
+    dateUpdated: "2026-04-16T11:00:00.000Z",
+  },
+  {
+    id: "nte_004",
+    type: "note",
+    title: "Q1 Performance Review Notes",
+    content:
+      "Performance review prep: shipped task system, calendar integration, and drag-drop. Contributed to design system tokens. Mentored two junior devs on React Query patterns.",
+    date: null,
+    dateCompleted: null,
+    parentItemId: null,
+    sortOrder: "1",
+    userId: "1",
+    dateCreated: "2026-04-10T16:45:00.000Z",
+    dateUpdated: "2026-04-15T10:20:00.000Z",
+  },
 ];
 
-await db.insert(schema.tasks).values(sampleTasks);
+// Insert root items first (no parentItemId), then subtasks
+const rootItems = sampleItems.filter((i) => !i.parentItemId);
+const subtaskItems = sampleItems.filter((i) => i.parentItemId);
+
+await db.insert(schema.items).values(rootItems);
+if (subtaskItems.length > 0) {
+  await db.insert(schema.items).values(subtaskItems);
+}
 
 // Seed tags
 await db.insert(schema.tags).values([
@@ -190,103 +296,54 @@ await db.insert(schema.tags).values([
   },
 ]);
 
-// Seed task-tag relationships
-await db.insert(schema.taskTags).values([
-  { taskId: "tsk_001", tagId: "tag_002" },
-  { taskId: "tsk_002", tagId: "tag_002" },
-  { taskId: "tsk_002", tagId: "tag_003" },
-  { taskId: "tsk_003", tagId: "tag_001" },
-  { taskId: "tsk_005", tagId: "tag_001" },
-  { taskId: "tsk_005", tagId: "tag_004" },
-  { taskId: "tsk_006", tagId: "tag_001" },
-  { taskId: "tsk_006", tagId: "tag_003" },
-  { taskId: "tsk_008", tagId: "tag_001" },
-]);
-
-// Seed sample notes
-const sampleNotes = [
-  {
-    id: "nte_001",
-    content:
-      "Spoke with Sarah about the Jenkins pipeline failing on staging. She thinks it's a Docker image caching issue. Need to check the build logs.",
-    title: "Jenkins Pipeline Staging Issue",
-    date: todayStr,
-    sortOrder: 0,
-    userId: "1",
-    dateCreated: "2026-04-18T09:30:00.000Z",
-    dateUpdated: "2026-04-18T09:30:00.000Z",
-  },
-  {
-    id: "nte_002",
-    content:
-      "Meeting with design team — agreed on new colour palette for dashboard. Moving away from blue-heavy scheme to more neutral tones with accent colours per feature area.",
-    title: "Dashboard Redesign Colour Palette",
-    date: todayStr,
-    sortOrder: 1,
-    userId: "1",
-    dateCreated: "2026-04-17T14:15:00.000Z",
-    dateUpdated: "2026-04-17T14:15:00.000Z",
-  },
-  {
-    id: "nte_003",
-    content:
-      "Idea: add keyboard shortcuts for common actions — Cmd+N for new task, Cmd+Shift+N for new note, Cmd+K for search. Check what VS Code and Linear use for reference.",
-    title: null,
-    date: null,
-    sortOrder: 0,
-    userId: "1",
-    dateCreated: "2026-04-16T11:00:00.000Z",
-    dateUpdated: "2026-04-16T11:00:00.000Z",
-  },
-  {
-    id: "nte_004",
-    content:
-      "Performance review prep: shipped task system, calendar integration, and drag-drop. Contributed to design system tokens. Mentored two junior devs on React Query patterns.",
-    title: "Q1 Performance Review Notes",
-    date: null,
-    sortOrder: 1,
-    userId: "1",
-    dateCreated: "2026-04-10T16:45:00.000Z",
-    dateUpdated: "2026-04-15T10:20:00.000Z",
-  },
-];
-
-await db.insert(schema.notes).values(sampleNotes);
-
-// Seed note-tag relationships
-await db.insert(schema.noteTags).values([
-  { noteId: "nte_001", tagId: "tag_002" }, // Jenkins note → backend
-  { noteId: "nte_001", tagId: "tag_003" }, // Jenkins note → urgent
-  { noteId: "nte_002", tagId: "tag_001" }, // Design note → frontend
-  { noteId: "nte_003", tagId: "tag_001" }, // Keyboard shortcuts → frontend
+// Seed task-tag relationships (using itemTags)
+await db.insert(schema.itemTags).values([
+  { itemId: "tsk_001", tagId: "tag_002" },
+  { itemId: "tsk_002", tagId: "tag_002" },
+  { itemId: "tsk_002", tagId: "tag_003" },
+  { itemId: "tsk_003", tagId: "tag_001" },
+  { itemId: "tsk_005", tagId: "tag_001" },
+  { itemId: "tsk_005", tagId: "tag_004" },
+  { itemId: "tsk_006", tagId: "tag_001" },
+  { itemId: "tsk_006", tagId: "tag_003" },
+  { itemId: "tsk_008", tagId: "tag_001" },
+  // Note-tag relationships
+  { itemId: "nte_001", tagId: "tag_002" },
+  { itemId: "nte_001", tagId: "tag_003" },
+  { itemId: "nte_002", tagId: "tag_001" },
+  { itemId: "nte_003", tagId: "tag_001" },
 ]);
 
 // Seed note metadata (AI-generated keywords)
-await db.insert(schema.noteMetadata).values([
+await db.insert(schema.itemMetadata).values([
   {
-    noteId: "nte_001",
+    itemId: "nte_001",
     keywords:
       "Jenkins, CI/CD, pipeline, staging, Docker, caching, build, Sarah, DevOps, infrastructure",
   },
   {
-    noteId: "nte_002",
+    itemId: "nte_002",
     keywords:
       "design, dashboard, colour, palette, UI, redesign, meeting, neutral, accent",
   },
-  { noteId: "nte_003", keywords: null },
+  { itemId: "nte_003", keywords: null },
   {
-    noteId: "nte_004",
+    itemId: "nte_004",
     keywords:
       "performance, review, accomplishments, React Query, mentoring, design system, drag-drop",
   },
 ]);
 
+const taskCount = sampleItems.filter((i) => i.type === "task").length;
+const noteCount = sampleItems.filter((i) => i.type === "note").length;
+
 console.info("Database seeded successfully.");
-console.info(`  - ${sampleTasks.length} tasks (including ${2} subtasks)`);
+console.info(
+  `  - ${taskCount} tasks (including ${subtaskItems.length} subtasks)`,
+);
 console.info(`  - ${4} tags`);
-console.info(`  - ${9} task-tag relationships`);
-console.info(`  - ${sampleNotes.length} notes`);
-console.info(`  - ${4} note-tag relationships`);
+console.info(`  - ${14} item-tag relationships`);
+console.info(`  - ${noteCount} notes`);
 console.info(`  - ${4} note metadata entries`);
 
 await client.end();
