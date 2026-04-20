@@ -174,7 +174,7 @@ export const createNote = createServerFn({ method: "POST" })
         .values({
           id,
           type: "note",
-          title: data.title ?? "Untitled",
+          title: data.title ?? "",
           content: data.content,
           date: data.date ?? null,
           dateCompleted: null,
@@ -223,6 +223,11 @@ export const updateNote = createServerFn({ method: "POST" })
     console.info(`Updating note ${data.id}...`);
 
     const { id, userId, tagIds, ...updates } = data;
+
+    // Ensure title is never null (items.title is NOT NULL)
+    if (updates.title === null) {
+      updates.title = "";
+    }
 
     const setValues: Record<string, unknown> = {
       ...updates,
