@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
-import { and, asc, desc, eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, isNull, sql } from "drizzle-orm";
+import { generateKeyBetween, generateNKeysBetween } from "fractional-indexing";
 import z from "zod";
 import { db } from "~/db";
 import { items, itemTags, itemMetadata } from "~/db/schema";
@@ -9,7 +10,7 @@ const noteColumns = {
   content: sql<string>`COALESCE(${items.content}, '')`.as("content"),
   title: items.title,
   date: items.date,
-  sortOrder: sql<number>`CAST(${items.sortOrder} AS integer)`.as("sort_order"),
+  sortOrder: items.sortOrder,
   userId: items.userId,
   dateCreated: items.dateCreated,
   dateUpdated: items.dateUpdated,
@@ -74,7 +75,7 @@ export const fetchNotesForDate = createServerFn({ method: "GET" })
           eq(items.date, data.date),
         ),
       )
-      .orderBy(asc(sql`CAST(${items.sortOrder} AS integer)`));
+      .orderBy(asc(items.sortOrder));
   });
 
 export const fetchNotesByTag = createServerFn({ method: "GET" })
@@ -162,11 +163,11 @@ export const createNote = createServerFn({ method: "POST" })
           and(
             eq(items.userId, data.userId),
             eq(items.type, "note"),
-            data.date ? eq(items.date, data.date) : sql`${items.date} IS NULL`,
+            data.date ? eq(items.date, data.date) : isNull(items.date),
           ),
         );
 
-      const nextSortOrder = String((Number(maxRow?.max ?? "-1") || 0) + 1);
+      const nextSortOrder = generateKeyBetween(maxRow?.max ?? null, null);
 
       const [noteResult] = await tx
         .insert(items)
@@ -214,23 +215,19 @@ export const updateNote = createServerFn({ method: "POST" })
         .or(z.null())
         .optional(),
       tagIds: z.array(z.string()).optional(),
-      sortOrder: z.number().optional(),
+      sortOrder: z.string().optional(),
       userId: z.string().min(1),
     }),
   )
   .handler(async ({ data }) => {
     console.info(`Updating note ${data.id}...`);
 
-    const { id, userId, tagIds, sortOrder, ...updates } = data;
+    const { id, userId, tagIds, ...updates } = data;
 
-    // Convert integer sortOrder to text for items table
     const setValues: Record<string, unknown> = {
       ...updates,
       dateUpdated: new Date().toISOString(),
     };
-    if (sortOrder !== undefined) {
-      setValues.sortOrder = String(sortOrder);
-    }
 
     const result = await db.transaction(async (tx) => {
       const [noteResult] = await tx
@@ -296,8 +293,10 @@ export const reorderNotes = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     console.info(`Reordering ${data.noteIds.length} notes...`);
 
+    const newKeys = generateNKeysBetween(null, null, data.noteIds.length);
+
     const valuesList = sql.join(
-      data.noteIds.map((id, i) => sql`(${id}, ${String(i)})`),
+      data.noteIds.map((id, i) => sql`(${id}, ${newKeys[i]})`),
       sql`, `,
     );
 

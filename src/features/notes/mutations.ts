@@ -31,7 +31,7 @@ export const useUpdateNote = () => {
       title?: string | null;
       date?: string | null;
       tagIds?: string[];
-      sortOrder?: number;
+      sortOrder?: string;
     }) => updateNote({ data: { ...input, userId: DEFAULT_USER_ID } }),
     onSettled: (_data, _err, input) => {
       queryClient.invalidateQueries({ queryKey: notesQueryKeys.all });

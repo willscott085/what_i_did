@@ -30,7 +30,7 @@ function makeFakeNote(overrides: Partial<Note> = {}): Note {
     content: "Some note content",
     title: "Test Note",
     date: "2026-04-19",
-    sortOrder: 0,
+    sortOrder: "a0",
     userId: "1",
     dateCreated: "2026-01-01T00:00:00Z",
     dateUpdated: "2026-01-01T00:00:00Z",

@@ -125,7 +125,19 @@ export const completeTask = createServerFn({ method: "POST" })
       )
       .returning();
 
-    return result;
+    if (!result) return null;
+
+    return {
+      id: result.id,
+      title: result.title,
+      notes: result.content ?? null,
+      dateCreated: result.dateCreated,
+      dateCompleted: result.dateCompleted ?? null,
+      startDate: result.date ?? null,
+      userId: result.userId,
+      parentTaskId: result.parentItemId ?? null,
+      sortOrder: result.sortOrder,
+    };
   });
 
 export const updateTask = createServerFn({ method: "POST" })
@@ -386,7 +398,11 @@ export const fetchTaskWithRelations = createServerFn({ method: "GET" })
   )
   .handler(async ({ data }) => {
     const result = await db.query.items.findFirst({
-      where: and(eq(items.id, data.taskId), eq(items.userId, data.userId)),
+      where: and(
+        eq(items.id, data.taskId),
+        eq(items.userId, data.userId),
+        eq(items.type, "task"),
+      ),
       with: {
         itemTags: {
           with: {
@@ -433,22 +449,7 @@ export const fetchSubtasks = createServerFn({ method: "GET" })
   )
   .handler(async ({ data }) => {
     const rows = await db
-      .select({
-        id: items.id,
-        type: items.type,
-        title: items.title,
-        content: items.content,
-        date: items.date,
-        dateCompleted: items.dateCompleted,
-        parentItemId: items.parentItemId,
-        sortOrder: items.sortOrder,
-        userId: items.userId,
-        dateCreated: items.dateCreated,
-        dateUpdated: items.dateUpdated,
-        subtaskCount: sql<number>`0`.as("subtask_count"),
-        completedSubtaskCount: sql<number>`0`.as("completed_subtask_count"),
-        tags: sql<{ id: string; name: string }[]>`'[]'::json`.as("tags"),
-      })
+      .select(itemColumns)
       .from(items)
       .where(
         and(
@@ -459,12 +460,7 @@ export const fetchSubtasks = createServerFn({ method: "GET" })
       )
       .orderBy(asc(items.dateCompleted), asc(items.dateCreated));
 
-    return rows.map((r) => ({
-      ...r,
-      notes: r.content,
-      startDate: r.date,
-      parentTaskId: r.parentItemId,
-    }));
+    return rows.map(toTask);
   });
 
 // ─── Calendar & Day View queries ─────────────────────────────────────

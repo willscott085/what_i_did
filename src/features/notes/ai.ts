@@ -46,7 +46,13 @@ export const processNoteWithAI = createServerFn({ method: "POST" })
         await db
           .update(items)
           .set({ title, dateUpdated: new Date().toISOString() })
-          .where(and(eq(items.id, data.noteId), eq(items.userId, data.userId)));
+          .where(
+            and(
+              eq(items.id, data.noteId),
+              eq(items.userId, data.userId),
+              eq(items.type, "note"),
+            ),
+          );
       }
 
       await db
