@@ -79,8 +79,24 @@ function RootDocument({ children }: { children: React.ReactNode }) {
     <html className="bg-background font-sans antialiased">
       <head>
         <HeadContent />
+        <style
+          dangerouslySetInnerHTML={{
+            __html: `
+#app-loader{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:oklch(1 0 0)}
+#app-loader .spinner{width:24px;height:24px;border:2px solid oklch(.9 0 0);border-top-color:oklch(.5 0 0);border-radius:50%;animation:spin .6s linear infinite}
+@media(prefers-color-scheme:dark){
+#app-loader{background:oklch(.13 .028 261.692)}
+#app-loader .spinner{border-color:oklch(.3 .005 285.82);border-top-color:oklch(.65 .005 285.82)}
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+body:has([data-hydrated]) #app-loader{display:none}`,
+          }}
+        />
       </head>
       <body data-lpignore="true" data-1p-ignore data-form-type="other">
+        <div id="app-loader">
+          <div className="spinner" />
+        </div>
         {children}
         <Toaster position="bottom-center" />
         <Scripts />

@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "~/components/ui/dialog";
+  Drawer,
+  DrawerContent,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+} from "~/components/ui/drawer";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
@@ -68,12 +68,12 @@ export function TaskDialog({
   const formKey = `${open}-${task?.id ?? "new"}-${resolvedTask?.id ?? "pending"}`;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[85vh] flex-col overflow-hidden sm:max-w-xl">
+    <Drawer open={open} onOpenChange={onOpenChange} direction="right">
+      <DrawerContent>
         {isLoading && task?.id ? (
-          <DialogHeader>
-            <DialogTitle>Loading…</DialogTitle>
-          </DialogHeader>
+          <DrawerHeader>
+            <DrawerTitle>Loading…</DrawerTitle>
+          </DrawerHeader>
         ) : (
           <TaskDialogForm
             key={formKey}
@@ -84,8 +84,8 @@ export function TaskDialog({
             onOpenChange={onOpenChange}
           />
         )}
-      </DialogContent>
-    </Dialog>
+      </DrawerContent>
+    </Drawer>
   );
 }
 
@@ -186,11 +186,14 @@ function TaskDialogForm({
 
   return (
     <>
-      <DialogHeader>
-        <DialogTitle>{isEditing ? "Edit Task" : "New Task"}</DialogTitle>
-      </DialogHeader>
+      <DrawerHeader>
+        <DrawerTitle>{isEditing ? "Edit Task" : "New Task"}</DrawerTitle>
+      </DrawerHeader>
 
-      <form onSubmit={handleSubmit} className="flex min-h-0 flex-col">
+      <form
+        onSubmit={handleSubmit}
+        className="flex min-h-0 flex-1 flex-col justify-center"
+      >
         <div className="scrollbar-hide space-y-4 overflow-x-hidden overflow-y-auto pb-6">
           {/* Title */}
           <div className="space-y-1.5 px-4">
@@ -260,7 +263,7 @@ function TaskDialogForm({
           )}
         </div>
 
-        <DialogFooter className="bg-background border-border shrink-0 border-t p-4">
+        <DrawerFooter className="bg-background border-border shrink-0 border-t p-4">
           <Button
             type="button"
             variant="outline"
@@ -271,7 +274,7 @@ function TaskDialogForm({
           <Button type="submit" disabled={isPending || !title.trim()}>
             {isEditing ? "Save" : "Create"}
           </Button>
-        </DialogFooter>
+        </DrawerFooter>
       </form>
     </>
   );

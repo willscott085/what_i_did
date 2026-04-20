@@ -12,12 +12,12 @@ import {
   StrikethroughIcon,
 } from "lucide-react";
 import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "~/components/ui/dialog";
+  Drawer,
+  DrawerContent,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+} from "~/components/ui/drawer";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
@@ -75,12 +75,12 @@ export function NoteDialog({
   const formKey = `${open}-${note?.id ?? "new"}-${resolvedNote?.id ?? "pending"}`;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[85vh] flex-col overflow-hidden sm:max-w-2xl">
+    <Drawer open={open} onOpenChange={onOpenChange} direction="right">
+      <DrawerContent>
         {isLoading && note?.id ? (
-          <DialogHeader>
-            <DialogTitle>Loading…</DialogTitle>
-          </DialogHeader>
+          <DrawerHeader>
+            <DrawerTitle>Loading…</DrawerTitle>
+          </DrawerHeader>
         ) : (
           <NoteDialogForm
             key={formKey}
@@ -90,8 +90,8 @@ export function NoteDialog({
             onOpenChange={onOpenChange}
           />
         )}
-      </DialogContent>
-    </Dialog>
+      </DrawerContent>
+    </Drawer>
   );
 }
 
@@ -218,11 +218,14 @@ function NoteDialogForm({
 
   return (
     <>
-      <DialogHeader>
-        <DialogTitle>{isEditing ? "Edit Note" : "New Note"}</DialogTitle>
-      </DialogHeader>
+      <DrawerHeader>
+        <DrawerTitle>{isEditing ? "Edit Note" : "New Note"}</DrawerTitle>
+      </DrawerHeader>
 
-      <form onSubmit={handleSubmit} className="flex min-h-0 flex-col">
+      <form
+        onSubmit={handleSubmit}
+        className="flex min-h-0 flex-1 flex-col justify-center"
+      >
         <div className="scrollbar-hide space-y-4 overflow-x-hidden overflow-y-auto pb-6">
           {/* Content */}
           <div className="space-y-1.5 px-4">
@@ -338,7 +341,7 @@ function NoteDialogForm({
           </div>
         </div>
 
-        <DialogFooter className="bg-background border-border shrink-0 border-t p-4">
+        <DrawerFooter className="bg-background border-border shrink-0 border-t p-4">
           <Button
             type="button"
             variant="outline"
@@ -349,7 +352,7 @@ function NoteDialogForm({
           <Button type="submit" disabled={isPending || !content.trim()}>
             {isEditing ? "Save" : "Create"}
           </Button>
-        </DialogFooter>
+        </DrawerFooter>
       </form>
     </>
   );

@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
+import { PlusIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useAppLayout } from "~/components/AppLayoutContext";
 import { DraggableList } from "~/components/DraggableTaskList";
@@ -80,6 +81,14 @@ function NotesView() {
       <section>
         <header className="flex items-center gap-2 pl-8">
           <h2 className="text-lg font-medium">Notes</h2>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => handleOpenNoteDialog(null)}
+            aria-label="Add note"
+          >
+            <PlusIcon className="size-5" />
+          </Button>
         </header>
 
         {/* Search bar */}

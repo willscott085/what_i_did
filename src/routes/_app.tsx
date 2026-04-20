@@ -69,10 +69,10 @@ function AppLayout() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
 
-  function handleOpenDialog(task?: Task | null) {
+  const handleOpenDialog = useCallback((task?: Task | null) => {
     setEditingTask(task ?? null);
     setDialogOpen(true);
-  }
+  }, []);
 
   function handleDialogClose(open: boolean) {
     setDialogOpen(open);
@@ -104,6 +104,18 @@ function AppLayout() {
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [handleOpenNoteDialog]);
+
+  // ─── Keyboard shortcut: Cmd/Ctrl+T → new task ──────────────────
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key === "t") {
+        e.preventDefault();
+        handleOpenDialog(null);
+      }
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [handleOpenDialog]);
 
   const layoutCtx = useMemo(
     () => ({
