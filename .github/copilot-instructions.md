@@ -4,7 +4,7 @@
 
 ## Context
 
-**whatIdid** is a personal task tracker and AI-powered notes system. Built with React 19, TypeScript, and TanStack Start as a full-stack framework. The app is being developed iteratively — check `.github/PLAN.md` for the current phase.
+**whatIdid** is a personal task tracker, notes system, and reminder app with AI-powered features. Built with React 19, TypeScript, and TanStack Start as a full-stack framework. The app uses a **unified `items` table** — tasks, notes, and events (reminders) are all items differentiated by a `type` column. Schedules (reminder timing, recurrence) attach to any item. Check `.github/PLAN.md` for the current phase.
 
 ### Tech Stack
 
@@ -62,10 +62,18 @@ export const myFunction = createServerFn({ method: "GET" })
 - Drizzle client singleton in `src/db/index.ts`
 - Migrations managed via `drizzle-kit` (`pnpm db:generate`, `pnpm db:migrate`)
 - All tables include `userId` column (multi-user ready, hardcoded '1' for now)
+- **Unified `items` table** — single table with `type` column (`task` | `note` | `event`). One `itemTags` junction table, one `itemMetadata` table. `schedules` table attaches to any item for reminder timing and recurrence.
+- **ID prefixes** — `tsk_` (task), `nte_` (note), `evt_` (event), `sch_` (schedule), `shx_` (schedule history)
+- **Thin adapters** — `features/tasks/`, `features/notes/`, `features/events/` are facade layers that delegate to `features/items/` with type filters
 
 ## File & Folder Organization
 
-- `src/features/{domain}/` — Feature modules (tasks, tags, notes, ai)
+- `src/features/{domain}/` — Feature modules (items, tasks, tags, notes, events, schedules, ai)
+- `src/features/items/` — Shared base layer: unified CRUD for all item types
+- `src/features/tasks/` — Thin adapter over items (type='task' filter)
+- `src/features/notes/` — Thin adapter over items (type='note' filter)
+- `src/features/events/` — Thin adapter over items (type='event' filter)
+- `src/features/schedules/` — Reminder timing, recurrence (RRULE), push notifications
 - `src/components/` — Shared UI components
 - `src/components/ui/` — Primitive UI components (button, dialog, input, etc.)
 - `src/routes/` — File-based routes (TanStack Router)
@@ -127,7 +135,7 @@ export const myFunction = createServerFn({ method: "GET" })
 
 - All data mutations go through server functions — never call the DB from client code
 - Use Zod for input validation on all server functions
-- React Query keys follow the pattern: `{ all: [domain], byId: [domain, id] }`
+- React Query keys follow the pattern: `{ all: [domain], byType: [domain, type], byId: [domain, id] }`
 - Optimistic updates are the default for mutations affecting UI state
 - Components that need hydration-awareness use `useEffect` state guard
 - Drag-and-drop components use dnd-kit with `useSortable` hook per item

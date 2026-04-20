@@ -4,27 +4,36 @@
 
 ## Key Decisions
 
-| Decision        | Choice                                                     | Rationale                                                                                                 |
-| --------------- | ---------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| Backend         | TanStack Start server functions + Drizzle ORM + PostgreSQL | No separate API framework — server functions already exist, just swap data layer                          |
-| ORM             | Drizzle                                                    | Lightweight, type-safe, SQL-like syntax                                                                   |
-| Database        | PostgreSQL (via docker-compose)                            | Relational, full-text search built-in, dev container provides it                                          |
-| AI Provider     | Provider-agnostic abstraction                              | Start with xAI/Grok, design to swap to OpenAI/Ollama/Anthropic. Uses `openai` SDK with custom base URL    |
-| AI Notes        | Metadata table + PostgreSQL full-text search               | AI generates title (if none given) + keywords on save. `tsvector`/`tsquery` for search, no embeddings yet |
-| Auth            | Deferred (Phase 8)                                         | userId column baked in from day one, hardcode '1' for now                                                 |
-| Tags            | Flat tag system                                            | Tags are the sole organizational mechanism — flexible, orthogonal, many-to-many                           |
-| Notes Format    | Tiptap rich text editor, stored as markdown                | Tiptap for editing, markdown for portable storage and full-text indexing                                  |
-| Deployment      | Local only for now                                         | Docker Compose with PostgreSQL, simple local setup                                                        |
-| Codebase        | Evolve existing — don't start fresh                        | Reuse TanStack Start, React Query, dnd-kit, Tailwind foundations                                          |
-| Testing         | Vitest (unit/integration) + Playwright (E2E)               | Vitest already set up; Playwright pairs well with Vite stack, cross-browser, great TypeScript support     |
-| Dev Environment | Dev container (Docker)                                     | Reproducible setup, Playwright browsers pre-installed, Codespaces-ready                                   |
+| Decision        | Choice                                                     | Rationale                                                                                                                                                                                                            |
+| --------------- | ---------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Backend         | TanStack Start server functions + Drizzle ORM + PostgreSQL | No separate API framework — server functions already exist, just swap data layer                                                                                                                                     |
+| ORM             | Drizzle                                                    | Lightweight, type-safe, SQL-like syntax                                                                                                                                                                              |
+| Database        | PostgreSQL (via docker-compose)                            | Relational, full-text search built-in, dev container provides it                                                                                                                                                     |
+| Data Model      | **Unified `items` table** with `type` column               | Tasks, notes, and events are all "titled things with content, a date, and tags". Behavioral differences via `type` column + conditional UI. One tag junction, one metadata table, simpler queries, future types free |
+| Scheduling      | **`schedules` table** attached to any item                 | Reminders/recurrence are orthogonal to item type. A schedule attaches to any item — `cloneOnFire` for task-generating reminders, plain notify for events                                                             |
+| AI Provider     | Provider-agnostic abstraction                              | Start with xAI/Grok, design to swap to OpenAI/Ollama/Anthropic. Uses `openai` SDK with custom base URL                                                                                                               |
+| AI Notes        | Metadata table + PostgreSQL full-text search               | AI generates title (if none given) + keywords on save. `tsvector`/`tsquery` for search, no embeddings yet                                                                                                            |
+| Auth            | Deferred (Phase 10)                                        | userId column baked in from day one, hardcode '1' for now                                                                                                                                                            |
+| Tags            | Flat tag system                                            | Tags are the sole organizational mechanism — flexible, orthogonal, many-to-many                                                                                                                                      |
+| Notes Format    | Tiptap rich text editor, stored as markdown                | Tiptap for editing, markdown for portable storage and full-text indexing                                                                                                                                             |
+| Deployment      | Local only for now                                         | Docker Compose with PostgreSQL, simple local setup                                                                                                                                                                   |
+| Codebase        | Evolve existing — don't start fresh                        | Reuse TanStack Start, React Query, dnd-kit, Tailwind foundations                                                                                                                                                     |
+| Testing         | Vitest (unit/integration) + Playwright (E2E)               | Vitest already set up; Playwright pairs well with Vite stack, cross-browser, great TypeScript support                                                                                                                |
+| Dev Environment | Dev container (Docker)                                     | Reproducible setup, Playwright browsers pre-installed, Codespaces-ready                                                                                                                                              |
 
 ### Simplification Decisions (Post-Phase 5)
 
 - **Priority categories removed** — original plan had configurable priority categories (Business-Critical, Momentum Builders, etc.). Simplified to just tags for organization.
-- **Recurrence removed** — `rrule` engine and `RecurrencePicker` were cut. Tasks use `startDate` only.
+- **Recurrence removed from tasks** — tasks use `startDate` only. Recurrence lives in the `schedules` system (Phase 9) — schedules with `cloneOnFire` create fresh tasks on a schedule.
 - **Lists removed** — `lists` and `listItems` tables were never implemented. Backlog + day view replaces static lists.
 - **`dueDate` → `startDate`** — renamed to better reflect the concept: the day a task appears in your day view.
+
+### Architectural Pivot (Post-Phase 7)
+
+- **Unified `items` table** — tasks, notes, and events (reminders) were originally separate tables (`tasks`, `notes`). In Phase 8 we migrate to a single `items` table with a `type` column (`task` | `note` | `event`). This halves the schema, eliminates duplicate junction tables, and makes tag pages/day views trivial (one query instead of UNION across tables). Separate pages and UI components remain — the unification is at the data layer.
+- **`schedules` replaces `reminders`** — scheduling (reminder times, RRULE recurrence, snooze) is orthogonal to item type. A `schedules` table attaches to any item. Event items + schedule = timed notification. Task items + schedule + `cloneOnFire` = recurring task generation.
+- **One junction table** — `itemTags` replaces `taskTags` + `noteTags`. Same tag pool, single query.
+- **One metadata table** — `itemMetadata` replaces `noteMetadata`. AI-generated keywords/embeddings can apply to any item type.
 
 ---
 
@@ -443,7 +452,373 @@
 
 ---
 
-## Phase 8: Multi-User & Auth (Future)
+## Phase 8: Unified Items Architecture (Migration)
+
+> Migrate from separate `tasks`/`notes` tables to a single `items` table with a `type` column. This unifies the data layer — tasks, notes, and the new event type all become items. All existing pages, routes, and UI components remain separate. Data is migrated without loss.
+
+### Why Now
+
+The app has a small dataset, the schema is young, and we're about to add a third entity type (events/reminders). Adding another set of tables + junction table + server functions would triple the boilerplate. A unified model means:
+
+- **One tag junction** (`itemTags`) instead of three (`taskTags`, `noteTags`, `reminderTags`)
+- **Tag page is one query** — no UNION across three tables
+- **Day view is one query** — filter by date, get tasks + notes + events together
+- **Future types are free** — habits, bookmarks, etc. require zero new tables
+- **Half the server functions** — one CRUD set with type filters
+
+### 8A: New Schema
+
+- [ ] Create `items` table in `src/db/schema.ts`:
+  - `id` (text PK — prefixed: `tsk_`, `nte_`, `evt_` by type)
+  - `type` (text NOT NULL — `task` | `note` | `event`)
+  - `title` (text NOT NULL)
+  - `content` (text, nullable — task notes, note body, event description)
+  - `date` (text, nullable — `startDate` for tasks, display date for notes, event date)
+  - `dateCompleted` (text, nullable — tasks only)
+  - `parentItemId` (text, nullable — self-ref FK for subtasks)
+  - `sortOrder` (text NOT NULL, default `'a0'` — fractional indexing)
+  - `userId` (text NOT NULL)
+  - `dateCreated` (text NOT NULL)
+  - `dateUpdated` (text NOT NULL)
+- [ ] Create `itemTags` junction table:
+  - `itemId` (text FK → items.id CASCADE)
+  - `tagId` (text FK → tags.id CASCADE)
+  - Composite PK (itemId, tagId)
+- [ ] Create `itemMetadata` table (replaces `noteMetadata`):
+  - `itemId` (text PK, FK → items.id CASCADE — one-to-one)
+  - `keywords` (text, nullable — AI-generated)
+  - `embedding` (bytea, nullable — future vector search)
+- [ ] Add relations: `itemsRelations` (self-ref subtasks, many itemTags, one itemMetadata, many schedules), `itemTagsRelations`, `itemMetadataRelations`. Update `tagsRelations` to reference `itemTags`.
+- [ ] Keep `tags` table unchanged — tags are already clean
+
+### 8B: Data Migration
+
+- [ ] Write Drizzle migration that:
+  1. Creates `items`, `itemTags`, `itemMetadata` tables
+  2. Copies `tasks` → `items` with `type = 'task'`:
+     - `id` → `id` (keep existing IDs)
+     - `title` → `title`
+     - `notes` → `content`
+     - `startDate` → `date`
+     - `dateCompleted` → `dateCompleted`
+     - `parentTaskId` → `parentItemId`
+     - `sortOrder` → `sortOrder` (already text)
+     - `dateCreated` → `dateCreated`
+     - Set `dateUpdated` = `dateCreated` (tasks didn't track this)
+  3. Copies `notes` → `items` with `type = 'note'`:
+     - `id` → `id`
+     - `title` → `title` (nullable → use `'Untitled'` fallback)
+     - `content` → `content`
+     - `date` → `date`
+     - `sortOrder` → `sortOrder` (convert integer to text: `CAST(sort_order AS TEXT)`)
+     - `dateCreated` → `dateCreated`, `dateUpdated` → `dateUpdated`
+  4. Copies `taskTags` → `itemTags` (taskId → itemId)
+  5. Copies `noteTags` → `itemTags` (noteId → itemId)
+  6. Copies `noteMetadata` → `itemMetadata` (noteId → itemId)
+  7. Drops old tables: `tasks`, `notes`, `taskTags`, `noteTags`, `noteMetadata`
+- [ ] Create `src/db/migrate-data.ts` — standalone migration script (can be run independently, idempotent)
+- [ ] Test migration locally: `pnpm db:generate && pnpm db:migrate` — verify zero data loss
+- [ ] Update `src/db/seed.ts`:
+  - Seed items of all three types (tasks, notes, events)
+  - Seed itemTags for all types
+  - Seed itemMetadata for notes
+
+### 8C: Update Feature Modules
+
+- [ ] Create `src/features/items/` — shared base layer:
+  - `types.ts` — `Item` base type, `ItemType` enum (`task` | `note` | `event`), `Task`/`Note`/`Event` narrowed types (discriminated union on `type`)
+  - `consts.ts` — query keys: `{ all: ['items'], byType: ['items', type], byId: ['items', id], byDate: ['items', 'date', date], byTag: ['items', 'tag', tagId] }`
+  - `server.ts` — unified CRUD server functions:
+    - `fetchItems(userId, { type?, date?, tagId?, completed?, parentId?, page?, limit? })` — flexible query with type/date/tag filters
+    - `fetchItem(userId, itemId)` — single item with tags + metadata
+    - `createItem({ type, title, content?, date?, tagIds?, parentItemId? })` — creates item + itemTags, auto-generates prefixed ID
+    - `updateItem({ id, ...fields, tagIds? })` — tag sync in transaction
+    - `deleteItem(itemId)` — hard delete (CASCADE handles tags + metadata)
+    - `completeItem(itemId)` — toggle dateCompleted (tasks only)
+    - `reorderItems(itemIds)` — batch reorder
+  - `queries.ts` — React Query option factories wrapping server functions
+  - `mutations.ts` — React Query mutations with optimistic updates
+- [ ] Update `src/features/tasks/` — thin adapter layer over items:
+  - `server.ts` — task-specific server functions that call unified `fetchItems` with `type: 'task'`:
+    - `fetchTasks`, `fetchTasksForDate`, `fetchBacklogTasks`, `fetchTasksByTag`, `fetchCompletedTasks`, etc.
+    - These delegate to `fetchItems` with appropriate filters — keeps route loaders and queries unchanged
+  - `types.ts` — `Task` type (narrowed from `Item` where `type === 'task'`)
+  - `queries.ts` / `mutations.ts` — keep existing query keys + function signatures, rewire to unified layer
+  - Existing routes and components continue importing from `features/tasks/` — no route changes needed
+- [ ] Update `src/features/notes/` — same thin adapter pattern:
+  - `server.ts` — note-specific functions delegating to unified layer with `type: 'note'`
+  - `types.ts` — `Note` type narrowed from `Item`
+  - `queries.ts` / `mutations.ts` — rewire to unified layer
+  - `searchNotes` — full-text search on items where `type = 'note'`, using content + title + metadata keywords
+- [ ] Create `src/features/events/` — new adapter for event items:
+  - `types.ts` — `Event` type narrowed from `Item` where `type === 'event'`
+  - `server.ts` — event-specific functions: `fetchEvents`, `fetchEventsByTag`, etc.
+  - `queries.ts` / `mutations.ts`
+
+### 8D: Update Components
+
+- [ ] Update `src/components/TaskItem.tsx` — import `Task` from updated types (no visual changes)
+- [ ] Update `src/components/TaskDialog.tsx` — use updated create/update mutations
+- [ ] Update `src/components/NoteItem.tsx` — import `Note` from updated types
+- [ ] Update `src/components/NoteDialog.tsx` — use updated mutations
+- [ ] Update `src/components/SubtaskList.tsx` — uses items with `parentItemId`
+- [ ] Update `src/components/DayView.tsx` — single query for all items on date, render by type
+- [ ] Update `src/components/SortableTaskList.tsx` / `SortableList.tsx` — work with unified item types
+- [ ] Update `src/components/TagMultiSelect.tsx` — uses `itemTags` (no visible change)
+
+### 8E: Update Routes
+
+- [ ] Update all route loaders to use new query options:
+  - `/day/$date` — fetch items for date (all types)
+  - `/backlog` — fetch items where type='task' and date is null
+  - `/notes` — fetch items where type='note', paginated
+  - `/tags` — unchanged (tags table didn't change)
+  - `/tag/$tagId` — fetch items by tag (all types in one query)
+- [ ] All routes keep their current paths and visual layouts
+- [ ] Verify route loaders use `ensureQueryData` with new query option factories
+
+### 8F: Testing & Verification
+
+- [ ] Update MSW handlers in `src/tests/mock/handlers.ts` for new data shapes
+- [ ] Update existing unit tests — rewire to unified item types
+- [ ] Run data migration on real dev database — verify all tasks, notes, tags preserved
+- [ ] **Verify**: `pnpm typecheck` passes — zero errors
+- [ ] **Verify**: `pnpm test` passes — all unit tests green
+- [ ] **Verify**: `pnpm test:e2e` passes — all existing E2E tests green (tasks, notes, tags, backlog, subtasks, navigation)
+- [ ] **Verify**: `pnpm db:seed` works with new schema
+
+### Decisions
+
+- **Unified `items` table** — structural clarity traded for behavioral complexity (`if type === 'task'` branches), but reduces schema from 6 tables + 3 junctions to 3 tables + 1 junction
+- **Thin adapter layers** — `features/tasks/` and `features/notes/` remain as facades. Routes and components don't know about the unified table — they import from the same feature modules as before
+- **Keep prefixed IDs** — `tsk_`, `nte_`, `evt_` prefixes on `items.id` make type identifiable from ID alone (useful for debugging, URLs, logging)
+- **`dateUpdated` added to tasks** — tasks previously lacked this; migration backfills with `dateCreated`
+- **`sortOrder` standardized to text** — notes used integer, tasks used text (fractional indexing). Migration converts note sort orders to text
+- **`title` is NOT NULL** — notes that had null titles get `'Untitled'` during migration. AI can still overwrite `'Untitled'`
+- **Drop old tables in same migration** — data volume is small, migration is tested locally first, rollback is a re-seed
+
+### Outputs
+
+- `src/db/schema.ts` — `items`, `itemTags`, `itemMetadata` tables + relations (old tables removed)
+- `src/features/items/` — types, consts, server, queries, mutations (new shared base layer)
+- `src/features/tasks/` — updated to delegate to items layer
+- `src/features/notes/` — updated to delegate to items layer
+- `src/features/events/` — new adapter for event items
+- Drizzle migration: data migration SQL + table drops
+- Updated: components, routes, MSW handlers, seed data, tests
+
+---
+
+## Phase 9: Reminders & Notifications
+
+> Recurring and one-off reminders with system notifications, snooze, and task generation — built on the unified items architecture. Event items (type `'event'`) are the "what" — schedules are the "when".
+
+### Key Concepts
+
+- **Event item** — an item with `type: 'event'`. Stands on its own in the reminders page. "Team standup" or "Take a break".
+- **Schedule** — a timing attachment on any item. Defines when to fire (reminderTime), recurrence (RRULE), and behavior (notify only vs clone-as-task).
+- **`cloneOnFire`** — when a schedule fires with `cloneOnFire: true`, it creates a new task item with the parent item's title/tags and `date = today`. "Water plants every 3 days" → event item + schedule with cloneOnFire → fresh completable task each time.
+- **Any item can have a schedule** — set a reminder on a task ("remind me about this task tomorrow"), on a note ("review this note Friday"), or on an event (the default — standalone timed notification).
+
+### 9A: Database — Schedules
+
+- [ ] Add to `src/db/schema.ts`:
+  - `schedules`: id (`sch_` prefix), itemId (text FK → items.id CASCADE), reminderTime (text NOT NULL — ISO datetime, next scheduled fire), rrule (text, nullable — iCal RRULE string), snoozedUntil (text, nullable — overrides reminderTime temporarily), cloneOnFire (boolean NOT NULL, default false — if true, creates a task item when fired), status (`active` | `snoozed` | `dismissed` | `completed`), dateCreated (text), dateUpdated (text)
+  - `scheduleHistory`: id (`shx_` prefix), scheduleId (text FK → schedules.id CASCADE), firedAt (text NOT NULL — ISO datetime), action (`notified` | `task_created` | `snoozed` | `dismissed`), createdItemId (text, nullable — FK → items.id SET NULL, the cloned task)
+  - `pushSubscriptions`: id (text PK), userId (text NOT NULL), endpoint (text NOT NULL — Web Push endpoint URL), p256dh (text NOT NULL — client public key), auth (text NOT NULL — auth secret), dateCreated (text NOT NULL)
+- [ ] Add relations: update `itemsRelations` to include `many(schedules)`. Add `schedulesRelations` (one item, many history). Add `scheduleHistoryRelations`.
+- [ ] Generate migration, run it
+- [ ] Update `src/db/seed.ts` — sample schedules: one-off event, recurring event with cloneOnFire, reminder on an existing task, reminder on a note
+
+### 9B: RRULE Engine & Recurrence Logic
+
+- [ ] Install `rrule` npm package — iCal RRULE parsing, serialization, and next-occurrence calculation
+- [ ] Create `src/features/schedules/recurrence.ts`:
+  - `getNextOccurrence(rruleStr, after?)` — calculate next fire time from RRULE
+  - `getOccurrences(rruleStr, from, to)` — list occurrences in a date range (for calendar preview)
+  - `buildRRule(pattern)` — construct RRULE string from UI-friendly pattern object
+  - `describeRRule(rruleStr)` — human-readable description ("Every Monday and Wednesday", "Every 3 days")
+- [ ] Supported patterns via UI:
+  - **Daily** — every day, or every N days
+  - **Weekly** — specific days of week (Mon, Wed, Fri), every N weeks
+  - **Monthly** — specific day of month (1st, 15th), every N months
+  - **Custom interval** — every N days/weeks/months
+  - **Raw RRULE** — advanced text input for power users (validated on save)
+- [ ] When a recurring schedule fires:
+  1. Execute the action (notify, or clone item as task if `cloneOnFire`)
+  2. Log to `scheduleHistory`
+  3. Calculate next occurrence from RRULE
+  4. Update `reminderTime` to next occurrence
+  5. If RRULE has a COUNT/UNTIL and is exhausted → set status to `completed`
+
+### 9C: Server Functions
+
+- [ ] Create `src/features/schedules/` — types.ts, consts.ts, server.ts, queries.ts, mutations.ts
+- [ ] CRUD in `src/features/schedules/server.ts`:
+  - `fetchSchedules(userId)` — all active schedules with their items, ordered by reminderTime ASC
+  - `fetchUpcomingSchedules(userId, limit?)` — active where reminderTime > now, chronological
+  - `fetchPastSchedules(userId, { page, limit })` — paginated history from `scheduleHistory`, ordered by firedAt DESC
+  - `fetchRecurringSchedules(userId)` — where rrule is not null
+  - `fetchSchedulesForItem(itemId)` — all schedules attached to an item
+  - `fetchSchedulesByTag(userId, tagId)` — schedules whose items have a specific tag (JOIN items → itemTags)
+  - `createSchedule({ itemId, reminderTime, rrule?, cloneOnFire? })` — attach schedule to item
+  - `updateSchedule({ id, reminderTime?, rrule?, cloneOnFire? })` — update timing/behavior
+  - `deleteSchedule(scheduleId)` — hard delete
+  - `snoozeSchedule(scheduleId, duration)` — set snoozedUntil: 5m, 15m, 1h, tomorrow 9am. Status → `snoozed`
+  - `dismissSchedule(scheduleId)` — one-off: status → `dismissed`. Recurring: advance to next occurrence
+  - `fireSchedule(scheduleId)` — execute:
+    - If `cloneOnFire` → create new task item with parent's title + tags, `date = today`. Log as `task_created` with createdItemId
+    - If not `cloneOnFire` → log as `notified`
+    - If recurring → calculate and set next occurrence
+    - If one-off → status → `completed`
+- [ ] Update event server functions to create item + schedule in one transaction:
+  - `createEventWithSchedule({ title, content?, date?, tagIds?, reminderTime, rrule?, cloneOnFire? })` — convenience function for the Reminder Dialog
+
+### 9D: Web Push Notifications
+
+- [ ] Generate VAPID key pair (one-time setup, store in env vars)
+- [ ] Install `web-push` npm package
+- [ ] Add env vars to `src/config/env.server.ts`:
+  - `VAPID_PUBLIC_KEY` — public VAPID key (also exposed client-side)
+  - `VAPID_PRIVATE_KEY` — private VAPID key (server-only)
+  - `VAPID_SUBJECT` — mailto: or URL identifier
+- [ ] Add `VAPID_PUBLIC_KEY` to `src/config/env.client.ts` (needed for push subscription)
+- [ ] Server functions for push subscriptions:
+  - `subscribePush({ endpoint, p256dh, auth })` — save to `pushSubscriptions`
+  - `unsubscribePush(endpoint)` — remove subscription
+- [ ] Create `src/features/schedules/push.ts` — `sendPushNotification(userId, { title, body, url? })` using `web-push`
+
+### 9E: Notification Scheduler
+
+- [ ] Create `src/features/schedules/scheduler.ts` — server-side schedule checker:
+  - Runs on an interval (every 30s) checking for due schedules
+  - Query: `WHERE (reminderTime <= now OR snoozedUntil <= now) AND status IN ('active', 'snoozed')`
+  - For each due schedule: call `fireSchedule()`, then `sendPushNotification()`
+  - Handles missed schedules (e.g. server was down) — fires immediately on next check
+- [ ] Integrate scheduler startup into app bootstrap (server-side only, starts when server starts)
+- [ ] In-app foreground detection:
+  - If app is focused when schedule fires → show sonner toast with title, snooze/dismiss actions
+  - If app is in background → Web Push notification (system-level)
+  - Use `document.visibilityState` or `focus`/`blur` events to determine foreground state
+- [ ] Service Worker fallback:
+  - SW registers a periodic sync (where supported) as backup
+  - On `push` event → show notification regardless of app state
+  - Notification click → `clients.openWindow()` or `client.focus()` + navigate
+
+### 9F: UI Components
+
+- [ ] Build `src/components/ReminderDialog.tsx` — create/edit reminder (creates event item + schedule):
+  - **Title** (text input, required)
+  - **Description** (textarea, optional → stored as `content`)
+  - **Generates task** toggle (checkbox icon) — sets `cloneOnFire` on schedule. Explanation text: "Creates a new task each time this fires"
+  - **Date & Time** picker (required — `reminderTime` on schedule)
+  - **Recurrence picker** (`RecurrencePicker` sub-component):
+    - Preset buttons: None, Daily, Weekly, Monthly, Custom
+    - Weekly → day-of-week checkboxes (Mon–Sun)
+    - Monthly → day-of-month select
+    - Custom → interval number + unit (days/weeks/months)
+    - Advanced toggle → raw RRULE text input with validation
+    - Human-readable preview: "Every Monday and Wednesday" / "Every 3 days"
+  - **Tags** — `TagMultiSelect` (reused)
+  - On save: create event item + schedule in one call, request push permission if not granted
+- [ ] Build `src/components/ReminderItem.tsx` — list item for reminders page:
+  - Bell icon (plain event) or checkbox-clock icon (cloneOnFire)
+  - Title as primary text
+  - Next occurrence datetime (relative: "in 2 hours", "tomorrow at 9am")
+  - Recurrence badge if recurring (human-readable: "Weekly · Mon, Wed")
+  - Tag badges (same styling as TaskItem)
+  - Actions: Edit, Snooze dropdown (5m, 15m, 1h, tomorrow), Dismiss/Complete, Delete
+  - Missed indicator for past-due (red dot or "Missed" badge)
+- [ ] Build `RecurrencePicker` component — embedded in ReminderDialog
+- [ ] Build `SnoozeMenu` component — dropdown with preset options (5min, 15min, 1hr, Tomorrow 9am)
+- [ ] Push permission prompt component — inline banner on /reminders if notifications not granted
+- [ ] Add "Set Reminder" button to `TaskDialog.tsx`:
+  - Inline time/recurrence fields, or link to ReminderDialog with item pre-linked
+  - Creates a schedule attached to the task item (no new item created)
+- [ ] Add "Set Reminder" button to `NoteDialog.tsx` — same pattern, schedule attached to note item
+
+### 9G: Routes & Navigation
+
+- [ ] Create `/reminders` route (`src/routes/_app/reminders.tsx`):
+  - **Tabs or sections**: Upcoming | Past | Recurring
+  - **Upcoming**: chronological list of event items with active schedules, grouped by day (Today, Tomorrow, This Week, Later)
+  - **Past**: paginated list from scheduleHistory (fired schedules with timestamps and actions taken)
+  - **Recurring**: management view — all items with recurring schedules, RRULE descriptions, next occurrence, pause/edit/delete
+  - **Search & filter**: tag filter via TagMultiSelect, text search on title/description
+  - **"+ New Reminder"** button → ReminderDialog
+  - Page head: `title: "Reminders - whatIdid"`
+  - Route loader: `ensureQueryData` for upcoming schedules
+- [ ] Update `src/routes/_app.tsx`:
+  - Add "Reminders" to `navItems` array: `{ to: '/reminders', label: 'Reminders' }`
+  - Add reminder dialog state to AppLayoutContext (reminderDialogOpen, editingEvent, handleOpenReminderDialog)
+  - Add keyboard shortcut: Cmd/Ctrl+R → open ReminderDialog
+- [ ] Update `src/routes/_app/tag/$tagId.tsx`:
+  - Events with schedules already appear via `fetchItems(type: 'event', tagId)` — render with `ReminderItem`
+  - Items with schedules (tasks/notes that have reminders) show a small bell indicator
+- [ ] Update `src/components/AppLayoutContext.tsx`:
+  - Export `handleOpenReminderDialog` in layout context
+
+### 9H: Service Worker Setup
+
+- [ ] Create `public/notification-sw.js` — dedicated notification service worker (separate from MSW):
+  - `push` event → `self.registration.showNotification(data.title, { body, icon, badge, data: { url } })`
+  - `notificationclick` → `clients.openWindow(event.notification.data.url)` or focus existing window
+- [ ] Create `src/features/schedules/sw-registration.ts`:
+  - Register notification service worker on app load
+  - Request notification permission (`Notification.requestPermission`)
+  - Subscribe to push (`registration.pushManager.subscribe` with VAPID public key)
+  - Send subscription to server (`subscribePush`)
+  - Handle permission denied gracefully (show in-app-only mode explanation)
+- [ ] Permission state management:
+  - Track `Notification.permission` state in React context or hook
+  - Show permission prompt banner on `/reminders` if permission is `default`
+  - Degrade gracefully to in-app-only toasts if permission is `denied`
+
+### 9I: Testing & Verification
+
+- [ ] Unit tests:
+  - `src/features/schedules/recurrence.test.ts` — RRULE parsing, next occurrence, human descriptions
+  - `src/features/schedules/mutations.test.ts` — create, snooze, dismiss, fire (with cloneOnFire task generation)
+  - `src/features/schedules/push.test.ts` — push notification payload construction
+- [ ] E2E tests: `e2e/reminders.spec.ts`:
+  - Create a one-off event, verify it appears in upcoming list
+  - Create a recurring event with cloneOnFire, verify recurrence description
+  - Snooze a schedule, verify state change
+  - Dismiss a schedule, verify it moves to past
+  - Set reminder on a task from TaskDialog, verify schedule attached
+  - Filter reminders by tag
+  - Navigate to /reminders from nav
+- [ ] **Verify**: `pnpm typecheck`, `pnpm test`, `pnpm test:e2e` all pass
+- [ ] **Verify**: `pnpm db:seed` creates sample events with schedules and history
+- [ ] **Verify**: Push notifications fire in Chromium (Playwright can't test system notifications, but verify subscription flow)
+
+### Decisions
+
+- **Events are items** — `type: 'event'` in the unified items table. No separate entity. Tags, dates, and all item features come free
+- **Schedules are orthogonal** — any item can have schedules. Event + schedule = standalone reminder. Task + schedule = "remind me about this task". Item + schedule + cloneOnFire = recurring task generation
+- **`cloneOnFire` replaces "reminder type"** — instead of `event` vs `task` reminder types, it's a boolean on the schedule. Simpler, more flexible
+- **RRULE standard** — iCal-compatible recurrence rules via `rrule` package. Future-proof, powerful, widely understood
+- **`scheduleHistory` for audit trail** — every fire/snooze/dismiss logged. Enables "past" view without losing data as recurring schedules advance
+- **Server-side scheduler + SW fallback** — server polls every 30s for reliability, SW handles background push delivery
+- **Separate service worker** — `notification-sw.js` is distinct from MSW's `mockServiceWorker.js`
+- **VAPID keys in env vars** — standard Web Push auth, generated once per deployment
+- **Snooze presets only** — 5m, 15m, 1h, tomorrow 9am. No custom time picker
+- **Reminder Dialog creates event + schedule** — one dialog, one operation. For adding a reminder to an existing task/note, the TaskDialog/NoteDialog inline a schedule picker
+
+### Outputs
+
+- `src/db/schema.ts` — `schedules`, `scheduleHistory`, `pushSubscriptions` tables + relations
+- `src/features/schedules/` — types, consts, server, queries, mutations, recurrence, push, scheduler, sw-registration
+- `src/features/events/` — updated with schedule integration
+- `src/components/ReminderDialog.tsx`, `ReminderItem.tsx`, `RecurrencePicker.tsx`, `SnoozeMenu.tsx`
+- `src/routes/_app/reminders.tsx`
+- `public/notification-sw.js`
+- Updated: `_app.tsx`, `AppLayoutContext.tsx`, `TaskDialog.tsx`, `NoteDialog.tsx`, `tag/$tagId.tsx`, `seed.ts`
+- Dependencies: `rrule`, `web-push`
+
+---
+
+## Phase 10: Multi-User & Auth (Future)
 
 > Add authentication so it can be shared or self-hosted for multiple users.
 
@@ -462,23 +837,47 @@
 
 ### Database Schema (ERD Summary)
 
+**After Phase 8 migration (unified model):**
+
+```
+items ──── itemTags ──── tags
+  │
+  ├── itemMetadata (one-to-one, AI keywords + future embeddings)
+  │
+  ├── schedules (one-to-many, reminder timing + recurrence)
+  │     └── scheduleHistory (audit: fired, snoozed, dismissed, task_created)
+  │
+  └── self-reference (parentItemId → items.id for subtasks)
+
+pushSubscriptions (per user, for Web Push delivery)
+
+Item types: 'task' | 'note' | 'event'
+- task: completable, has subtasks, appears in day view + backlog
+- note: content-first, AI-processed, appears in notes page + day view
+- event: standalone reminder entry, appears in reminders page
+
+All types share: title, content, date, tags, metadata, schedules
+Behavior differs by type column + conditional UI
+```
+
+**Before Phase 8 (legacy, for reference):**
+
 ```
 tasks ──── taskTags ──── tags ──── noteTags ──── notes
                                                    │
                                               noteMetadata
-
-tasks self-reference (parentTaskId → tasks.id) for subtasks
-notes + tasks share the same tags pool via separate junction tables
-noteMetadata is one-to-one with notes (AI-generated keywords, future embeddings)
 ```
 
 ### Environment Variables
 
-| Variable       | Scope  | Phase | Description                                                                          |
-| -------------- | ------ | ----- | ------------------------------------------------------------------------------------ |
-| `DATABASE_URL` | Server | 3     | PostgreSQL connection string (e.g., `postgres://whatidid:whatidid@db:5432/whatidid`) |
-| `AI_PROVIDER`  | Server | 7     | `xai` (default), `openai`, `ollama`, `anthropic`                                     |
-| `AI_API_KEY`   | Server | 7     | xAI API key for Grok (optional — AI degrades gracefully)                             |
+| Variable            | Scope  | Phase | Description                                                                          |
+| ------------------- | ------ | ----- | ------------------------------------------------------------------------------------ |
+| `DATABASE_URL`      | Server | 3     | PostgreSQL connection string (e.g., `postgres://whatidid:whatidid@db:5432/whatidid`) |
+| `AI_PROVIDER`       | Server | 7     | `xai` (default), `openai`, `ollama`, `anthropic`                                     |
+| `AI_API_KEY`        | Server | 7     | xAI API key for Grok (optional — AI degrades gracefully)                             |
+| `VAPID_PUBLIC_KEY`  | Both   | 9     | Web Push VAPID public key (server signs, client subscribes)                          |
+| `VAPID_PRIVATE_KEY` | Server | 9     | Web Push VAPID private key (server-only, never exposed to client)                    |
+| `VAPID_SUBJECT`     | Server | 9     | VAPID subject — `mailto:` email or URL identifying the app                           |
 
 ### New npm Packages by Phase
 
@@ -489,4 +888,6 @@ noteMetadata is one-to-one with notes (AI-generated keywords, future embeddings)
 | 4     | None (CSS-only — uses existing Tailwind CSS 4 `@theme` system) |
 | 5     | `sonner` (toast notifications)                                 |
 | 7     | `openai`, `@tiptap/react`, `@tiptap/starter-kit`, `@tiptap/pm` |
-| 8     | TBD (auth library)                                             |
+| 8     | None (schema migration + code refactor only)                   |
+| 9     | `rrule`, `web-push`                                            |
+| 10    | TBD (auth library)                                             |
