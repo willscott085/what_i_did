@@ -68,8 +68,12 @@ function AppLayout() {
   // ─── Dialog state ────────────────────────────────────────────────
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [noteDialogOpen, setNoteDialogOpen] = useState(false);
+  const [editingNote, setEditingNote] = useState<Note | null>(null);
 
   const handleOpenDialog = useCallback((task?: Task | null) => {
+    setNoteDialogOpen(false);
+    setEditingNote(null);
     setEditingTask(task ?? null);
     setDialogOpen(true);
   }, []);
@@ -79,11 +83,9 @@ function AppLayout() {
     if (!open) setEditingTask(null);
   }
 
-  // ─── Note dialog state ──────────────────────────────────────────
-  const [noteDialogOpen, setNoteDialogOpen] = useState(false);
-  const [editingNote, setEditingNote] = useState<Note | null>(null);
-
   const handleOpenNoteDialog = useCallback((note?: Note | null) => {
+    setDialogOpen(false);
+    setEditingTask(null);
     setEditingNote(note ?? null);
     setNoteDialogOpen(true);
   }, []);
@@ -93,29 +95,37 @@ function AppLayout() {
     if (!open) setEditingNote(null);
   }
 
-  // ─── Keyboard shortcut: Cmd/Ctrl+N → new note ──────────────────
+  // ─── Keyboard shortcut: Cmd/Ctrl+N → toggle note drawer ────────
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if ((e.metaKey || e.ctrlKey) && e.key === "n") {
         e.preventDefault();
-        handleOpenNoteDialog(null);
+        if (noteDialogOpen) {
+          handleNoteDialogClose(false);
+        } else {
+          handleOpenNoteDialog(null);
+        }
       }
     }
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [handleOpenNoteDialog]);
+  }, [handleOpenNoteDialog, noteDialogOpen]);
 
-  // ─── Keyboard shortcut: Cmd/Ctrl+T → new task ──────────────────
+  // ─── Keyboard shortcut: Cmd/Ctrl+T → toggle task drawer ────────
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if ((e.metaKey || e.ctrlKey) && e.key === "t") {
         e.preventDefault();
-        handleOpenDialog(null);
+        if (dialogOpen) {
+          handleDialogClose(false);
+        } else {
+          handleOpenDialog(null);
+        }
       }
     }
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [handleOpenDialog]);
+  }, [handleOpenDialog, dialogOpen]);
 
   const layoutCtx = useMemo(
     () => ({
@@ -135,6 +145,7 @@ function AppLayout() {
       defaultStartDate,
       defaultTagIds,
       backLabel,
+      handleOpenDialog,
       handleOpenNoteDialog,
     ],
   );

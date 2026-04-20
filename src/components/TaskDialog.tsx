@@ -10,8 +10,8 @@ import {
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
-import { Textarea } from "~/components/ui/textarea";
 import { TagMultiSelect } from "~/components/TagMultiSelect";
+import { MarkdownEditor } from "~/components/MarkdownEditor";
 import { SubtaskList } from "~/components/SubtaskList";
 import {
   useCreateTask,
@@ -186,81 +186,80 @@ function TaskDialogForm({
 
   return (
     <>
-      <DrawerHeader>
+      <DrawerHeader className="shrink-0">
         <DrawerTitle>{isEditing ? "Edit Task" : "New Task"}</DrawerTitle>
       </DrawerHeader>
 
-      <form
-        onSubmit={handleSubmit}
-        className="flex min-h-0 flex-1 flex-col justify-center"
-      >
-        <div className="scrollbar-hide space-y-4 overflow-x-hidden overflow-y-auto pb-6">
-          {/* Title */}
-          <div className="space-y-1.5 px-4">
-            <Label htmlFor="task-title">Title</Label>
-            <Input
-              id="task-title"
-              type="text"
-              placeholder="What needs to be done?"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              autoFocus
-              spellCheck
-            />
-          </div>
-
-          {/* Start Date */}
-          <div className="space-y-1.5 px-4">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="task-start-date">Start Date</Label>
-              {startDate && (
-                <button
-                  type="button"
-                  className="cursor-pointer text-xs text-blue-500 hover:text-blue-600"
-                  onClick={() => setStartDate("")}
-                >
-                  Clear
-                </button>
-              )}
-            </div>
-            <Input
-              id="task-start-date"
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-            />
-          </div>
-
-          {/* Tags */}
-          <div className="space-y-1.5 px-4">
-            <Label>Tags</Label>
-            <TagMultiSelect selectedTagIds={tagIds} onChange={setTagIds} />
-          </div>
-
-          {/* Notes */}
-          <div className="space-y-1.5 px-4">
-            <Label htmlFor="task-notes">Notes</Label>
-            <Textarea
-              id="task-notes"
-              placeholder="Add notes…"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              spellCheck
-            />
-          </div>
-
-          {/* Subtasks (only in edit mode) */}
-          {isEditing && (
+      <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
+        <div className="scrollbar-hide flex flex-1 flex-col justify-center overflow-x-hidden overflow-y-auto">
+          <div className="space-y-4 pb-6">
+            {/* Title */}
             <div className="space-y-1.5 px-4">
-              <Label>Subtasks</Label>
-              <SubtaskList
-                subtasks={subtasks}
-                onAdd={handleAddSubtask}
-                onComplete={handleCompleteSubtask}
-                onDelete={handleDeleteSubtask}
+              <Label htmlFor="task-title">Title</Label>
+              <Input
+                id="task-title"
+                type="text"
+                placeholder="What needs to be done?"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                autoFocus
+                spellCheck
               />
             </div>
-          )}
+
+            {/* Start Date */}
+            <div className="space-y-1.5 px-4">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="task-start-date">Start Date</Label>
+                {startDate && (
+                  <button
+                    type="button"
+                    className="cursor-pointer text-xs text-blue-500 hover:text-blue-600"
+                    onClick={() => setStartDate("")}
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+              <Input
+                id="task-start-date"
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+              />
+            </div>
+
+            {/* Tags */}
+            <div className="space-y-1.5 px-4">
+              <Label>Tags</Label>
+              <TagMultiSelect selectedTagIds={tagIds} onChange={setTagIds} />
+            </div>
+
+            {/* Notes */}
+            <div className="space-y-1.5 px-4">
+              <Label htmlFor="task-notes">Notes</Label>
+              <MarkdownEditor
+                id="task-notes"
+                value={notes}
+                onChange={setNotes}
+                placeholder="Add notes…"
+                size="sm"
+              />
+            </div>
+
+            {/* Subtasks (only in edit mode) */}
+            {isEditing && (
+              <div className="space-y-1.5 px-4">
+                <Label>Subtasks</Label>
+                <SubtaskList
+                  subtasks={subtasks}
+                  onAdd={handleAddSubtask}
+                  onComplete={handleCompleteSubtask}
+                  onDelete={handleDeleteSubtask}
+                />
+              </div>
+            )}
+          </div>
         </div>
 
         <DrawerFooter className="bg-background border-border shrink-0 border-t p-4">
