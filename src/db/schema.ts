@@ -55,7 +55,7 @@ export const items = pgTable(
     foreignKey({
       columns: [table.parentItemId],
       foreignColumns: [table.id],
-    }),
+    }).onDelete("cascade"),
   ],
 );
 

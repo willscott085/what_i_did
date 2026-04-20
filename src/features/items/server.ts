@@ -207,7 +207,7 @@ export const updateItem = createServerFn({ method: "POST" })
         .where(and(eq(items.id, id), eq(items.userId, userId)))
         .returning();
 
-      if (tagIds !== undefined) {
+      if (itemResult && tagIds !== undefined) {
         await tx.delete(itemTags).where(eq(itemTags.itemId, id));
 
         if (tagIds.length > 0) {

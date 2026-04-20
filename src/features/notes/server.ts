@@ -74,7 +74,7 @@ export const fetchNotesForDate = createServerFn({ method: "GET" })
           eq(items.date, data.date),
         ),
       )
-      .orderBy(asc(items.sortOrder));
+      .orderBy(asc(sql`CAST(${items.sortOrder} AS integer)`));
   });
 
 export const fetchNotesByTag = createServerFn({ method: "GET" })
@@ -236,10 +236,16 @@ export const updateNote = createServerFn({ method: "POST" })
       const [noteResult] = await tx
         .update(items)
         .set(setValues)
-        .where(and(eq(items.id, id), eq(items.userId, userId)))
+        .where(
+          and(
+            eq(items.id, id),
+            eq(items.userId, userId),
+            eq(items.type, "note"),
+          ),
+        )
         .returning();
 
-      if (tagIds !== undefined) {
+      if (noteResult && tagIds !== undefined) {
         await tx.delete(itemTags).where(eq(itemTags.itemId, id));
 
         if (tagIds.length > 0) {
@@ -269,7 +275,13 @@ export const deleteNote = createServerFn({ method: "POST" })
 
     await db
       .delete(items)
-      .where(and(eq(items.id, data.noteId), eq(items.userId, data.userId)));
+      .where(
+        and(
+          eq(items.id, data.noteId),
+          eq(items.userId, data.userId),
+          eq(items.type, "note"),
+        ),
+      );
   });
 
 // ─── Reorder ─────────────────────────────────────────────────────────
@@ -292,7 +304,7 @@ export const reorderNotes = createServerFn({ method: "POST" })
     await db.execute(
       sql`UPDATE items SET sort_order = v.sort_order
           FROM (VALUES ${valuesList}) AS v(id, sort_order)
-          WHERE items.id = v.id AND items.user_id = ${data.userId}`,
+          WHERE items.id = v.id AND items.user_id = ${data.userId} AND items.type = 'note'`,
     );
   });
 

@@ -116,7 +116,13 @@ export const completeTask = createServerFn({ method: "POST" })
         dateCompleted: data.dateCompleted,
         dateUpdated: new Date().toISOString(),
       })
-      .where(and(eq(items.id, data.taskId), eq(items.userId, data.userId)))
+      .where(
+        and(
+          eq(items.id, data.taskId),
+          eq(items.userId, data.userId),
+          eq(items.type, "task"),
+        ),
+      )
       .returning();
 
     return result;
@@ -159,10 +165,16 @@ export const updateTask = createServerFn({ method: "POST" })
       const [itemResult] = await tx
         .update(items)
         .set({ ...updates, dateUpdated: new Date().toISOString() })
-        .where(and(eq(items.id, id), eq(items.userId, userId)))
+        .where(
+          and(
+            eq(items.id, id),
+            eq(items.userId, userId),
+            eq(items.type, "task"),
+          ),
+        )
         .returning();
 
-      if (tagIds !== undefined) {
+      if (itemResult && tagIds !== undefined) {
         await tx.delete(itemTags).where(eq(itemTags.itemId, id));
 
         if (tagIds.length > 0) {
@@ -198,7 +210,7 @@ export const reorderTasks = createServerFn({ method: "POST" })
     await db.execute(
       sql`UPDATE items SET sort_order = v.sort_order
           FROM (VALUES ${valuesList}) AS v(id, sort_order)
-          WHERE items.id = v.id AND items.user_id = ${data.userId}`,
+          WHERE items.id = v.id AND items.user_id = ${data.userId} AND items.type = 'task'`,
     );
   });
 
@@ -297,12 +309,19 @@ export const deleteTask = createServerFn({ method: "POST" })
           and(
             eq(items.parentItemId, data.taskId),
             eq(items.userId, data.userId),
+            eq(items.type, "task"),
           ),
         );
 
       await tx
         .delete(items)
-        .where(and(eq(items.id, data.taskId), eq(items.userId, data.userId)));
+        .where(
+          and(
+            eq(items.id, data.taskId),
+            eq(items.userId, data.userId),
+            eq(items.type, "task"),
+          ),
+        );
     });
   });
 
@@ -346,7 +365,13 @@ export const moveTaskToDate = createServerFn({ method: "POST" })
         sortOrder: newKey,
         dateUpdated: new Date().toISOString(),
       })
-      .where(and(eq(items.id, data.taskId), eq(items.userId, data.userId)))
+      .where(
+        and(
+          eq(items.id, data.taskId),
+          eq(items.userId, data.userId),
+          eq(items.type, "task"),
+        ),
+      )
       .returning();
 
     return result;
@@ -429,6 +454,7 @@ export const fetchSubtasks = createServerFn({ method: "GET" })
         and(
           eq(items.parentItemId, data.parentTaskId),
           eq(items.userId, data.userId),
+          eq(items.type, "task"),
         ),
       )
       .orderBy(asc(items.dateCompleted), asc(items.dateCreated));

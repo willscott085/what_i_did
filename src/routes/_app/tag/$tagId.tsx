@@ -95,6 +95,7 @@ function TagView() {
   const [editingDescription, setEditingDescription] = useState(false);
   const [descDraft, setDescDraft] = useState(tagDescription ?? "");
   const descTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const descCancelledRef = useRef(false);
 
   useEffect(() => {
     setDescDraft(tagDescription ?? "");
@@ -119,6 +120,10 @@ function TagView() {
   }
 
   function handleDescriptionSave() {
+    if (descCancelledRef.current) {
+      descCancelledRef.current = false;
+      return;
+    }
     const trimmed = descDraft.trim();
     setEditingDescription(false);
     const newDesc = trimmed || null;
@@ -221,6 +226,7 @@ function TagView() {
               onBlur={handleDescriptionSave}
               onKeyDown={(e) => {
                 if (e.key === "Escape") {
+                  descCancelledRef.current = true;
                   setDescDraft(tagDescription ?? "");
                   setEditingDescription(false);
                 }
@@ -229,20 +235,13 @@ function TagView() {
               rows={2}
             />
           ) : (
-            <p
-              role="button"
-              tabIndex={0}
-              className={`cursor-pointer text-sm ${tagDescription ? "text-muted-foreground" : "text-muted-foreground/50 italic"}`}
+            <button
+              type="button"
+              className={`cursor-pointer text-left text-sm ${tagDescription ? "text-muted-foreground" : "text-muted-foreground/50 italic"}`}
               onClick={() => setEditingDescription(true)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  setEditingDescription(true);
-                }
-              }}
             >
               {tagDescription || "Add a description…"}
-            </p>
+            </button>
           )}
         </div>
 
