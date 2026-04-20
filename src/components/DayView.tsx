@@ -53,7 +53,10 @@ export function DayView({
     () => false,
   );
 
-  const { mutate: reorderTasks } = useReorderTasks({ onError: () => {} });
+  const { mutate: reorderTasks } = useReorderTasks({
+    onError: () => {},
+    queryKey: fetchTasksForDateQueryOptions(dateStr).queryKey,
+  });
   const { mutate: deleteTaskMutation } = useDeleteTask();
 
   function handleEdit(task: Task) {

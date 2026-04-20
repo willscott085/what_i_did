@@ -13,7 +13,7 @@ import {
 
 export const fetchTasksQueryOptions = () =>
   queryOptions({
-    queryKey: [tasksQueryKeys.all],
+    queryKey: tasksQueryKeys.all,
     queryFn: () => fetchTasks({ data: { userId: DEFAULT_USER_ID } }),
   });
 

@@ -4,67 +4,26 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { DEFAULT_USER_ID, tasksQueryKeys } from "./consts";
-import { fetchInboxTasksQueryOptions, fetchTasksQueryOptions } from "./queries";
+import { fetchInboxTasksQueryOptions } from "./queries";
 import {
   completeTask,
   createTask,
   deleteTask,
   reorderTasks,
   updateTask,
-  updateTaskOrder,
 } from "./server";
 import { CreateTaskInput, Task, UpdateTaskInput } from "./types";
 
-interface UseUpdateTaskOrderProps {
-  onError?: () => void;
-}
-export const useUpdateTaskOrder = ({ onError }: UseUpdateTaskOrderProps) => {
-  const queryClient = useQueryClient();
-
-  const { mutate: updateTaskOrderMutation, isPending } = useMutation({
-    mutationFn: ({ taskId, order }: { taskId: string; order: number }) =>
-      updateTaskOrder({ data: { taskId, order, userId: DEFAULT_USER_ID } }),
-    onMutate: async ({ taskId, order }) => {
-      await queryClient.cancelQueries({
-        queryKey: fetchTasksQueryOptions().queryKey,
-      });
-
-      const prev = queryClient.getQueryData<Task[]>(
-        fetchTasksQueryOptions().queryKey,
-      );
-
-      if (prev) {
-        queryClient.setQueryData<Task[]>(
-          fetchTasksQueryOptions().queryKey,
-          prev.map((t) => (t.id === taskId ? { ...t, sortOrder: order } : t)),
-        );
-      }
-
-      return { prev };
-    },
-    onError: (_err, _vars, ctx) => {
-      if (ctx?.prev) {
-        queryClient.setQueryData(fetchTasksQueryOptions().queryKey, ctx.prev);
-      }
-
-      onError?.();
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({
-        queryKey: fetchTasksQueryOptions().queryKey,
-      });
-    },
-  });
-
-  return { updateTaskOrder: updateTaskOrderMutation, isPending };
-};
-
 interface UseReorderTasksProps {
   onError?: () => void;
+  queryKey?: readonly unknown[];
 }
-export const useReorderTasks = ({ onError }: UseReorderTasksProps) => {
+export const useReorderTasks = ({
+  onError,
+  queryKey: customQueryKey,
+}: UseReorderTasksProps) => {
   const queryClient = useQueryClient();
-  const queryKey = fetchInboxTasksQueryOptions().queryKey;
+  const queryKey = customQueryKey ?? fetchInboxTasksQueryOptions().queryKey;
 
   return useMutation({
     mutationFn: (taskIds: string[]) =>
@@ -76,15 +35,20 @@ export const useReorderTasks = ({ onError }: UseReorderTasksProps) => {
 
       if (prev) {
         const tasksById = new Map(prev.map((t) => [t.id, t]));
-        queryClient.setQueryData<Task[]>(
-          queryKey,
-          taskIds
-            .map((id, i) => {
-              const task = tasksById.get(id);
-              return task ? { ...task, sortOrder: i } : undefined;
-            })
-            .filter((t): t is Task => t !== undefined),
-        );
+        const reordered = taskIds
+          .map((id, i) => {
+            const task = tasksById.get(id);
+            return task ? { ...task, sortOrder: i } : undefined;
+          })
+          .filter((t): t is Task => t !== undefined);
+
+        // Preserve tasks not in the reorder set (e.g. completed tasks)
+        const reorderedIds = new Set(taskIds);
+        const untouched = prev.filter((t) => !reorderedIds.has(t.id));
+        queryClient.setQueryData<Task[]>(queryKey, [
+          ...reordered,
+          ...untouched,
+        ]);
       }
 
       return { prev };
