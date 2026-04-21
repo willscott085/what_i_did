@@ -173,6 +173,14 @@ export const createSchedule = createServerFn({ method: "POST" })
     const now = new Date().toISOString();
     console.info(`Creating schedule ${id} for item ${data.itemId}...`);
 
+    // Verify the item belongs to the user
+    const [owned] = await db
+      .select({ id: items.id })
+      .from(items)
+      .where(and(eq(items.id, data.itemId), eq(items.userId, data.userId)));
+
+    if (!owned) throw new Error("Item not found");
+
     const [result] = await db
       .insert(schedules)
       .values({
@@ -205,7 +213,16 @@ export const updateSchedule = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     console.info(`Updating schedule ${data.id}...`);
-    const { id, userId: _userId, ...updates } = data;
+    const { id, userId, ...updates } = data;
+
+    // Verify the schedule belongs to the user
+    const [owned] = await db
+      .select({ id: schedules.id })
+      .from(schedules)
+      .innerJoin(items, eq(items.id, schedules.itemId))
+      .where(and(eq(schedules.id, id), eq(items.userId, userId)));
+
+    if (!owned) return null;
 
     const [result] = await db
       .update(schedules)
@@ -228,6 +245,17 @@ export const deleteSchedule = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     console.info(`Deleting schedule ${data.scheduleId}...`);
 
+    // Verify the schedule belongs to the user
+    const [owned] = await db
+      .select({ id: schedules.id })
+      .from(schedules)
+      .innerJoin(items, eq(items.id, schedules.itemId))
+      .where(
+        and(eq(schedules.id, data.scheduleId), eq(items.userId, data.userId)),
+      );
+
+    if (!owned) return;
+
     await db.delete(schedules).where(eq(schedules.id, data.scheduleId));
   });
 
@@ -247,6 +275,17 @@ export const snoozeSchedule = createServerFn({ method: "POST" })
     console.info(
       `Snoozing schedule ${data.scheduleId} until ${snoozedUntil}...`,
     );
+
+    // Verify the schedule belongs to the user
+    const [owned] = await db
+      .select({ id: schedules.id })
+      .from(schedules)
+      .innerJoin(items, eq(items.id, schedules.itemId))
+      .where(
+        and(eq(schedules.id, data.scheduleId), eq(items.userId, data.userId)),
+      );
+
+    if (!owned) return null;
 
     const [result] = await db
       .update(schedules)
@@ -284,16 +323,22 @@ export const dismissSchedule = createServerFn({ method: "POST" })
     const now = new Date().toISOString();
     console.info(`Dismissing schedule ${data.scheduleId}...`);
 
+    // Verify the schedule belongs to the user
     const [current] = await db
-      .select()
+      .select({ schedule: schedules })
       .from(schedules)
-      .where(eq(schedules.id, data.scheduleId));
+      .innerJoin(items, eq(items.id, schedules.itemId))
+      .where(
+        and(eq(schedules.id, data.scheduleId), eq(items.userId, data.userId)),
+      );
 
     if (!current) return null;
 
+    const userOwnsSchedule = sql`EXISTS (SELECT 1 FROM ${items} WHERE ${items.id} = ${schedules.itemId} AND ${items.userId} = ${data.userId})`;
+
     // Recurring: advance to next occurrence
-    if (current.rrule) {
-      const nextDate = getNextOccurrence(current.rrule, new Date());
+    if (current.schedule.rrule) {
+      const nextDate = getNextOccurrence(current.schedule.rrule, new Date());
       if (nextDate) {
         const [result] = await db
           .update(schedules)
@@ -303,7 +348,7 @@ export const dismissSchedule = createServerFn({ method: "POST" })
             status: "active",
             dateUpdated: now,
           })
-          .where(eq(schedules.id, data.scheduleId))
+          .where(and(eq(schedules.id, data.scheduleId), userOwnsSchedule))
           .returning();
 
         await db.insert(scheduleHistory).values({
@@ -326,7 +371,7 @@ export const dismissSchedule = createServerFn({ method: "POST" })
         snoozedUntil: null,
         dateUpdated: now,
       })
-      .where(eq(schedules.id, data.scheduleId))
+      .where(and(eq(schedules.id, data.scheduleId), userOwnsSchedule))
       .returning();
 
     await db.insert(scheduleHistory).values({
@@ -433,6 +478,8 @@ export const fireSchedule = createServerFn({ method: "POST" })
     // Advance recurring or complete one-off
     if (schedule.rrule) {
       const nextDate = getNextOccurrence(schedule.rrule, new Date());
+      const userOwnsSchedule = sql`EXISTS (SELECT 1 FROM ${items} WHERE ${items.id} = ${schedules.itemId} AND ${items.userId} = ${data.userId})`;
+
       if (nextDate) {
         await db
           .update(schedules)
@@ -442,20 +489,22 @@ export const fireSchedule = createServerFn({ method: "POST" })
             status: "active",
             dateUpdated: now,
           })
-          .where(eq(schedules.id, data.scheduleId));
+          .where(and(eq(schedules.id, data.scheduleId), userOwnsSchedule));
       } else {
         // No more occurrences — complete
         await db
           .update(schedules)
           .set({ status: "completed", dateUpdated: now })
-          .where(eq(schedules.id, data.scheduleId));
+          .where(and(eq(schedules.id, data.scheduleId), userOwnsSchedule));
       }
     } else {
+      const userOwnsSchedule = sql`EXISTS (SELECT 1 FROM ${items} WHERE ${items.id} = ${schedules.itemId} AND ${items.userId} = ${data.userId})`;
+
       // One-off — mark completed
       await db
         .update(schedules)
         .set({ status: "completed", dateUpdated: now })
-        .where(eq(schedules.id, data.scheduleId));
+        .where(and(eq(schedules.id, data.scheduleId), userOwnsSchedule));
     }
 
     return { fired: true, createdItemId };
