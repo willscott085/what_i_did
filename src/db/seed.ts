@@ -13,6 +13,8 @@ const client = postgres(DATABASE_URL);
 const db = drizzle(client, { schema });
 
 // Clear existing data
+await db.delete(schema.scheduleHistory);
+await db.delete(schema.schedules);
 await db.delete(schema.itemMetadata);
 await db.delete(schema.itemTags);
 await db.delete(schema.items);
@@ -382,6 +384,52 @@ const sampleMetadata = [
 ];
 await db.insert(schema.itemMetadata).values(sampleMetadata);
 
+// Seed schedules (reminders / recurrence)
+const tomorrow = new Date(today);
+tomorrow.setDate(tomorrow.getDate() + 1);
+tomorrow.setHours(9, 0, 0, 0);
+const tomorrowStr = tomorrow.toISOString();
+
+const sampleSchedules = [
+  // One-off reminder on the "Team standup" event (tomorrow 9am)
+  {
+    id: "sch_001",
+    itemId: "evt_001",
+    reminderTime: tomorrowStr,
+    rrule: null,
+    snoozedUntil: null,
+    cloneOnFire: false,
+    status: "active",
+    dateCreated: "2026-04-15T08:00:00.000Z",
+    dateUpdated: "2026-04-15T08:00:00.000Z",
+  },
+  // Recurring schedule on "Water the plants" — every 3 days, cloneOnFire creates a task
+  {
+    id: "sch_002",
+    itemId: "evt_002",
+    reminderTime: tomorrowStr,
+    rrule: "RRULE:FREQ=DAILY;INTERVAL=3",
+    snoozedUntil: null,
+    cloneOnFire: true,
+    status: "active",
+    dateCreated: "2026-04-14T10:00:00.000Z",
+    dateUpdated: "2026-04-14T10:00:00.000Z",
+  },
+  // Reminder on an existing task — "Plan Q4 roadmap" (tomorrow 9am)
+  {
+    id: "sch_003",
+    itemId: "tsk_001",
+    reminderTime: tomorrowStr,
+    rrule: null,
+    snoozedUntil: null,
+    cloneOnFire: false,
+    status: "active",
+    dateCreated: "2026-04-20T12:00:00.000Z",
+    dateUpdated: "2026-04-20T12:00:00.000Z",
+  },
+];
+await db.insert(schema.schedules).values(sampleSchedules);
+
 const taskCount = sampleItems.filter((i) => i.type === "task").length;
 const noteCount = sampleItems.filter((i) => i.type === "note").length;
 const eventCount = sampleItems.filter((i) => i.type === "event").length;
@@ -395,5 +443,6 @@ console.info(`  - ${sampleItemTags.length} item-tag relationships`);
 console.info(`  - ${noteCount} notes`);
 console.info(`  - ${eventCount} events`);
 console.info(`  - ${sampleMetadata.length} note metadata entries`);
+console.info(`  - ${sampleSchedules.length} schedules`);
 
 await client.end();
