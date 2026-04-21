@@ -20,7 +20,7 @@ import type { Task } from "./types";
 
 const userIdInput = z.object({ userId: z.string().min(1) });
 
-const formatLocalDate = (d: Date) =>
+const toLocalDateString = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
 // ─── Item → Task mapping ─────────────────────────────────────────────
@@ -61,7 +61,7 @@ export const fetchInboxTasks = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     await rollForwardStaleTasks(data.userId);
 
-    const todayStr = formatLocalDate(new Date());
+    const todayStr = toLocalDateString(new Date());
 
     const rows = await db
       .select(itemColumns)
@@ -474,7 +474,7 @@ export const fetchTasksForDate = createServerFn({ method: "GET" })
     }),
   )
   .handler(async ({ data }) => {
-    const todayStr = formatLocalDate(new Date());
+    const todayStr = toLocalDateString(new Date());
     if (data.date === todayStr) {
       await rollForwardStaleTasks(data.userId);
     }

@@ -666,21 +666,21 @@ The app has a small dataset, the schema is young, and we're about to add a third
 
 > Create the schedules data layer — server functions for schedule CRUD, plus the RRULE recurrence engine. No UI yet — this is purely the data + logic layer.
 
-- [ ] Install `rrule` npm package
-- [ ] Create `src/features/schedules/types.ts`:
+- [x] Install `rrule` npm package
+- [x] Create `src/features/schedules/types.ts`:
   - `Schedule` type matching the `schedules` DB table
   - `ScheduleHistory` type matching `scheduleHistory` DB table
   - `ScheduleStatus` union: `'active' | 'snoozed' | 'dismissed' | 'completed'`
   - `RecurrencePattern` type — UI-friendly representation (freq, interval, byDay, etc.)
-- [ ] Create `src/features/schedules/consts.ts`:
+- [x] Create `src/features/schedules/consts.ts`:
   - Query keys: `schedulesQueryKeys` (all, byId, byItem, upcoming, recurring)
   - `SNOOZE_DURATIONS` — preset snooze options (5m, 15m, 1h, tomorrow 9am)
-- [ ] Create `src/features/schedules/recurrence.ts`:
+- [x] Create `src/features/schedules/recurrence.ts`:
   - `getNextOccurrence(rruleStr, after?)` — next fire time from RRULE
   - `getOccurrences(rruleStr, from, to)` — occurrences in a date range
   - `buildRRule(pattern: RecurrencePattern)` — construct RRULE string from UI-friendly pattern
   - `describeRRule(rruleStr)` — human-readable description ("Every Monday and Wednesday")
-- [ ] Create `src/features/schedules/server.ts` — CRUD server functions:
+- [x] Create `src/features/schedules/server.ts` — CRUD server functions:
   - `fetchSchedules(userId)` — all active schedules with their item titles, ordered by reminderTime ASC
   - `fetchUpcomingSchedules(userId, limit?)` — active where reminderTime > now
   - `fetchSchedulesForItem(itemId)` — schedules attached to a specific item
@@ -695,12 +695,12 @@ The app has a small dataset, the schema is young, and we're about to add a third
     - If recurring → calculate next occurrence, update `reminderTime`
     - If one-off → status → `completed`
   - `createEventWithSchedule(...)` — convenience: create event item + schedule in one transaction
-- [ ] Create `src/features/schedules/queries.ts` — React Query option factories
-- [ ] Create `src/features/schedules/mutations.ts` — React Query mutations with optimistic updates
-- [ ] Update `src/db/seed.ts` — add sample schedules: one-off event schedule, recurring event with cloneOnFire, reminder on an existing task
-- [ ] Unit tests: `src/features/schedules/recurrence.test.ts` — RRULE parsing, next occurrence calculation, human descriptions
-- [ ] **Verify**: `pnpm typecheck` passes
-- [ ] **Verify**: `pnpm test` passes
+- [x] Create `src/features/schedules/queries.ts` — React Query option factories
+- [x] Create `src/features/schedules/mutations.ts` — React Query mutations with optimistic updates
+- [x] Update `src/db/seed.ts` — add sample schedules: one-off event schedule, recurring event with cloneOnFire, reminder on an existing task
+- [x] Unit tests: `src/features/schedules/recurrence.test.ts` — RRULE parsing, next occurrence calculation, human descriptions
+- [x] **Verify**: `pnpm typecheck` passes
+- [x] **Verify**: `pnpm test` passes
 
 #### Outputs
 
