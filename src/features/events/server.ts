@@ -1,36 +1,43 @@
 import { createServerFn } from "@tanstack/react-start";
-import { and, asc, desc, eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { generateKeyBetween } from "fractional-indexing";
 import z from "zod";
 import { db } from "~/db";
 import { items, itemTags } from "~/db/schema";
+import type { Event } from "./types";
 
-const eventColumns = {
-  id: items.id,
-  title: items.title,
-  content: items.content,
-  date: items.date,
-  sortOrder: items.sortOrder,
-  userId: items.userId,
-  dateCreated: items.dateCreated,
-  dateUpdated: items.dateUpdated,
-  tags: sql<
-    { id: string; name: string }[]
-  >`(SELECT COALESCE(json_agg(json_build_object('id', t.id, 'name', t.name) ORDER BY t.name), '[]') FROM item_tags it JOIN tags t ON t.id = it.tag_id WHERE it.item_id = "items"."id")`.as(
-    "tags",
-  ),
-};
+/** Map a relational query result to the Event shape */
+function toEvent(
+  r: typeof items.$inferSelect & {
+    itemTags: { tag: { id: string; name: string } }[];
+  },
+): Event {
+  return {
+    id: r.id,
+    title: r.title,
+    content: r.content,
+    date: r.date,
+    sortOrder: r.sortOrder,
+    userId: r.userId,
+    dateCreated: r.dateCreated,
+    dateUpdated: r.dateUpdated,
+    tags: r.itemTags
+      .map((it) => ({ id: it.tag.id, name: it.tag.name }))
+      .sort((a, b) => a.name.localeCompare(b.name)),
+  };
+}
 
 // ─── List & Fetch ────────────────────────────────────────────────────
 
 export const fetchEvents = createServerFn({ method: "GET" })
   .inputValidator(z.object({ userId: z.string().min(1) }))
   .handler(async ({ data }) => {
-    return db
-      .select(eventColumns)
-      .from(items)
-      .where(and(eq(items.userId, data.userId), eq(items.type, "event")))
-      .orderBy(desc(items.dateCreated));
+    const results = await db.query.items.findMany({
+      where: and(eq(items.userId, data.userId), eq(items.type, "event")),
+      orderBy: [desc(items.dateCreated)],
+      with: { itemTags: { with: { tag: true } } },
+    });
+    return results.map(toEvent);
   });
 
 export const fetchEventsForDate = createServerFn({ method: "GET" })
@@ -41,17 +48,16 @@ export const fetchEventsForDate = createServerFn({ method: "GET" })
     }),
   )
   .handler(async ({ data }) => {
-    return db
-      .select(eventColumns)
-      .from(items)
-      .where(
-        and(
-          eq(items.userId, data.userId),
-          eq(items.type, "event"),
-          eq(items.date, data.date),
-        ),
-      )
-      .orderBy(asc(items.sortOrder));
+    const results = await db.query.items.findMany({
+      where: and(
+        eq(items.userId, data.userId),
+        eq(items.type, "event"),
+        eq(items.date, data.date),
+      ),
+      orderBy: [asc(items.sortOrder)],
+      with: { itemTags: { with: { tag: true } } },
+    });
+    return results.map(toEvent);
   });
 
 export const fetchEventsByTag = createServerFn({ method: "GET" })
@@ -62,8 +68,9 @@ export const fetchEventsByTag = createServerFn({ method: "GET" })
     }),
   )
   .handler(async ({ data }) => {
-    return db
-      .select(eventColumns)
+    // Step 1: find event IDs that have this tag
+    const matchingIds = await db
+      .select({ id: items.id })
       .from(items)
       .innerJoin(itemTags, eq(itemTags.itemId, items.id))
       .where(
@@ -72,8 +79,20 @@ export const fetchEventsByTag = createServerFn({ method: "GET" })
           eq(items.type, "event"),
           eq(itemTags.tagId, data.tagId),
         ),
-      )
-      .orderBy(desc(items.dateCreated));
+      );
+
+    if (matchingIds.length === 0) return [];
+
+    // Step 2: fetch those events with all their tags eagerly loaded
+    const results = await db.query.items.findMany({
+      where: inArray(
+        items.id,
+        matchingIds.map((r) => r.id),
+      ),
+      orderBy: [desc(items.dateCreated)],
+      with: { itemTags: { with: { tag: true } } },
+    });
+    return results.map(toEvent);
   });
 
 export const fetchEvent = createServerFn({ method: "GET" })
@@ -102,8 +121,7 @@ export const fetchEvent = createServerFn({ method: "GET" })
     if (!result) return null;
 
     return {
-      ...result,
-      content: result.content ?? null,
+      ...toEvent(result),
       tags: result.itemTags.map((it) => it.tag),
     };
   });
@@ -124,16 +142,21 @@ export const createEvent = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data }) => {
-    console.info("Creating event...");
-
     const id = `evt_${crypto.randomUUID()}`;
+    console.info(`Creating event "${data.title}" (${id})...`);
     const now = new Date().toISOString();
 
     const result = await db.transaction(async (tx) => {
       const [maxRow] = await tx
         .select({ max: sql<string | null>`MAX(${items.sortOrder})` })
         .from(items)
-        .where(and(eq(items.userId, data.userId), eq(items.type, "event")));
+        .where(
+          and(
+            eq(items.userId, data.userId),
+            eq(items.type, "event"),
+            data.date ? eq(items.date, data.date) : isNull(items.date),
+          ),
+        );
 
       const nextSortOrder = generateKeyBetween(maxRow?.max ?? null, null);
 

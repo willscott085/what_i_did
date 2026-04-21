@@ -1,4 +1,4 @@
-import { Tag } from "~/features/tags/types";
+import { TagSummary } from "~/features/items/types";
 
 export type Event = {
   id: string;
@@ -9,23 +9,23 @@ export type Event = {
   userId: string;
   dateCreated: string;
   dateUpdated: string;
-  tags: { id: string; name: string }[];
-};
-
-export type EventWithTags = Event & {
-  tags: Tag[];
+  tags: TagSummary[];
 };
 
 export type CreateEventInput = {
   title: string;
   content?: string;
+  /** Date in YYYY-MM-DD format. */
   date?: string;
   tagIds?: string[];
 };
 
 export type UpdateEventInput = {
   id: string;
-  title?: string;
+  /**
+   * Event date in YYYY-MM-DD format when provided.
+   * Use `null` to clear the date.
+   */
   content?: string | null;
   date?: string | null;
   tagIds?: string[];

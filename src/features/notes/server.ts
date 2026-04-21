@@ -4,6 +4,7 @@ import { generateKeyBetween, generateNKeysBetween } from "fractional-indexing";
 import z from "zod";
 import { db } from "~/db";
 import { items, itemTags, itemMetadata } from "~/db/schema";
+import { TagSummary } from "~/features/items/types";
 
 const noteColumns = {
   id: items.id,
@@ -15,7 +16,7 @@ const noteColumns = {
   dateCreated: items.dateCreated,
   dateUpdated: items.dateUpdated,
   tags: sql<
-    { id: string; name: string }[]
+    TagSummary[]
   >`(SELECT COALESCE(json_agg(json_build_object('id', t.id, 'name', t.name) ORDER BY t.name), '[]') FROM item_tags it JOIN tags t ON t.id = it.tag_id WHERE it.item_id = "items"."id")`.as(
     "tags",
   ),

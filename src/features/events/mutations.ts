@@ -23,11 +23,9 @@ export const useUpdateEvent = () => {
       updateEvent({ data: { ...input, userId: DEFAULT_USER_ID } }),
     onSettled: (_data, _err, input) => {
       queryClient.invalidateQueries({ queryKey: eventsQueryKeys.all });
-      if (input.id) {
-        queryClient.invalidateQueries({
-          queryKey: eventsQueryKeys.byId(input.id),
-        });
-      }
+      queryClient.invalidateQueries({
+        queryKey: eventsQueryKeys.byId(input.id),
+      });
     },
   });
 };

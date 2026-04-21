@@ -15,6 +15,7 @@ import z from "zod";
 import { db } from "~/db";
 import { items, itemTags, tags } from "~/db/schema";
 import { itemColumns, rollForwardStaleTasks } from "~/features/items/server";
+import { TagSummary } from "~/features/items/types";
 import type { Task } from "./types";
 
 const userIdInput = z.object({ userId: z.string().min(1) });
@@ -38,7 +39,7 @@ function toTask(row: Record<string, unknown>): Task {
     sortOrder: r.sortOrder as string,
     subtaskCount: r.subtaskCount as number,
     completedSubtaskCount: r.completedSubtaskCount as number,
-    tags: r.tags as { id: string; name: string }[],
+    tags: r.tags as TagSummary[],
   };
 }
 
@@ -300,7 +301,7 @@ export const createTask = createServerFn({ method: "POST" })
       parentTaskId: result.parentItemId,
       subtaskCount: 0,
       completedSubtaskCount: 0,
-      tags: [] as { id: string; name: string }[],
+      tags: [] as TagSummary[],
     };
   });
 
@@ -433,7 +434,7 @@ export const fetchTaskWithRelations = createServerFn({ method: "GET" })
         parentTaskId: s.parentItemId,
         subtaskCount: 0,
         completedSubtaskCount: 0,
-        tags: [] as { id: string; name: string }[],
+        tags: [] as TagSummary[],
       })),
       subtaskCount: result.subtasks.length,
       completedSubtaskCount: completedSubtasks.length,

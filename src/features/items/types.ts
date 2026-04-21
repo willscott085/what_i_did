@@ -1,5 +1,8 @@
 import { Tag } from "~/features/tags/types";
 
+/** Lightweight tag reference returned by SQL tag aggregation subqueries */
+export type TagSummary = { id: string; name: string };
+
 export type ItemType = "task" | "note" | "event";
 
 export type Item = {
@@ -16,7 +19,7 @@ export type Item = {
   dateUpdated: string;
   subtaskCount: number;
   completedSubtaskCount: number;
-  tags: { id: string; name: string }[];
+  tags: TagSummary[];
 };
 
 export type ItemWithRelations = Item & {

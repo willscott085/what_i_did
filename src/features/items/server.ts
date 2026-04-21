@@ -14,6 +14,7 @@ import { generateKeyBetween, generateNKeysBetween } from "fractional-indexing";
 import z from "zod";
 import { db } from "~/db";
 import { items, itemTags, itemMetadata, tags } from "~/db/schema";
+import { TagSummary } from "~/features/items/types";
 
 const formatLocalDate = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -41,7 +42,7 @@ export const itemColumns = {
       "completed_subtask_count",
     ),
   tags: sql<
-    { id: string; name: string }[]
+    TagSummary[]
   >`(SELECT COALESCE(json_agg(json_build_object('id', t.id, 'name', t.name) ORDER BY t.name), '[]') FROM item_tags it JOIN tags t ON t.id = it.tag_id WHERE it.item_id = "items"."id")`.as(
     "tags",
   ),
@@ -376,7 +377,7 @@ export const fetchItemWithRelations = createServerFn({ method: "GET" })
         ...s,
         subtaskCount: 0,
         completedSubtaskCount: 0,
-        tags: [] as { id: string; name: string }[],
+        tags: [] as TagSummary[],
       })),
       subtaskCount: result.subtasks.length,
       completedSubtaskCount: completedSubtasks.length,
@@ -407,7 +408,7 @@ export const fetchSubtasks = createServerFn({ method: "GET" })
         dateUpdated: items.dateUpdated,
         subtaskCount: sql<number>`0`.as("subtask_count"),
         completedSubtaskCount: sql<number>`0`.as("completed_subtask_count"),
-        tags: sql<{ id: string; name: string }[]>`'[]'::json`.as("tags"),
+        tags: sql<TagSummary[]>`'[]'::json`.as("tags"),
       })
       .from(items)
       .where(

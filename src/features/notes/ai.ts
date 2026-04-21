@@ -27,10 +27,14 @@ export const processNoteWithAI = createServerFn({ method: "POST" })
     if (!note) return { updated: false };
 
     try {
-      // Only generate title if none was provided by the user
+      // Only generate title if none was provided and content is long enough
+      // Short one-liners don't need a summary title
+      const content = note.content ?? "";
+      const needsTitle =
+        (!note.title || note.title === "Untitled") && content.includes("\n");
       let title: string | undefined;
-      if (!note.title || note.title === "Untitled") {
-        title = await provider.generateTitle(note.content ?? "");
+      if (needsTitle) {
+        title = await provider.generateTitle(content);
         console.info(`AI generated title for ${data.noteId}: "${title}"`);
       }
 

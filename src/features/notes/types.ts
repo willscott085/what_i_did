@@ -1,3 +1,4 @@
+import { TagSummary } from "~/features/items/types";
 import { Tag } from "~/features/tags/types";
 
 export type Note = {
@@ -9,7 +10,7 @@ export type Note = {
   userId: string;
   dateCreated: string;
   dateUpdated: string;
-  tags: { id: string; name: string }[];
+  tags: TagSummary[];
 };
 
 export type NoteWithTags = Note & {

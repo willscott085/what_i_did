@@ -1,3 +1,4 @@
+import { TagSummary } from "~/features/items/types";
 import { Tag } from "~/features/tags/types";
 
 export type Task = {
@@ -12,7 +13,7 @@ export type Task = {
   sortOrder: string;
   subtaskCount: number;
   completedSubtaskCount: number;
-  tags: { id: string; name: string }[];
+  tags: TagSummary[];
 };
 
 export type TaskWithRelations = Task & {

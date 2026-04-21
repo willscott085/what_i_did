@@ -25,9 +25,11 @@ const formatDate = (d: Date) =>
 const today = new Date();
 const todayStr = formatDate(today);
 
-// Generate fractional-indexing keys for seed tasks
+// Generate fractional-indexing keys for seed data
 const rootKeys = generateNKeysBetween(null, null, 10);
 const subtaskKeys = generateNKeysBetween(null, null, 2);
+const noteKeys = generateNKeysBetween(null, null, 4);
+const eventKeys = generateNKeysBetween(null, null, 3);
 
 const sampleItems = [
   // ── Tasks ──────────────────────────────────────────────────────────
@@ -198,7 +200,7 @@ const sampleItems = [
     date: todayStr,
     dateCompleted: null,
     parentItemId: null,
-    sortOrder: "0",
+    sortOrder: noteKeys[0],
     userId: "1",
     dateCreated: "2026-04-18T09:30:00.000Z",
     dateUpdated: "2026-04-18T09:30:00.000Z",
@@ -212,7 +214,7 @@ const sampleItems = [
     date: todayStr,
     dateCompleted: null,
     parentItemId: null,
-    sortOrder: "1",
+    sortOrder: noteKeys[1],
     userId: "1",
     dateCreated: "2026-04-17T14:15:00.000Z",
     dateUpdated: "2026-04-17T14:15:00.000Z",
@@ -226,7 +228,7 @@ const sampleItems = [
     date: null,
     dateCompleted: null,
     parentItemId: null,
-    sortOrder: "0",
+    sortOrder: noteKeys[2],
     userId: "1",
     dateCreated: "2026-04-16T11:00:00.000Z",
     dateUpdated: "2026-04-16T11:00:00.000Z",
@@ -240,7 +242,7 @@ const sampleItems = [
     date: null,
     dateCompleted: null,
     parentItemId: null,
-    sortOrder: "1",
+    sortOrder: noteKeys[3],
     userId: "1",
     dateCreated: "2026-04-10T16:45:00.000Z",
     dateUpdated: "2026-04-15T10:20:00.000Z",
@@ -255,7 +257,7 @@ const sampleItems = [
     date: todayStr,
     dateCompleted: null,
     parentItemId: null,
-    sortOrder: "0",
+    sortOrder: eventKeys[0],
     userId: "1",
     dateCreated: "2026-04-15T08:00:00.000Z",
     dateUpdated: "2026-04-15T08:00:00.000Z",
@@ -268,7 +270,7 @@ const sampleItems = [
     date: todayStr,
     dateCompleted: null,
     parentItemId: null,
-    sortOrder: "1",
+    sortOrder: eventKeys[1],
     userId: "1",
     dateCreated: "2026-04-14T10:00:00.000Z",
     dateUpdated: "2026-04-14T10:00:00.000Z",
@@ -281,7 +283,7 @@ const sampleItems = [
     date: null,
     dateCompleted: null,
     parentItemId: null,
-    sortOrder: "2",
+    sortOrder: eventKeys[2],
     userId: "1",
     dateCreated: "2026-04-12T09:30:00.000Z",
     dateUpdated: "2026-04-12T09:30:00.000Z",
@@ -338,7 +340,7 @@ await db.insert(schema.tags).values([
 ]);
 
 // Seed task-tag relationships (using itemTags)
-await db.insert(schema.itemTags).values([
+const sampleItemTags = [
   { itemId: "tsk_001", tagId: "tag_002" },
   { itemId: "tsk_002", tagId: "tag_002" },
   { itemId: "tsk_002", tagId: "tag_003" },
@@ -356,10 +358,11 @@ await db.insert(schema.itemTags).values([
   // Event-tag relationships
   { itemId: "evt_001", tagId: "tag_002" },
   { itemId: "evt_002", tagId: "tag_001" },
-]);
+];
+await db.insert(schema.itemTags).values(sampleItemTags);
 
 // Seed note metadata (AI-generated keywords)
-await db.insert(schema.itemMetadata).values([
+const sampleMetadata = [
   {
     itemId: "nte_001",
     keywords:
@@ -376,7 +379,8 @@ await db.insert(schema.itemMetadata).values([
     keywords:
       "performance, review, accomplishments, React Query, mentoring, design system, drag-drop",
   },
-]);
+];
+await db.insert(schema.itemMetadata).values(sampleMetadata);
 
 const taskCount = sampleItems.filter((i) => i.type === "task").length;
 const noteCount = sampleItems.filter((i) => i.type === "note").length;
@@ -387,9 +391,9 @@ console.info(
   `  - ${taskCount} tasks (including ${subtaskItems.length} subtasks)`,
 );
 console.info(`  - ${4} tags`);
-console.info(`  - ${16} item-tag relationships`);
+console.info(`  - ${sampleItemTags.length} item-tag relationships`);
 console.info(`  - ${noteCount} notes`);
 console.info(`  - ${eventCount} events`);
-console.info(`  - ${4} note metadata entries`);
+console.info(`  - ${sampleMetadata.length} note metadata entries`);
 
 await client.end();
