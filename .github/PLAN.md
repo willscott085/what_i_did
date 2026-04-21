@@ -611,7 +611,7 @@ The app has a small dataset, the schema is young, and we're about to add a third
 
 ## Phase 9: Reminders & Notifications
 
-> Recurring and one-off reminders with system notifications, snooze, and task generation — built on the unified items architecture. Event items (type `'event'`) are the "what" — schedules are the "when".
+> Recurring and one-off reminders with system notifications, snooze, and task generation — built on the unified items architecture. **Split into six sub-phases (9A–9F), each independently shippable and testable.** Each sub-phase is a commit-sized chunk that leaves the app in a working state.
 
 ### Key Concepts
 
@@ -620,179 +620,245 @@ The app has a small dataset, the schema is young, and we're about to add a third
 - **`cloneOnFire`** — when a schedule fires with `cloneOnFire: true`, it creates a new task item with the parent item's title/tags and `date = today`. "Water plants every 3 days" → event item + schedule with cloneOnFire → fresh completable task each time.
 - **Any item can have a schedule** — set a reminder on a task ("remind me about this task tomorrow"), on a note ("review this note Friday"), or on an event (the default — standalone timed notification).
 
-### 9A: Database — Schedules
+### Lessons Learned (from failed first attempt)
 
-- [ ] Add to `src/db/schema.ts`:
-  - `schedules`: id (`sch_` prefix), itemId (text FK → items.id CASCADE), reminderTime (text NOT NULL — ISO datetime, next scheduled fire), rrule (text, nullable — iCal RRULE string), snoozedUntil (text, nullable — overrides reminderTime temporarily), cloneOnFire (boolean NOT NULL, default false — if true, creates a task item when fired), status (`active` | `snoozed` | `dismissed` | `completed`), dateCreated (text), dateUpdated (text)
-  - `scheduleHistory`: id (`shx_` prefix), scheduleId (text FK → schedules.id CASCADE), firedAt (text NOT NULL — ISO datetime), action (`notified` | `task_created` | `snoozed` | `dismissed`), createdItemId (text, nullable — FK → items.id SET NULL, the cloned task)
-  - `pushSubscriptions`: id (text PK), userId (text NOT NULL), endpoint (text NOT NULL — Web Push endpoint URL), p256dh (text NOT NULL — client public key), auth (text NOT NULL — auth secret), dateCreated (text NOT NULL)
-- [ ] Add relations: update `itemsRelations` to include `many(schedules)`. Add `schedulesRelations` (one item, many history). Add `scheduleHistoryRelations`.
-- [ ] Generate migration, run it
-- [ ] Update `src/db/seed.ts` — sample schedules: one-off event, recurring event with cloneOnFire, reminder on an existing task, reminder on a note
+- **Don't create all feature code at once** — the events adapter, schedules feature, recurrence engine, UI components, route, and nav changes were attempted in a single pass. This created too many interdependencies and broke the app.
+- **TanStack Start server functions** are the data layer — they call Drizzle directly. No HTTP layer, no REST endpoints. Each server function is `createServerFn()` with a Zod input validator and a `.handler()` that returns Drizzle query results.
+- **Thin adapter pattern** — `features/tasks/` and `features/notes/` are facades over the unified `items` table. They each define their own `server.ts` with type-filtered queries, `types.ts` with narrowed types, and `queries.ts`/`mutations.ts` for React Query integration. `features/events/` should follow the exact same pattern.
+- **Route loaders** use `ensureQueryData` with query option factories from `queries.ts`. Components use `useSuspenseQuery` with the same options.
+- **DB tables already exist** — `schedules`, `scheduleHistory`, and `pushSubscriptions` were created in a prior migration. No schema changes needed.
+- **Build vertically, not horizontally** — implement one complete slice (server → queries → mutations → component → route integration) before starting the next.
 
-### 9B: RRULE Engine & Recurrence Logic
+---
 
-- [ ] Install `rrule` npm package — iCal RRULE parsing, serialization, and next-occurrence calculation
+### Phase 9A: Events Feature Module (Data Layer Only)
+
+> Create the thin events adapter over the unified items table. No UI, no routes — just the data layer following the exact same pattern as `features/tasks/` and `features/notes/`.
+
+- [ ] Create `src/features/events/types.ts`:
+  - `Event` type (narrowed from `Item` where `type === 'event'`)
+  - `EventWithSchedule` type — event with its attached schedule(s)
+- [ ] Create `src/features/events/consts.ts`:
+  - Query keys: `eventsQueryKeys` (all, byId, byDate, byTag)
+- [ ] Create `src/features/events/server.ts`:
+  - `fetchEvents(userId)` — all events, ordered by dateCreated DESC
+  - `fetchEventsForDate(userId, date)` — events where `date` matches
+  - `fetchEventsByTag(userId, tagId)` — events with a specific tag
+  - `fetchEvent(userId, eventId)` — single event with tags
+  - `createEvent({ title, content?, date?, tagIds? })` — creates item with `type: 'event'`, `evt_` prefixed ID
+  - `updateEvent({ id, title?, content?, date?, tagIds? })` — tag sync in transaction
+  - `deleteEvent(eventId)` — hard delete
+- [ ] Create `src/features/events/queries.ts` — React Query option factories wrapping server functions
+- [ ] Create `src/features/events/mutations.ts` — React Query mutations with optimistic updates (same pattern as tasks/notes)
+- [ ] Update `src/db/seed.ts` — add sample event items (2-3 events with tags)
+- [ ] **Verify**: `pnpm typecheck` passes
+- [ ] **Verify**: `pnpm test` passes (no regressions)
+- [ ] **Verify**: `pnpm db:seed` creates sample events
+
+#### Outputs
+
+- `src/features/events/` — types, consts, server, queries, mutations
+- Updated: `src/db/seed.ts`
+
+---
+
+### Phase 9B: Schedules Feature Module (CRUD + RRULE)
+
+> Create the schedules data layer — server functions for schedule CRUD, plus the RRULE recurrence engine. No UI yet — this is purely the data + logic layer.
+
+- [ ] Install `rrule` npm package
+- [ ] Create `src/features/schedules/types.ts`:
+  - `Schedule` type matching the `schedules` DB table
+  - `ScheduleHistory` type matching `scheduleHistory` DB table
+  - `ScheduleStatus` union: `'active' | 'snoozed' | 'dismissed' | 'completed'`
+  - `RecurrencePattern` type — UI-friendly representation (freq, interval, byDay, etc.)
+- [ ] Create `src/features/schedules/consts.ts`:
+  - Query keys: `schedulesQueryKeys` (all, byId, byItem, upcoming, recurring)
+  - `SNOOZE_DURATIONS` — preset snooze options (5m, 15m, 1h, tomorrow 9am)
 - [ ] Create `src/features/schedules/recurrence.ts`:
-  - `getNextOccurrence(rruleStr, after?)` — calculate next fire time from RRULE
-  - `getOccurrences(rruleStr, from, to)` — list occurrences in a date range (for calendar preview)
-  - `buildRRule(pattern)` — construct RRULE string from UI-friendly pattern object
-  - `describeRRule(rruleStr)` — human-readable description ("Every Monday and Wednesday", "Every 3 days")
-- [ ] Supported patterns via UI:
-  - **Daily** — every day, or every N days
-  - **Weekly** — specific days of week (Mon, Wed, Fri), every N weeks
-  - **Monthly** — specific day of month (1st, 15th), every N months
-  - **Custom interval** — every N days/weeks/months
-  - **Raw RRULE** — advanced text input for power users (validated on save)
-- [ ] When a recurring schedule fires:
-  1. Execute the action (notify, or clone item as task if `cloneOnFire`)
-  2. Log to `scheduleHistory`
-  3. Calculate next occurrence from RRULE
-  4. Update `reminderTime` to next occurrence
-  5. If RRULE has a COUNT/UNTIL and is exhausted → set status to `completed`
-
-### 9C: Server Functions
-
-- [ ] Create `src/features/schedules/` — types.ts, consts.ts, server.ts, queries.ts, mutations.ts
-- [ ] CRUD in `src/features/schedules/server.ts`:
-  - `fetchSchedules(userId)` — all active schedules with their items, ordered by reminderTime ASC
-  - `fetchUpcomingSchedules(userId, limit?)` — active where reminderTime > now, chronological
-  - `fetchPastSchedules(userId, { page, limit })` — paginated history from `scheduleHistory`, ordered by firedAt DESC
-  - `fetchRecurringSchedules(userId)` — where rrule is not null
-  - `fetchSchedulesForItem(itemId)` — all schedules attached to an item
-  - `fetchSchedulesByTag(userId, tagId)` — schedules whose items have a specific tag (JOIN items → itemTags)
+  - `getNextOccurrence(rruleStr, after?)` — next fire time from RRULE
+  - `getOccurrences(rruleStr, from, to)` — occurrences in a date range
+  - `buildRRule(pattern: RecurrencePattern)` — construct RRULE string from UI-friendly pattern
+  - `describeRRule(rruleStr)` — human-readable description ("Every Monday and Wednesday")
+- [ ] Create `src/features/schedules/server.ts` — CRUD server functions:
+  - `fetchSchedules(userId)` — all active schedules with their item titles, ordered by reminderTime ASC
+  - `fetchUpcomingSchedules(userId, limit?)` — active where reminderTime > now
+  - `fetchSchedulesForItem(itemId)` — schedules attached to a specific item
   - `createSchedule({ itemId, reminderTime, rrule?, cloneOnFire? })` — attach schedule to item
   - `updateSchedule({ id, reminderTime?, rrule?, cloneOnFire? })` — update timing/behavior
   - `deleteSchedule(scheduleId)` — hard delete
-  - `snoozeSchedule(scheduleId, duration)` — set snoozedUntil: 5m, 15m, 1h, tomorrow 9am. Status → `snoozed`
+  - `snoozeSchedule(scheduleId, duration)` — set snoozedUntil, status → `snoozed`
   - `dismissSchedule(scheduleId)` — one-off: status → `dismissed`. Recurring: advance to next occurrence
-  - `fireSchedule(scheduleId)` — execute:
-    - If `cloneOnFire` → create new task item with parent's title + tags, `date = today`. Log as `task_created` with createdItemId
+  - `fireSchedule(scheduleId)` — execute schedule action:
+    - If `cloneOnFire` → create new task item with parent's title + tags, `date = today`. Log to `scheduleHistory` as `task_created`
     - If not `cloneOnFire` → log as `notified`
-    - If recurring → calculate and set next occurrence
+    - If recurring → calculate next occurrence, update `reminderTime`
     - If one-off → status → `completed`
-- [ ] Update event server functions to create item + schedule in one transaction:
-  - `createEventWithSchedule({ title, content?, date?, tagIds?, reminderTime, rrule?, cloneOnFire? })` — convenience function for the Reminder Dialog
+  - `createEventWithSchedule(...)` — convenience: create event item + schedule in one transaction
+- [ ] Create `src/features/schedules/queries.ts` — React Query option factories
+- [ ] Create `src/features/schedules/mutations.ts` — React Query mutations with optimistic updates
+- [ ] Update `src/db/seed.ts` — add sample schedules: one-off event schedule, recurring event with cloneOnFire, reminder on an existing task
+- [ ] Unit tests: `src/features/schedules/recurrence.test.ts` — RRULE parsing, next occurrence calculation, human descriptions
+- [ ] **Verify**: `pnpm typecheck` passes
+- [ ] **Verify**: `pnpm test` passes
 
-### 9D: Web Push Notifications
+#### Outputs
 
-- [ ] Generate VAPID key pair (one-time setup, store in env vars)
+- `src/features/schedules/` — types, consts, recurrence, server, queries, mutations
+- `src/features/schedules/recurrence.test.ts`
+- Updated: `src/db/seed.ts`
+- Dependency: `rrule`
+
+---
+
+### Phase 9C: Reminders Page + Basic UI
+
+> Build the `/reminders` route and the core UI components. This is the first visible change — users can see, create, edit, and delete reminders. No push notifications yet — just CRUD and display.
+
+- [ ] Build `src/components/ReminderItem.tsx` — list item for reminders:
+  - Bell icon (plain event) or checkbox-clock icon (cloneOnFire)
+  - Title as primary text
+  - Next occurrence datetime (relative: "in 2 hours", "tomorrow at 9am")
+  - Recurrence badge if recurring (human-readable via `describeRRule`)
+  - Tag badges (same styling as TaskItem)
+  - Actions: Edit, Delete
+  - Missed indicator for past-due (muted "Overdue" badge)
+- [ ] Build `src/components/RecurrencePicker.tsx` — embedded in ReminderDialog:
+  - Preset buttons: None, Daily, Weekly, Monthly, Custom
+  - Weekly → day-of-week checkboxes (Mon–Sun)
+  - Monthly → day-of-month select
+  - Custom → interval number + unit (days/weeks/months)
+  - Human-readable preview below
+- [ ] Build `src/components/ReminderDialog.tsx` — create/edit reminder:
+  - **Title** (text input, required)
+  - **Description** (textarea, optional → stored as `content`)
+  - **Generates task** toggle — sets `cloneOnFire`. Explanation: "Creates a new task each time this fires"
+  - **Date & Time** picker (required — `reminderTime`)
+  - **RecurrencePicker** component
+  - **Tags** — `TagMultiSelect` (reused)
+  - On save: calls `createEventWithSchedule` or updates existing
+- [ ] Create `/reminders` route (`src/routes/_app/reminders.tsx`):
+  - Upcoming section: chronological list of events with active schedules, grouped by day (Today, Tomorrow, This Week, Later)
+  - "+" button → ReminderDialog
+  - Route loader: `ensureQueryData` for upcoming schedules
+  - Page head: `title: "Reminders - whatIdid"`
+- [ ] Update `src/routes/_app.tsx`:
+  - Add "Reminders" to `navItems`: `{ to: '/reminders', label: 'Reminders' }`
+- [ ] Update `src/components/AppLayoutContext.tsx`:
+  - Add `reminderDialogOpen`, `editingEvent`, `handleOpenReminderDialog` to layout context
+- [ ] **Verify**: `pnpm typecheck` passes
+- [ ] **Verify**: `pnpm test` passes
+- [ ] **Verify**: `pnpm test:e2e` passes (existing tests — no new E2E yet)
+- [ ] **Verify**: Can create, view, edit, and delete reminders via the UI
+
+#### Outputs
+
+- `src/components/ReminderItem.tsx`, `ReminderDialog.tsx`, `RecurrencePicker.tsx`
+- `src/routes/_app/reminders.tsx`
+- Updated: `_app.tsx`, `AppLayoutContext.tsx`
+
+---
+
+### Phase 9D: Snooze, Dismiss & Schedule Actions
+
+> Add snooze/dismiss actions to reminders, the "Past" view, and integration with the tag page. This builds on the CRUD from 9C to add schedule lifecycle management.
+
+- [ ] Build `src/components/SnoozeMenu.tsx` — dropdown with preset options:
+  - 5 min, 15 min, 1 hour, Tomorrow 9am
+  - Calls `snoozeSchedule` mutation
+- [ ] Update `src/components/ReminderItem.tsx`:
+  - Add Snooze dropdown (SnoozeMenu component)
+  - Add Dismiss/Complete action (one-off → dismiss, recurring → advance)
+  - Show snoozed state ("Snoozed until 3:30pm")
+- [ ] Update `/reminders` route — add Past section:
+  - Paginated history from `scheduleHistory`, ordered by firedAt DESC
+  - Shows action taken (notified, task_created, snoozed, dismissed)
+  - Links to created tasks when action was `task_created`
+- [ ] Update `src/routes/_app/tag/$tagId.tsx`:
+  - Events with schedules render using `ReminderItem`
+  - Items with schedules (tasks/notes) show a small bell indicator
+- [ ] E2E test: `e2e/reminders.spec.ts`:
+  - Create a one-off reminder, verify it appears in upcoming
+  - Create a recurring reminder, verify recurrence description
+  - Snooze a reminder, verify state change
+  - Dismiss a reminder, verify it moves to past
+  - Navigate to /reminders from nav
+- [ ] **Verify**: `pnpm typecheck`, `pnpm test`, `pnpm test:e2e` all pass
+
+#### Outputs
+
+- `src/components/SnoozeMenu.tsx`
+- Updated: `ReminderItem.tsx`, `reminders.tsx`, `tag/$tagId.tsx`
+- `e2e/reminders.spec.ts`
+
+---
+
+### Phase 9E: Schedule-on-Item Integration
+
+> Allow setting reminders on existing tasks and notes from their edit dialogs. Also add keyboard shortcut for quick reminder creation.
+
+- [ ] Add "Set Reminder" section to `TaskDialog.tsx`:
+  - Collapsible section with datetime + optional recurrence
+  - Creates a schedule attached to the task item (no new event created)
+  - Shows existing schedules on the task if any
+- [ ] Add "Set Reminder" section to `NoteDialog.tsx`:
+  - Same pattern — schedule attached to the note item
+- [ ] Add bell indicator on `TaskItem.tsx` for tasks that have schedules
+- [ ] Add bell indicator on `NoteItem.tsx` for notes that have schedules
+- [ ] Add keyboard shortcut: Cmd/Ctrl+R → open ReminderDialog (in `_app.tsx`)
+- [ ] **Verify**: `pnpm typecheck`, `pnpm test`, `pnpm test:e2e` all pass
+
+#### Outputs
+
+- Updated: `TaskDialog.tsx`, `NoteDialog.tsx`, `TaskItem.tsx`, `NoteItem.tsx`, `_app.tsx`
+
+---
+
+### Phase 9F: Push Notifications & Server-Side Scheduler
+
+> The final piece — system-level push notifications and the server-side scheduler that fires due schedules. This is the most complex sub-phase but is isolated from all previous UI work.
+
+- [ ] Generate VAPID key pair, store in env vars
 - [ ] Install `web-push` npm package
-- [ ] Add env vars to `src/config/env.server.ts`:
-  - `VAPID_PUBLIC_KEY` — public VAPID key (also exposed client-side)
-  - `VAPID_PRIVATE_KEY` — private VAPID key (server-only)
-  - `VAPID_SUBJECT` — mailto: or URL identifier
-- [ ] Add `VAPID_PUBLIC_KEY` to `src/config/env.client.ts` (needed for push subscription)
+- [ ] Add env vars to `src/config/env.server.ts`: `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`
+- [ ] Add `VAPID_PUBLIC_KEY` to `src/config/env.client.ts`
 - [ ] Server functions for push subscriptions:
   - `subscribePush({ endpoint, p256dh, auth })` — save to `pushSubscriptions`
   - `unsubscribePush(endpoint)` — remove subscription
 - [ ] Create `src/features/schedules/push.ts` — `sendPushNotification(userId, { title, body, url? })` using `web-push`
-
-### 9E: Notification Scheduler
-
 - [ ] Create `src/features/schedules/scheduler.ts` — server-side schedule checker:
   - Runs on an interval (every 30s) checking for due schedules
   - Query: `WHERE (reminderTime <= now OR snoozedUntil <= now) AND status IN ('active', 'snoozed')`
   - For each due schedule: call `fireSchedule()`, then `sendPushNotification()`
-  - Handles missed schedules (e.g. server was down) — fires immediately on next check
-- [ ] Integrate scheduler startup into app bootstrap (server-side only, starts when server starts)
+  - Handles missed schedules (fires immediately on next check)
+- [ ] Integrate scheduler into app bootstrap (server-side only)
 - [ ] In-app foreground detection:
-  - If app is focused when schedule fires → show sonner toast with title, snooze/dismiss actions
-  - If app is in background → Web Push notification (system-level)
-  - Use `document.visibilityState` or `focus`/`blur` events to determine foreground state
-- [ ] Service Worker fallback:
-  - SW registers a periodic sync (where supported) as backup
-  - On `push` event → show notification regardless of app state
-  - Notification click → `clients.openWindow()` or `client.focus()` + navigate
-
-### 9F: UI Components
-
-- [ ] Build `src/components/ReminderDialog.tsx` — create/edit reminder (creates event item + schedule):
-  - **Title** (text input, required)
-  - **Description** (textarea, optional → stored as `content`)
-  - **Generates task** toggle (checkbox icon) — sets `cloneOnFire` on schedule. Explanation text: "Creates a new task each time this fires"
-  - **Date & Time** picker (required — `reminderTime` on schedule)
-  - **Recurrence picker** (`RecurrencePicker` sub-component):
-    - Preset buttons: None, Daily, Weekly, Monthly, Custom
-    - Weekly → day-of-week checkboxes (Mon–Sun)
-    - Monthly → day-of-month select
-    - Custom → interval number + unit (days/weeks/months)
-    - Advanced toggle → raw RRULE text input with validation
-    - Human-readable preview: "Every Monday and Wednesday" / "Every 3 days"
-  - **Tags** — `TagMultiSelect` (reused)
-  - On save: create event item + schedule in one call, request push permission if not granted
-- [ ] Build `src/components/ReminderItem.tsx` — list item for reminders page:
-  - Bell icon (plain event) or checkbox-clock icon (cloneOnFire)
-  - Title as primary text
-  - Next occurrence datetime (relative: "in 2 hours", "tomorrow at 9am")
-  - Recurrence badge if recurring (human-readable: "Weekly · Mon, Wed")
-  - Tag badges (same styling as TaskItem)
-  - Actions: Edit, Snooze dropdown (5m, 15m, 1h, tomorrow), Dismiss/Complete, Delete
-  - Missed indicator for past-due (red dot or "Missed" badge)
-- [ ] Build `RecurrencePicker` component — embedded in ReminderDialog
-- [ ] Build `SnoozeMenu` component — dropdown with preset options (5min, 15min, 1hr, Tomorrow 9am)
-- [ ] Push permission prompt component — inline banner on /reminders if notifications not granted
-- [ ] Add "Set Reminder" button to `TaskDialog.tsx`:
-  - Inline time/recurrence fields, or link to ReminderDialog with item pre-linked
-  - Creates a schedule attached to the task item (no new item created)
-- [ ] Add "Set Reminder" button to `NoteDialog.tsx` — same pattern, schedule attached to note item
-
-### 9G: Routes & Navigation
-
-- [ ] Create `/reminders` route (`src/routes/_app/reminders.tsx`):
-  - **Tabs or sections**: Upcoming | Past | Recurring
-  - **Upcoming**: chronological list of event items with active schedules, grouped by day (Today, Tomorrow, This Week, Later)
-  - **Past**: paginated list from scheduleHistory (fired schedules with timestamps and actions taken)
-  - **Recurring**: management view — all items with recurring schedules, RRULE descriptions, next occurrence, pause/edit/delete
-  - **Search & filter**: tag filter via TagMultiSelect, text search on title/description
-  - **"+ New Reminder"** button → ReminderDialog
-  - Page head: `title: "Reminders - whatIdid"`
-  - Route loader: `ensureQueryData` for upcoming schedules
-- [ ] Update `src/routes/_app.tsx`:
-  - Add "Reminders" to `navItems` array: `{ to: '/reminders', label: 'Reminders' }`
-  - Add reminder dialog state to AppLayoutContext (reminderDialogOpen, editingEvent, handleOpenReminderDialog)
-  - Add keyboard shortcut: Cmd/Ctrl+R → open ReminderDialog
-- [ ] Update `src/routes/_app/tag/$tagId.tsx`:
-  - Events with schedules already appear via `fetchItems(type: 'event', tagId)` — render with `ReminderItem`
-  - Items with schedules (tasks/notes that have reminders) show a small bell indicator
-- [ ] Update `src/components/AppLayoutContext.tsx`:
-  - Export `handleOpenReminderDialog` in layout context
-
-### 9H: Service Worker Setup
-
-- [ ] Create `public/notification-sw.js` — dedicated notification service worker (separate from MSW):
-  - `push` event → `self.registration.showNotification(data.title, { body, icon, badge, data: { url } })`
-  - `notificationclick` → `clients.openWindow(event.notification.data.url)` or focus existing window
+  - App focused → show sonner toast with snooze/dismiss actions
+  - App in background → Web Push notification
+  - Use `document.visibilityState` to determine foreground state
+- [ ] Create `public/notification-sw.js` — notification service worker:
+  - `push` event → `self.registration.showNotification()`
+  - `notificationclick` → `clients.openWindow()` or focus existing
 - [ ] Create `src/features/schedules/sw-registration.ts`:
-  - Register notification service worker on app load
-  - Request notification permission (`Notification.requestPermission`)
-  - Subscribe to push (`registration.pushManager.subscribe` with VAPID public key)
-  - Send subscription to server (`subscribePush`)
-  - Handle permission denied gracefully (show in-app-only mode explanation)
-- [ ] Permission state management:
-  - Track `Notification.permission` state in React context or hook
-  - Show permission prompt banner on `/reminders` if permission is `default`
-  - Degrade gracefully to in-app-only toasts if permission is `denied`
-
-### 9I: Testing & Verification
-
-- [ ] Unit tests:
-  - `src/features/schedules/recurrence.test.ts` — RRULE parsing, next occurrence, human descriptions
-  - `src/features/schedules/mutations.test.ts` — create, snooze, dismiss, fire (with cloneOnFire task generation)
-  - `src/features/schedules/push.test.ts` — push notification payload construction
-- [ ] E2E tests: `e2e/reminders.spec.ts`:
-  - Create a one-off event, verify it appears in upcoming list
-  - Create a recurring event with cloneOnFire, verify recurrence description
-  - Snooze a schedule, verify state change
-  - Dismiss a schedule, verify it moves to past
-  - Set reminder on a task from TaskDialog, verify schedule attached
-  - Filter reminders by tag
-  - Navigate to /reminders from nav
+  - Register notification SW on app load
+  - Request notification permission
+  - Subscribe to push with VAPID public key
+  - Send subscription to server
+  - Handle permission denied gracefully
+- [ ] Push permission prompt — inline banner on `/reminders` if notifications not granted
 - [ ] **Verify**: `pnpm typecheck`, `pnpm test`, `pnpm test:e2e` all pass
-- [ ] **Verify**: `pnpm db:seed` creates sample events with schedules and history
-- [ ] **Verify**: Push notifications fire in Chromium (Playwright can't test system notifications, but verify subscription flow)
+- [ ] **Verify**: Push subscription flow works in Chromium
 
-### Decisions
+#### Outputs
+
+- `src/features/schedules/push.ts`, `scheduler.ts`, `sw-registration.ts`
+- `public/notification-sw.js`
+- Updated: `env.server.ts`, `env.client.ts`, `reminders.tsx`
+- Dependency: `web-push`
+
+---
+
+### Decisions (Phase 9, all sub-phases)
 
 - **Events are items** — `type: 'event'` in the unified items table. No separate entity. Tags, dates, and all item features come free
 - **Schedules are orthogonal** — any item can have schedules. Event + schedule = standalone reminder. Task + schedule = "remind me about this task". Item + schedule + cloneOnFire = recurring task generation
@@ -804,17 +870,8 @@ The app has a small dataset, the schema is young, and we're about to add a third
 - **VAPID keys in env vars** — standard Web Push auth, generated once per deployment
 - **Snooze presets only** — 5m, 15m, 1h, tomorrow 9am. No custom time picker
 - **Reminder Dialog creates event + schedule** — one dialog, one operation. For adding a reminder to an existing task/note, the TaskDialog/NoteDialog inline a schedule picker
-
-### Outputs
-
-- `src/db/schema.ts` — `schedules`, `scheduleHistory`, `pushSubscriptions` tables + relations
-- `src/features/schedules/` — types, consts, server, queries, mutations, recurrence, push, scheduler, sw-registration
-- `src/features/events/` — updated with schedule integration
-- `src/components/ReminderDialog.tsx`, `ReminderItem.tsx`, `RecurrencePicker.tsx`, `SnoozeMenu.tsx`
-- `src/routes/_app/reminders.tsx`
-- `public/notification-sw.js`
-- Updated: `_app.tsx`, `AppLayoutContext.tsx`, `TaskDialog.tsx`, `NoteDialog.tsx`, `tag/$tagId.tsx`, `seed.ts`
-- Dependencies: `rrule`, `web-push`
+- **DB tables already exist** — `schedules`, `scheduleHistory`, `pushSubscriptions` were created in a prior migration. No schema changes needed for 9A–9F
+- **Build vertical slices** — each sub-phase delivers a complete layer (data → UI → integration) that works independently. Push notifications (9F) are entirely optional — the app is fully functional after 9D
 
 ---
 
@@ -889,5 +946,6 @@ tasks ──── taskTags ──── tags ──── noteTags ────
 | 5     | `sonner` (toast notifications)                                 |
 | 7     | `openai`, `@tiptap/react`, `@tiptap/starter-kit`, `@tiptap/pm` |
 | 8     | None (schema migration + code refactor only)                   |
-| 9     | `rrule`, `web-push`                                            |
+| 9B    | `rrule`                                                        |
+| 9F    | `web-push`                                                     |
 | 10    | TBD (auth library)                                             |

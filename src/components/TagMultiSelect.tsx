@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { CheckIcon, PlusIcon, XIcon } from "lucide-react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Input } from "~/components/ui/input";
 import { useCreateTag } from "~/features/tags/mutations";
 import { fetchTagsQueryOptions } from "~/features/tags/queries";
@@ -30,6 +30,19 @@ export function TagMultiSelect({
     filter.trim() &&
     !allTags.some((t) => t.name.toLowerCase() === filter.trim().toLowerCase());
 
+  // Close dropdown when clicking outside the container
+  useEffect(() => {
+    if (!open) return;
+
+    function handlePointerDown(e: PointerEvent) {
+      if (containerRef.current?.contains(e.target as Node)) return;
+      setOpen(false);
+    }
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => document.removeEventListener("pointerdown", handlePointerDown);
+  }, [open]);
+
   function toggleTag(tagId: string) {
     if (selectedTagIds.includes(tagId)) {
       onChange(selectedTagIds.filter((id) => id !== tagId));
@@ -53,14 +66,8 @@ export function TagMultiSelect({
     setFilter("");
   }
 
-  function handleBlur(e: React.FocusEvent) {
-    if (!containerRef.current?.contains(e.relatedTarget)) {
-      setOpen(false);
-    }
-  }
-
   return (
-    <div ref={containerRef} className="relative" onBlur={handleBlur}>
+    <div ref={containerRef} className="relative">
       {/* Selected tags chips */}
       <div
         className="border-input flex min-h-9 cursor-pointer flex-wrap items-center gap-1 rounded-md border px-2 py-1"
@@ -93,13 +100,19 @@ export function TagMultiSelect({
                   e.preventDefault();
                   handleCreate();
                 }
+                if (e.key === "Escape") {
+                  setOpen(false);
+                }
               }}
               className="h-7 border-0 p-0 text-sm shadow-none focus-visible:ring-0"
               autoFocus
             />
           </div>
 
-          <ul className="max-h-48 overflow-y-auto p-1">
+          <ul
+            className="max-h-48 overflow-y-auto p-1"
+            onMouseDown={(e) => e.preventDefault()}
+          >
             {filtered.map((tag) => (
               <li key={tag.id}>
                 <button
