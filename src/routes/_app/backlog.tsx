@@ -93,6 +93,7 @@ function Backlog() {
                   onEdit={handleEdit}
                   onDelete={handleDelete}
                   isDragging={isDragging}
+                  hideEmptyNotes
                   dragAttributes={dragAttributes}
                   dragListeners={dragListeners}
                 />

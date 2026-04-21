@@ -54,13 +54,19 @@ export function MiniCalendar({
     generateMonths(selectedDate, INITIAL_RANGE, INITIAL_RANGE),
   );
 
-  // Scroll the selected month's month to center on mount
+  // Scroll the selected month to center on mount
   useLayoutEffect(() => {
     if (hasScrolled.current) return;
-    currentMonthRef.current?.scrollIntoView({
-      block: "center",
+    if (!currentMonthRef.current) return;
+    // Double rAF ensures the scroll container is fully laid out before scrolling
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        currentMonthRef.current?.scrollIntoView({
+          block: "center",
+        });
+        hasScrolled.current = true;
+      });
     });
-    hasScrolled.current = true;
   }, []);
 
   // When selectedDate changes month, ensure it's in the list and scroll to center

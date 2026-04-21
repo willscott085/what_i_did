@@ -28,6 +28,12 @@ export const Route = createRootRouteWithContext<{
       },
       {
         name: "theme-color",
+        media: "(prefers-color-scheme: light)",
+        content: "#ffffff",
+      },
+      {
+        name: "theme-color",
+        media: "(prefers-color-scheme: dark)",
         content: "#0f172a",
       },
       {
@@ -102,7 +108,9 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 #app-loader .spinner{border-color:oklch(.3 .005 285.82);border-top-color:oklch(.65 .005 285.82)}
 }
 @keyframes spin{to{transform:rotate(360deg)}}
-body:has([data-hydrated]) #app-loader{display:none}`,
+body:has([data-hydrated]) #app-loader{display:none}
+[data-app-root]{visibility:hidden}
+[data-app-root][data-hydrated]{visibility:visible}`,
           }}
         />
       </head>

@@ -152,7 +152,7 @@ function AppLayout() {
 
   return (
     <AppLayoutProvider value={layoutCtx}>
-      <div className="flex h-screen" data-hydrated={hydrated || undefined}>
+      <div className="flex h-screen" data-app-root data-hydrated={hydrated || undefined}>
         {/* Sidebar — hidden on mobile */}
         <aside className="border-border hidden w-60 shrink-0 border-r px-4 lg:block">
           <MiniCalendar
