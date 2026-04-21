@@ -26,7 +26,9 @@ export default defineConfig({
       injectRegister: false,
       manifest: false,
       workbox: {
-        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
+        globPatterns: ["client/**/*.{js,css,html,ico,png,svg,woff2}"],
+        globIgnores: ["**/mockServiceWorker.js"],
+        modifyURLPrefix: { "client/": "" },
         navigateFallback: null,
         runtimeCaching: [
           {
