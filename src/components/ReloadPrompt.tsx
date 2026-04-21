@@ -1,5 +1,5 @@
 import { useRegisterSW } from "virtual:pwa-register/react";
-import { useSyncExternalStore } from "react";
+import { useEffect, useRef, useSyncExternalStore } from "react";
 
 const subscribe = () => () => {};
 const getSnapshot = () => true;
@@ -18,13 +18,18 @@ export function ReloadPrompt() {
 }
 
 function ReloadPromptInner() {
+  const intervalRef = useRef<ReturnType<typeof setInterval>>(null);
+
   const {
     needRefresh: [needRefresh, setNeedRefresh],
     updateServiceWorker,
   } = useRegisterSW({
-    onRegisteredSW(swUrl, registration) {
+    onRegisteredSW(_swUrl, registration) {
       if (registration) {
-        setInterval(
+        if (intervalRef.current) {
+          clearInterval(intervalRef.current);
+        }
+        intervalRef.current = setInterval(
           () => {
             registration.update();
           },
@@ -36,6 +41,14 @@ function ReloadPromptInner() {
       console.error("SW registration error:", error);
     },
   });
+
+  useEffect(() => {
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, []);
 
   if (!needRefresh) return null;
 
