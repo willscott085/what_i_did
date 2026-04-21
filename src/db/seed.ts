@@ -245,6 +245,47 @@ const sampleItems = [
     dateCreated: "2026-04-10T16:45:00.000Z",
     dateUpdated: "2026-04-15T10:20:00.000Z",
   },
+  // ── Events ─────────────────────────────────────────────────────────
+  {
+    id: "evt_001",
+    type: "event",
+    title: "Team standup",
+    content:
+      "Daily sync with the engineering team. Check blockers and progress.",
+    date: todayStr,
+    dateCompleted: null,
+    parentItemId: null,
+    sortOrder: "0",
+    userId: "1",
+    dateCreated: "2026-04-15T08:00:00.000Z",
+    dateUpdated: "2026-04-15T08:00:00.000Z",
+  },
+  {
+    id: "evt_002",
+    type: "event",
+    title: "Water the plants",
+    content: null,
+    date: todayStr,
+    dateCompleted: null,
+    parentItemId: null,
+    sortOrder: "1",
+    userId: "1",
+    dateCreated: "2026-04-14T10:00:00.000Z",
+    dateUpdated: "2026-04-14T10:00:00.000Z",
+  },
+  {
+    id: "evt_003",
+    type: "event",
+    title: "Review quarterly goals",
+    content: "Go through OKRs and update progress tracking sheet.",
+    date: null,
+    dateCompleted: null,
+    parentItemId: null,
+    sortOrder: "2",
+    userId: "1",
+    dateCreated: "2026-04-12T09:30:00.000Z",
+    dateUpdated: "2026-04-12T09:30:00.000Z",
+  },
 ];
 
 // Insert root items first (no parentItemId), then subtasks
@@ -312,6 +353,9 @@ await db.insert(schema.itemTags).values([
   { itemId: "nte_001", tagId: "tag_003" },
   { itemId: "nte_002", tagId: "tag_001" },
   { itemId: "nte_003", tagId: "tag_001" },
+  // Event-tag relationships
+  { itemId: "evt_001", tagId: "tag_002" },
+  { itemId: "evt_002", tagId: "tag_001" },
 ]);
 
 // Seed note metadata (AI-generated keywords)
@@ -336,14 +380,16 @@ await db.insert(schema.itemMetadata).values([
 
 const taskCount = sampleItems.filter((i) => i.type === "task").length;
 const noteCount = sampleItems.filter((i) => i.type === "note").length;
+const eventCount = sampleItems.filter((i) => i.type === "event").length;
 
 console.info("Database seeded successfully.");
 console.info(
   `  - ${taskCount} tasks (including ${subtaskItems.length} subtasks)`,
 );
 console.info(`  - ${4} tags`);
-console.info(`  - ${14} item-tag relationships`);
+console.info(`  - ${16} item-tag relationships`);
 console.info(`  - ${noteCount} notes`);
+console.info(`  - ${eventCount} events`);
 console.info(`  - ${4} note metadata entries`);
 
 await client.end();
