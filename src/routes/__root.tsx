@@ -10,6 +10,7 @@ import type { QueryClient } from "@tanstack/react-query";
 import { Toaster } from "sonner";
 import { DefaultCatchBoundary } from "~/components/DefaultCatchBoundary";
 import { NotFound } from "~/components/NotFound";
+import { ReloadPrompt } from "~/components/ReloadPrompt";
 import appCss from "~/styles/app.css?url";
 import { seo } from "~/utils/seo";
 
@@ -23,12 +24,25 @@ export const Route = createRootRouteWithContext<{
       },
       {
         name: "viewport",
-        content: "width=device-width, initial-scale=1",
+        content:
+          "width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover",
+      },
+      {
+        name: "theme-color",
+        content: "#0f172a",
+      },
+      {
+        name: "apple-mobile-web-app-capable",
+        content: "yes",
+      },
+      {
+        name: "apple-mobile-web-app-status-bar-style",
+        content: "black-translucent",
       },
       ...seo({
-        title:
-          "TanStack Start | Type-Safe, Client-First, Full-Stack React Framework",
-        description: `TanStack Start is a type-safe, client-first, full-stack React framework. `,
+        title: "whatIdid — Task Tracker, Notes & Reminders",
+        description:
+          "Personal task tracker, notes system, and reminder app with AI-powered features.",
       }),
     ],
     links: [
@@ -98,6 +112,7 @@ body:has([data-hydrated]) #app-loader{display:none}`,
           <div className="spinner" />
         </div>
         {children}
+        <ReloadPrompt />
         <Toaster position="bottom-center" />
         <Scripts />
       </body>

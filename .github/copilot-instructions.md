@@ -20,6 +20,7 @@
 - **Testing:** Vitest, React Testing Library, MSW (mocking)
 - **Linting/Formatting:** ESLint, Prettier
 - **Build Tooling:** Vite
+- **PWA:** vite-plugin-pwa + Workbox (service worker generation, precaching, update prompt)
 - **AI:** Provider-agnostic abstraction (OpenAI default, swappable)
 
 ## Architecture
@@ -83,7 +84,7 @@ export const myFunction = createServerFn({ method: "GET" })
 - `src/styles/` — Global CSS and theming
 - `src/tests/` — Test setup and mocks
 - `src/config/` — Environment configuration (server/client split)
-- `public/` — Static assets
+- `public/` — Static assets, PWA icons, web manifest
 
 ## Code Style
 
@@ -139,3 +140,4 @@ export const myFunction = createServerFn({ method: "GET" })
 - Optimistic updates are the default for mutations affecting UI state
 - Components that need hydration-awareness use `useEffect` state guard
 - Drag-and-drop components use dnd-kit with `useSortable` hook per item
+- **PWA**: The app is a Progressive Web App — `vite-plugin-pwa` generates a Workbox service worker at build time that precaches static assets. The `ReloadPrompt` component in `src/components/ReloadPrompt.tsx` handles SW registration and shows an update prompt when a new version is deployed. SW is disabled in dev mode (`devOptions.enabled: false`). The build script copies `sw.js` and workbox files to `.output/public/` for Nitro compatibility
