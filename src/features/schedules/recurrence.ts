@@ -1,5 +1,5 @@
 import { RRule } from "rrule";
-import type { RecurrencePattern } from "./types";
+import type { RecurrencePattern, Weekday } from "./types";
 
 const FREQ_MAP = {
   daily: RRule.DAILY,
@@ -8,7 +8,7 @@ const FREQ_MAP = {
   yearly: RRule.YEARLY,
 } as const;
 
-const DAY_MAP: Record<string, (typeof RRule)["MO"]> = {
+const DAY_MAP: Record<Weekday, (typeof RRule)["MO"]> = {
   MO: RRule.MO,
   TU: RRule.TU,
   WE: RRule.WE,
@@ -41,9 +41,7 @@ export function buildRRule(pattern: RecurrencePattern): string {
   };
 
   if (pattern.byDay && pattern.byDay.length > 0) {
-    options.byweekday = pattern.byDay
-      .map((d) => DAY_MAP[d.toUpperCase()])
-      .filter(Boolean);
+    options.byweekday = pattern.byDay.map((d) => DAY_MAP[d]);
   }
 
   if (pattern.until) {

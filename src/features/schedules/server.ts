@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
-import { and, asc, eq, gt, isNull, sql } from "drizzle-orm";
+import { and, asc, eq, gt, inArray, isNull, sql } from "drizzle-orm";
 import { generateKeyBetween } from "fractional-indexing";
+import { RRule } from "rrule";
 import z from "zod";
 import { db } from "~/db";
 import { items, itemTags, schedules, scheduleHistory } from "~/db/schema";
@@ -8,7 +9,25 @@ import { SNOOZE_DURATIONS, type SnoozeDuration } from "./consts";
 import { getNextOccurrence } from "./recurrence";
 import type { Schedule, ScheduleWithItem } from "./types";
 
-const formatLocalDate = (d: Date) =>
+const isoDatetime = z
+  .string()
+  .refine((v) => !isNaN(Date.parse(v)), {
+    message: "Must be a valid ISO-8601 datetime",
+  });
+
+const rruleString = z.string().refine(
+  (v) => {
+    try {
+      RRule.fromString(v);
+      return true;
+    } catch {
+      return false;
+    }
+  },
+  { message: "Must be a valid RRULE string" },
+);
+
+const toLocalDateString = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
 // ─── Helpers ─────────────────────────────────────────────────────────
@@ -38,6 +57,8 @@ function computeSnoozedUntil(duration: SnoozeDuration): string {
   return new Date(Date.now() + ms).toISOString();
 }
 
+const effectiveFireTime = sql`COALESCE(${schedules.snoozedUntil}, ${schedules.reminderTime})`;
+
 // ─── Fetch ───────────────────────────────────────────────────────────
 
 export const fetchSchedules = createServerFn({ method: "GET" })
@@ -45,26 +66,23 @@ export const fetchSchedules = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     const results = await db
       .select({
-        id: schedules.id,
-        itemId: schedules.itemId,
-        reminderTime: schedules.reminderTime,
-        rrule: schedules.rrule,
-        snoozedUntil: schedules.snoozedUntil,
-        cloneOnFire: schedules.cloneOnFire,
-        status: schedules.status,
-        dateCreated: schedules.dateCreated,
-        dateUpdated: schedules.dateUpdated,
+        schedule: schedules,
         itemTitle: items.title,
         itemType: items.type,
       })
       .from(schedules)
       .innerJoin(items, eq(items.id, schedules.itemId))
-      .where(and(eq(items.userId, data.userId), eq(schedules.status, "active")))
-      .orderBy(asc(schedules.reminderTime));
+      .where(
+        and(
+          eq(items.userId, data.userId),
+          inArray(schedules.status, ["active", "snoozed"]),
+        ),
+      )
+      .orderBy(asc(effectiveFireTime));
 
     return results.map(
       (r): ScheduleWithItem => ({
-        ...toSchedule(r as typeof schedules.$inferSelect),
+        ...toSchedule(r.schedule),
         itemTitle: r.itemTitle,
         itemType: r.itemType,
       }),
@@ -83,15 +101,7 @@ export const fetchUpcomingSchedules = createServerFn({ method: "GET" })
 
     const results = await db
       .select({
-        id: schedules.id,
-        itemId: schedules.itemId,
-        reminderTime: schedules.reminderTime,
-        rrule: schedules.rrule,
-        snoozedUntil: schedules.snoozedUntil,
-        cloneOnFire: schedules.cloneOnFire,
-        status: schedules.status,
-        dateCreated: schedules.dateCreated,
-        dateUpdated: schedules.dateUpdated,
+        schedule: schedules,
         itemTitle: items.title,
         itemType: items.type,
       })
@@ -100,16 +110,16 @@ export const fetchUpcomingSchedules = createServerFn({ method: "GET" })
       .where(
         and(
           eq(items.userId, data.userId),
-          eq(schedules.status, "active"),
-          gt(schedules.reminderTime, now),
+          inArray(schedules.status, ["active", "snoozed"]),
+          gt(effectiveFireTime, now),
         ),
       )
-      .orderBy(asc(schedules.reminderTime))
+      .orderBy(asc(effectiveFireTime))
       .limit(data.limit);
 
     return results.map(
       (r): ScheduleWithItem => ({
-        ...toSchedule(r as typeof schedules.$inferSelect),
+        ...toSchedule(r.schedule),
         itemTitle: r.itemTitle,
         itemType: r.itemType,
       }),
@@ -162,8 +172,8 @@ export const createSchedule = createServerFn({ method: "POST" })
   .inputValidator(
     z.object({
       itemId: z.string().min(1),
-      reminderTime: z.string().min(1),
-      rrule: z.string().optional(),
+      reminderTime: isoDatetime,
+      rrule: rruleString.optional(),
       cloneOnFire: z.boolean().optional(),
       userId: z.string().min(1),
     }),
@@ -205,8 +215,8 @@ export const updateSchedule = createServerFn({ method: "POST" })
   .inputValidator(
     z.object({
       id: z.string().min(1),
-      reminderTime: z.string().optional(),
-      rrule: z.string().or(z.null()).optional(),
+      reminderTime: isoDatetime.optional(),
+      rrule: rruleString.or(z.null()).optional(),
       cloneOnFire: z.boolean().optional(),
       userId: z.string().min(1),
     }),
@@ -338,25 +348,34 @@ export const dismissSchedule = createServerFn({ method: "POST" })
 
     // Recurring: advance to next occurrence
     if (current.schedule.rrule) {
-      const nextDate = getNextOccurrence(current.schedule.rrule, new Date());
+      const afterDate = new Date(
+        Math.max(Date.parse(current.schedule.reminderTime), Date.now()),
+      );
+      const nextDate = getNextOccurrence(current.schedule.rrule, afterDate);
       if (nextDate) {
-        const [result] = await db
-          .update(schedules)
-          .set({
-            reminderTime: nextDate.toISOString(),
-            snoozedUntil: null,
-            status: "active",
-            dateUpdated: now,
-          })
-          .where(and(eq(schedules.id, data.scheduleId), userOwnsSchedule))
-          .returning();
+        const result = await db.transaction(async (tx) => {
+          const [updated] = await tx
+            .update(schedules)
+            .set({
+              reminderTime: nextDate.toISOString(),
+              snoozedUntil: null,
+              status: "active",
+              dateUpdated: now,
+            })
+            .where(and(eq(schedules.id, data.scheduleId), userOwnsSchedule))
+            .returning();
 
-        await db.insert(scheduleHistory).values({
-          id: `shx_${crypto.randomUUID()}`,
-          scheduleId: data.scheduleId,
-          firedAt: now,
-          action: "dismissed",
-          createdItemId: null,
+          if (updated) {
+            await tx.insert(scheduleHistory).values({
+              id: `shx_${crypto.randomUUID()}`,
+              scheduleId: data.scheduleId,
+              firedAt: now,
+              action: "dismissed",
+              createdItemId: null,
+            });
+          }
+
+          return updated;
         });
 
         return result ? toSchedule(result) : null;
@@ -364,22 +383,28 @@ export const dismissSchedule = createServerFn({ method: "POST" })
     }
 
     // One-off: mark as dismissed
-    const [result] = await db
-      .update(schedules)
-      .set({
-        status: "dismissed",
-        snoozedUntil: null,
-        dateUpdated: now,
-      })
-      .where(and(eq(schedules.id, data.scheduleId), userOwnsSchedule))
-      .returning();
+    const result = await db.transaction(async (tx) => {
+      const [updated] = await tx
+        .update(schedules)
+        .set({
+          status: "dismissed",
+          snoozedUntil: null,
+          dateUpdated: now,
+        })
+        .where(and(eq(schedules.id, data.scheduleId), userOwnsSchedule))
+        .returning();
 
-    await db.insert(scheduleHistory).values({
-      id: `shx_${crypto.randomUUID()}`,
-      scheduleId: data.scheduleId,
-      firedAt: now,
-      action: "dismissed",
-      createdItemId: null,
+      if (updated) {
+        await tx.insert(scheduleHistory).values({
+          id: `shx_${crypto.randomUUID()}`,
+          scheduleId: data.scheduleId,
+          firedAt: now,
+          action: "dismissed",
+          createdItemId: null,
+        });
+      }
+
+      return updated;
     });
 
     return result ? toSchedule(result) : null;
@@ -396,7 +421,7 @@ export const fireSchedule = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const now = new Date().toISOString();
-    const todayStr = formatLocalDate(new Date());
+    const todayStr = toLocalDateString(new Date());
     console.info(`Firing schedule ${data.scheduleId}...`);
 
     const [current] = await db
@@ -477,7 +502,10 @@ export const fireSchedule = createServerFn({ method: "POST" })
 
     // Advance recurring or complete one-off
     if (schedule.rrule) {
-      const nextDate = getNextOccurrence(schedule.rrule, new Date());
+      const afterDate = new Date(
+        Math.max(Date.parse(schedule.reminderTime), Date.now()),
+      );
+      const nextDate = getNextOccurrence(schedule.rrule, afterDate);
       const userOwnsSchedule = sql`EXISTS (SELECT 1 FROM ${items} WHERE ${items.id} = ${schedules.itemId} AND ${items.userId} = ${data.userId})`;
 
       if (nextDate) {
@@ -522,8 +550,8 @@ export const createEventWithSchedule = createServerFn({ method: "POST" })
         .regex(/^\d{4}-\d{2}-\d{2}$/)
         .optional(),
       tagIds: z.array(z.string()).optional(),
-      reminderTime: z.string().min(1),
-      rrule: z.string().optional(),
+      reminderTime: isoDatetime,
+      rrule: rruleString.optional(),
       cloneOnFire: z.boolean().optional(),
       userId: z.string().min(1),
     }),

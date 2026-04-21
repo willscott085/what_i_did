@@ -15,6 +15,7 @@ import type {
   UpdateScheduleInput,
   CreateEventWithScheduleInput,
   Schedule,
+  ScheduleWithItem,
 } from "./types";
 import type { SnoozeDuration } from "./consts";
 
@@ -55,18 +56,29 @@ export function useDeleteSchedule() {
       }),
     onMutate: async (scheduleId) => {
       await queryClient.cancelQueries({ queryKey: schedulesQueryKeys.all });
-      const previous = queryClient.getQueryData<Schedule[]>(
-        schedulesQueryKeys.all,
-      );
-      queryClient.setQueryData<Schedule[]>(
-        schedulesQueryKeys.all,
-        (old) => old?.filter((s) => s.id !== scheduleId) ?? [],
-      );
-      return { previous };
+
+      const allQueries = queryClient.getQueriesData<
+        (Schedule | ScheduleWithItem)[]
+      >({
+        queryKey: schedulesQueryKeys.all,
+      });
+
+      for (const [key, data] of allQueries) {
+        if (Array.isArray(data)) {
+          queryClient.setQueryData(
+            key,
+            data.filter((s) => s.id !== scheduleId),
+          );
+        }
+      }
+
+      return { allQueries };
     },
     onError: (_err, _id, context) => {
-      if (context?.previous) {
-        queryClient.setQueryData(schedulesQueryKeys.all, context.previous);
+      if (context?.allQueries) {
+        for (const [key, data] of context.allQueries) {
+          queryClient.setQueryData(key, data);
+        }
       }
     },
     onSettled: () => {

@@ -16,7 +16,7 @@ import { db } from "~/db";
 import { items, itemTags, itemMetadata, tags } from "~/db/schema";
 import { TagSummary } from "~/features/items/types";
 
-const formatLocalDate = (d: Date) =>
+const toLocalDateString = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
 // ─── Computed columns ────────────────────────────────────────────────
@@ -51,7 +51,7 @@ export const itemColumns = {
 // ─── Roll forward stale tasks ────────────────────────────────────────
 
 export async function rollForwardStaleTasks(userId: string) {
-  const todayStr = formatLocalDate(new Date());
+  const todayStr = toLocalDateString(new Date());
 
   const staleTasks = await db
     .select({ id: items.id, sortOrder: items.sortOrder })
@@ -431,7 +431,7 @@ export const fetchItemsForDate = createServerFn({ method: "GET" })
     }),
   )
   .handler(async ({ data }) => {
-    const todayStr = formatLocalDate(new Date());
+    const todayStr = toLocalDateString(new Date());
     if (data.date === todayStr) {
       await rollForwardStaleTasks(data.userId);
     }

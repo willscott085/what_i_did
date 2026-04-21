@@ -3,12 +3,16 @@ export type ScheduleStatus = "active" | "snoozed" | "dismissed" | "completed";
 export type Schedule = {
   id: string;
   itemId: string;
+  /** ISO-8601 datetime string */
   reminderTime: string;
   rrule: string | null;
+  /** ISO-8601 datetime string, or null if not snoozed */
   snoozedUntil: string | null;
   cloneOnFire: boolean;
   status: ScheduleStatus;
+  /** ISO-8601 datetime string */
   dateCreated: string;
+  /** ISO-8601 datetime string */
   dateUpdated: string;
 };
 
@@ -20,16 +24,19 @@ export type ScheduleWithItem = Schedule & {
 export type ScheduleHistory = {
   id: string;
   scheduleId: string;
+  /** ISO-8601 datetime string */
   firedAt: string;
   action: "notified" | "task_created" | "snoozed" | "dismissed";
   createdItemId: string | null;
 };
 
+export type Weekday = "MO" | "TU" | "WE" | "TH" | "FR" | "SA" | "SU";
+
 /** UI-friendly recurrence pattern for building RRULE strings */
 export type RecurrencePattern = {
   freq: "daily" | "weekly" | "monthly" | "yearly";
   interval: number;
-  byDay?: string[];
+  byDay?: Weekday[];
   until?: string;
   count?: number;
 };
