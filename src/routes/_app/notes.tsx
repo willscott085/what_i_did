@@ -26,13 +26,7 @@ export const Route = createFileRoute("/_app/notes")({
 });
 
 function NotesView() {
-  const { setDefaultStartDate, setDefaultTagIds, handleOpenNoteDialog } =
-    useAppLayout();
-
-  useEffect(() => {
-    setDefaultStartDate(undefined);
-    setDefaultTagIds(undefined);
-  }, [setDefaultStartDate, setDefaultTagIds]);
+  const { handleOpenNoteDialog } = useAppLayout();
 
   const [page, setPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState("");

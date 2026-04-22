@@ -45,10 +45,18 @@ function AppLayout() {
     () => true,
     () => false,
   );
-  const { date: dateParam } = useParams({ strict: false });
+  const { date: dateParam, tagId } = useParams({ strict: false });
   const parsedDate = dateParam ? parseISO(dateParam) : null;
   const selectedDate =
     parsedDate && isValid(parsedDate) ? parsedDate : new Date();
+
+  // ─── Route-derived defaults (source of truth: URL) ─────────────
+  // Previously these were useState + useEffect(setX) in each child route,
+  // which raced against user interaction — clicks that opened the create
+  // dialog before the effect committed would read stale defaults.
+  const defaultStartDate = dateParam;
+  const defaultTagIds = tagId ? [tagId] : undefined;
+  const backLabel = tagId ? "Back" : null;
 
   function handleSelectDate(date: Date) {
     const dateStr = format(date, "yyyy-MM-dd");
@@ -93,19 +101,6 @@ function AppLayout() {
 
   // ─── Drag state ──────────────────────────────────────────────────
   const [dragOverDate, setDragOverDate] = useState<string | null>(null);
-
-  // ─── Default start date (child routes set this) ──────────────────
-  const [defaultStartDate, setDefaultStartDate] = useState<string | undefined>(
-    format(new Date(), "yyyy-MM-dd"),
-  );
-
-  // ─── Default tag IDs (child routes set this) ─────────────────────
-  const [defaultTagIds, setDefaultTagIds] = useState<string[] | undefined>(
-    undefined,
-  );
-
-  // ─── Back link (child routes set this) ────────────────────────────
-  const [backLabel, setBackLabel] = useState<string | null>(null);
 
   // ─── Dialog state ────────────────────────────────────────────────
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -193,21 +188,12 @@ function AppLayout() {
     () => ({
       dragOverDate,
       setDragOverDate,
-      defaultStartDate,
-      setDefaultStartDate,
-      defaultTagIds,
-      setDefaultTagIds,
-      backLabel,
-      setBackLabel,
       handleOpenDialog,
       handleOpenNoteDialog,
       handleOpenReminderDialog,
     }),
     [
       dragOverDate,
-      defaultStartDate,
-      defaultTagIds,
-      backLabel,
       handleOpenDialog,
       handleOpenNoteDialog,
       handleOpenReminderDialog,

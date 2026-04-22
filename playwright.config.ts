@@ -22,19 +22,9 @@ export default defineConfig({
       dependencies: ["seed-chromium"],
     },
     {
-      name: "seed-firefox",
-      testMatch: /global-setup\.ts/,
-      dependencies: ["chromium"],
-    },
-    {
-      name: "firefox",
-      use: { ...devices["Desktop Firefox"] },
-      dependencies: ["seed-firefox"],
-    },
-    {
       name: "seed-webkit",
       testMatch: /global-setup\.ts/,
-      dependencies: ["firefox"],
+      dependencies: ["chromium"],
     },
     {
       name: "webkit",

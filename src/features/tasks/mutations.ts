@@ -314,21 +314,29 @@ export const useCompleteTask = () => {
     onMutate: async ({ taskId, dateCompleted }) => {
       await queryClient.cancelQueries({ queryKey: tasksQueryKeys.all });
 
-      const inboxKey = fetchInboxTasksQueryOptions().queryKey;
-      const prev = queryClient.getQueryData<Task[]>(inboxKey);
-
-      if (prev) {
+      // Update every cached task list in place \u2014 don't re-sort. Keeping the
+      // row in its current slot avoids the clicked checkbox detaching from
+      // the DOM mid-interaction when onSettled triggers a refetch.
+      const snapshots: Array<[readonly unknown[], Task[]]> = [];
+      const caches = queryClient.getQueriesData<Task[]>({
+        queryKey: tasksQueryKeys.all,
+      });
+      for (const [key, list] of caches) {
+        if (!Array.isArray(list)) continue;
+        snapshots.push([key, list]);
         queryClient.setQueryData<Task[]>(
-          inboxKey,
-          prev.map((t) => (t.id === taskId ? { ...t, dateCompleted } : t)),
+          key,
+          list.map((t) => (t.id === taskId ? { ...t, dateCompleted } : t)),
         );
       }
 
-      return { prev, inboxKey };
+      return { snapshots };
     },
     onError: (_err, _vars, ctx) => {
-      if (ctx?.prev) {
-        queryClient.setQueryData(ctx.inboxKey, ctx.prev);
+      if (ctx?.snapshots) {
+        for (const [key, list] of ctx.snapshots) {
+          queryClient.setQueryData(key, list);
+        }
       }
     },
     onSettled: () => {

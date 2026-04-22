@@ -56,23 +56,10 @@ function TagView() {
   const { tagId } = Route.useParams();
   const {
     setDragOverDate,
-    setDefaultStartDate,
-    setDefaultTagIds,
-    setBackLabel,
     handleOpenDialog,
     handleOpenNoteDialog,
     handleOpenReminderDialog,
   } = useAppLayout();
-
-  useEffect(() => {
-    setDefaultStartDate(undefined);
-    setDefaultTagIds([tagId]);
-    setBackLabel("Back");
-    return () => {
-      setDefaultTagIds(undefined);
-      setBackLabel(null);
-    };
-  }, [setDefaultStartDate, setDefaultTagIds, setBackLabel, tagId]);
 
   const { data } = useQuery(fetchTasksByTagQueryOptions(tagId));
   const { data: tagNotes = [] } = useQuery(fetchNotesByTagQueryOptions(tagId));

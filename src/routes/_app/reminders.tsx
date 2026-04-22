@@ -1,7 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { PlusIcon } from "lucide-react";
-import { useEffect } from "react";
 import { isToday, isTomorrow, isThisWeek, isPast } from "date-fns";
 import { useAppLayout } from "~/components/AppLayoutContext";
 import { ReminderItem } from "~/components/ReminderItem";
@@ -77,13 +76,7 @@ const GROUP_ORDER: GroupKey[] = [
 ];
 
 function RemindersView() {
-  const { setDefaultStartDate, setDefaultTagIds, handleOpenReminderDialog } =
-    useAppLayout();
-
-  useEffect(() => {
-    setDefaultStartDate(undefined);
-    setDefaultTagIds(undefined);
-  }, [setDefaultStartDate, setDefaultTagIds]);
+  const { handleOpenReminderDialog } = useAppLayout();
 
   const { data: schedules = [] } = useQuery(schedulesQueryOptions());
   const { mutate: deleteSchedule } = useDeleteSchedule();

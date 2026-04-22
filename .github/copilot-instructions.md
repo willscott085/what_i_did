@@ -117,7 +117,7 @@ export const myFunction = createServerFn({ method: "GET" })
 
 - **Unit/Integration**: Vitest + React Testing Library, MSW for network mocking
 - Place unit tests next to the code under test or in `src/tests/`
-- **E2E**: Playwright (Chromium, Firefox, WebKit) — tests live in `e2e/`
+- **E2E**: Playwright (Chromium, WebKit) — tests live in `e2e/`
 - Run unit: `pnpm test`, E2E: `pnpm test:e2e`, E2E UI: `pnpm test:e2e:ui`
 - Do not use `.only` in tests; the linter will fail the build
 - Mock network requests with MSW where possible
