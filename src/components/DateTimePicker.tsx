@@ -114,10 +114,17 @@ function PickerBody({ id, mode, selectedDate, onChange }: PickerBodyProps) {
   const timeValue = selectedDate ? format(selectedDate, "HH:mm") : "";
 
   function commitDate(day: Date) {
-    const base = selectedDate ?? new Date();
     const next = new Date(day);
     if (mode === "datetime") {
-      next.setHours(base.getHours(), base.getMinutes(), 0, 0);
+      if (selectedDate) {
+        // Preserve the previously chosen time.
+        next.setHours(selectedDate.getHours(), selectedDate.getMinutes(), 0, 0);
+      } else {
+        // No prior selection — default to the top of the next hour so the
+        // time is predictable and in the future rather than "right now".
+        const defaultHour = (new Date().getHours() + 1) % 24;
+        next.setHours(defaultHour, 0, 0, 0);
+      }
     } else {
       next.setHours(0, 0, 0, 0);
     }
@@ -135,10 +142,14 @@ function PickerBody({ id, mode, selectedDate, onChange }: PickerBodyProps) {
     if (!timeStr) return;
     const [h, m] = timeStr.split(":").map(Number);
     if (Number.isNaN(h) || Number.isNaN(m)) return;
-    const base = selectedDate ?? new Date();
-    const next = new Date(base);
+    // When no date has been picked yet, anchor to today at midnight so the
+    // resulting value is `todayYYYY-MM-DDThh:mm` rather than inheriting the
+    // current wall-clock instant (which carries seconds/ms and feels random).
+    const next = selectedDate ? new Date(selectedDate) : new Date();
+    if (!selectedDate) next.setHours(0, 0, 0, 0);
     next.setHours(h, m, 0, 0);
     onChange(formatValue(next, mode));
+    setDateText(format(next, DATE_FORMAT));
   }
 
   return (

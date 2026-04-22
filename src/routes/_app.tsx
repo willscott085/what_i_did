@@ -69,8 +69,11 @@ function AppLayout() {
         navigate({ to: "/day/$date", params: { date: today } });
       }
 
-      // Always invalidate to refresh stale data
-      queryClient.invalidateQueries();
+      // Refresh only time-sensitive data. Tags, metadata, and other stable
+      // queries don't need to refetch on every focus.
+      for (const key of [["tasks"], ["notes"], ["schedules"]] as const) {
+        queryClient.invalidateQueries({ queryKey: key });
+      }
     }
 
     function handleVisibilityChange() {

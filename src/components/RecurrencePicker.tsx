@@ -24,7 +24,7 @@ const ALL_DAYS: { value: Weekday; label: string }[] = [
   { value: "MO", label: "M" },
   { value: "TU", label: "T" },
   { value: "WE", label: "W" },
-  { value: "TH", label: "T" },
+  { value: "TH", label: "R" },
   { value: "FR", label: "F" },
   { value: "SA", label: "S" },
   { value: "SU", label: "S" },

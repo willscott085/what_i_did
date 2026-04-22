@@ -8,10 +8,14 @@ import { formatDistanceToNow } from "date-fns";
 import { Button } from "~/components/ui/button";
 import { describeRRule } from "~/features/schedules/recurrence";
 import type { ScheduleWithItem } from "~/features/schedules/types";
-import { useNow } from "~/hooks/useNow";
 
 interface ReminderItemProps {
   schedule: ScheduleWithItem;
+  /**
+   * Current time, provided by the parent so a single ticking clock drives
+   * every visible reminder (see `useNow` in the parent view).
+   */
+  now: Date;
   onEdit?: (schedule: ScheduleWithItem) => void;
   onDelete?: (scheduleId: string) => void;
 }
@@ -23,10 +27,10 @@ function formatNextOccurrence(date: Date, now: Date): string {
 
 export function ReminderItem({
   schedule,
+  now,
   onEdit,
   onDelete,
 }: ReminderItemProps) {
-  const now = useNow(30_000);
   const effectiveTime = schedule.snoozedUntil ?? schedule.reminderTime;
   const effectiveDate = new Date(effectiveTime);
   const isOverdue = effectiveDate.getTime() <= now.getTime();
@@ -36,7 +40,7 @@ export function ReminderItem({
     <div className="group/reminder relative">
       <div className="flex min-w-0 items-start gap-2">
         {/* Icon */}
-        <div className="flex h-[30px] items-center">
+        <div className="flex h-7.5 items-center">
           {schedule.cloneOnFire ? (
             <ClipboardCheckIcon className="text-muted-foreground/50 size-5" />
           ) : (
@@ -47,7 +51,7 @@ export function ReminderItem({
         {/* Content */}
         <div className="relative flex min-w-0 grow flex-col">
           <div className="flex items-center gap-2">
-            <span className="flex h-[30px] min-w-0 flex-1 items-center truncate text-sm">
+            <span className="flex h-7.5 min-w-0 flex-1 items-center truncate text-sm">
               {schedule.itemTitle}
             </span>
           </div>
@@ -72,7 +76,7 @@ export function ReminderItem({
 
         {/* Actions */}
         {onEdit && (
-          <div className="flex h-[30px] items-center">
+          <div className="flex h-7.5 items-center">
             <Button
               variant="ghost"
               size="icon-sm"
@@ -85,7 +89,7 @@ export function ReminderItem({
           </div>
         )}
         {onDelete && (
-          <div className="flex h-[30px] items-center">
+          <div className="flex h-7.5 items-center">
             <Button
               variant="ghost"
               size="icon-sm"

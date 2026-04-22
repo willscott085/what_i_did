@@ -9,6 +9,7 @@ import { Button } from "~/components/ui/button";
 import { useDeleteSchedule } from "~/features/schedules/mutations";
 import { schedulesQueryOptions } from "~/features/schedules/queries";
 import type { ScheduleWithItem } from "~/features/schedules/types";
+import { useNow } from "~/hooks/useNow";
 
 export const Route = createFileRoute("/_app/reminders")({
   head: () => ({
@@ -38,7 +39,7 @@ function groupSchedules(
     const effectiveTime = s.snoozedUntil ?? s.reminderTime;
     const date = new Date(effectiveTime);
 
-    if (isPast(date)) {
+    if (isPast(date) && !isToday(date)) {
       groups.overdue.push(s);
     } else if (isToday(date)) {
       groups.today.push(s);
@@ -81,6 +82,10 @@ function RemindersView() {
 
   const { data: schedules = [] } = useQuery(schedulesQueryOptions());
   const { mutate: deleteSchedule } = useDeleteSchedule();
+
+  // One ticking clock for the whole view — passed down to every ReminderItem
+  // so we don't spin up a timer per row.
+  const now = useNow(30_000);
 
   const groups = groupSchedules(schedules);
 
@@ -133,6 +138,7 @@ function RemindersView() {
                       <ReminderItem
                         key={schedule.id}
                         schedule={schedule}
+                        now={now}
                         onEdit={handleEdit}
                         onDelete={handleDelete}
                       />

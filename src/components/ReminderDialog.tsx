@@ -107,6 +107,7 @@ function ReminderDialogForm({
       // Update event title/content
       await updateEvent({
         id: reminder.itemId,
+        title: title.trim(),
         content: content.trim() || null,
       });
 
