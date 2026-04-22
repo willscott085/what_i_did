@@ -51,6 +51,9 @@ export default defineConfig({
   optimizeDeps: {
     include: ["rrule"],
   },
+  ssr: {
+    noExternal: ["rrule"],
+  },
   test: {
     globals: true,
     environment: "jsdom",

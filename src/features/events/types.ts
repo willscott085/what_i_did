@@ -22,6 +22,7 @@ export type CreateEventInput = {
 
 export type UpdateEventInput = {
   id: string;
+  title?: string;
   /**
    * Event date in YYYY-MM-DD format when provided.
    * Use `null` to clear the date.

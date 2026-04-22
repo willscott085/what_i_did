@@ -12,6 +12,7 @@ import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { TagMultiSelect } from "~/components/TagMultiSelect";
 import { MarkdownEditor } from "~/components/MarkdownEditor";
+import { DateTimePicker } from "~/components/DateTimePicker";
 import {
   useCreateNote,
   useProcessNoteWithAI,
@@ -199,11 +200,12 @@ function NoteDialogForm({
                   </button>
                 )}
               </div>
-              <Input
+              <DateTimePicker
                 id="note-date"
-                type="date"
+                mode="date"
                 value={date}
-                onChange={(e) => setDate(e.target.value)}
+                onChange={setDate}
+                placeholder="No date"
               />
             </div>
 

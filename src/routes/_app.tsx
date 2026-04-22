@@ -12,14 +12,18 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   useSyncExternalStore,
 } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { AppLayoutProvider } from "~/components/AppLayoutContext";
 import { MiniCalendar } from "~/components/MiniCalendar";
 import { NoteDialog } from "~/components/NoteDialog";
+import { ReminderDialog } from "~/components/ReminderDialog";
 import { TaskDialog } from "~/components/TaskDialog";
 import { Note } from "~/features/notes/types";
+import type { ScheduleWithItem } from "~/features/schedules/types";
 import { Task } from "~/features/tasks/types";
 
 export const Route = createFileRoute("/_app")({
@@ -27,6 +31,7 @@ export const Route = createFileRoute("/_app")({
 });
 
 const navItems = [
+  { to: "/reminders", label: "Reminders" },
   { to: "/notes", label: "Notes" },
   { to: "/tags", label: "Tags" },
   { to: "/backlog", label: "Backlog" },
@@ -49,6 +54,42 @@ function AppLayout() {
     navigate({ to: "/day/$date", params: { date: dateStr } });
   }
 
+  // ─── Refresh on focus (PWA date-rollover + stale data) ───────────
+  const queryClient = useQueryClient();
+  const lastActiveDateRef = useRef(format(new Date(), "yyyy-MM-dd"));
+
+  useEffect(() => {
+    function handleFocus() {
+      const today = format(new Date(), "yyyy-MM-dd");
+      const wasDate = lastActiveDateRef.current;
+      lastActiveDateRef.current = today;
+
+      // If the date rolled over and we're on the old "today", navigate to the new today
+      if (wasDate !== today && dateParam === wasDate) {
+        navigate({ to: "/day/$date", params: { date: today } });
+      }
+
+      // Refresh only time-sensitive data. Tags, metadata, and other stable
+      // queries don't need to refetch on every focus.
+      for (const key of [["tasks"], ["notes"], ["schedules"]] as const) {
+        queryClient.invalidateQueries({ queryKey: key });
+      }
+    }
+
+    function handleVisibilityChange() {
+      if (document.visibilityState === "visible") handleFocus();
+    }
+
+    // `focus` catches desktop window/app switching; `visibilitychange` catches
+    // tab backgrounding and mobile PWA resume. Listen to both.
+    window.addEventListener("focus", handleFocus);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [dateParam, navigate, queryClient]);
+
   // ─── Drag state ──────────────────────────────────────────────────
   const [dragOverDate, setDragOverDate] = useState<string | null>(null);
 
@@ -70,6 +111,9 @@ function AppLayout() {
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [noteDialogOpen, setNoteDialogOpen] = useState(false);
   const [editingNote, setEditingNote] = useState<Note | null>(null);
+  const [reminderDialogOpen, setReminderDialogOpen] = useState(false);
+  const [editingReminder, setEditingReminder] =
+    useState<ScheduleWithItem | null>(null);
 
   const handleOpenDialog = useCallback((task?: Task | null) => {
     setNoteDialogOpen(false);
@@ -93,6 +137,23 @@ function AppLayout() {
   function handleNoteDialogClose(open: boolean) {
     setNoteDialogOpen(open);
     if (!open) setEditingNote(null);
+  }
+
+  const handleOpenReminderDialog = useCallback(
+    (reminder?: ScheduleWithItem | null) => {
+      setDialogOpen(false);
+      setEditingTask(null);
+      setNoteDialogOpen(false);
+      setEditingNote(null);
+      setEditingReminder(reminder ?? null);
+      setReminderDialogOpen(true);
+    },
+    [],
+  );
+
+  function handleReminderDialogClose(open: boolean) {
+    setReminderDialogOpen(open);
+    if (!open) setEditingReminder(null);
   }
 
   // ─── Keyboard shortcut: Cmd/Ctrl+N → toggle note drawer ────────
@@ -139,6 +200,7 @@ function AppLayout() {
       setBackLabel,
       handleOpenDialog,
       handleOpenNoteDialog,
+      handleOpenReminderDialog,
     }),
     [
       dragOverDate,
@@ -147,12 +209,17 @@ function AppLayout() {
       backLabel,
       handleOpenDialog,
       handleOpenNoteDialog,
+      handleOpenReminderDialog,
     ],
   );
 
   return (
     <AppLayoutProvider value={layoutCtx}>
-      <div className="flex h-screen" data-app-root data-hydrated={hydrated || undefined}>
+      <div
+        className="flex h-screen"
+        data-app-root
+        data-hydrated={hydrated || undefined}
+      >
         {/* Sidebar — hidden on mobile */}
         <aside className="border-border hidden w-60 shrink-0 border-r px-4 lg:block">
           <MiniCalendar
@@ -214,6 +281,12 @@ function AppLayout() {
           note={editingNote}
           defaultDate={defaultStartDate}
           defaultTagIds={defaultTagIds}
+        />
+
+        <ReminderDialog
+          open={reminderDialogOpen}
+          onOpenChange={handleReminderDialogClose}
+          reminder={editingReminder}
         />
 
         {/* Hot corner — fixed bottom-right note button */}
