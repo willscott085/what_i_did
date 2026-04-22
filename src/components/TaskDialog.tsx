@@ -12,6 +12,7 @@ import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { TagMultiSelect } from "~/components/TagMultiSelect";
 import { MarkdownEditor } from "~/components/MarkdownEditor";
+import { DateTimePicker } from "~/components/DateTimePicker";
 import { SubtaskList } from "~/components/SubtaskList";
 import {
   useCreateTask,
@@ -221,11 +222,12 @@ function TaskDialogForm({
                   </button>
                 )}
               </div>
-              <Input
+              <DateTimePicker
                 id="task-start-date"
-                type="date"
+                mode="date"
                 value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
+                onChange={setStartDate}
+                placeholder="No start date"
               />
             </div>
 

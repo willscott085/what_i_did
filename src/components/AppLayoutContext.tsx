@@ -1,5 +1,6 @@
 import { createContext, useContext } from "react";
 import { Note } from "~/features/notes/types";
+import type { ScheduleWithItem } from "~/features/schedules/types";
 import { Task } from "~/features/tasks/types";
 
 interface AppLayoutContextValue {
@@ -13,6 +14,7 @@ interface AppLayoutContextValue {
   setBackLabel: (label: string | null) => void;
   handleOpenDialog: (task?: Task | null) => void;
   handleOpenNoteDialog: (note?: Note | null) => void;
+  handleOpenReminderDialog: (reminder?: ScheduleWithItem | null) => void;
 }
 
 const AppLayoutContext = createContext<AppLayoutContextValue | null>(null);

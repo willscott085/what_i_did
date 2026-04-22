@@ -9,11 +9,9 @@ import { SNOOZE_DURATIONS, type SnoozeDuration } from "./consts";
 import { getNextOccurrence } from "./recurrence";
 import type { Schedule, ScheduleWithItem } from "./types";
 
-const isoDatetime = z
-  .string()
-  .refine((v) => !isNaN(Date.parse(v)), {
-    message: "Must be a valid ISO-8601 datetime",
-  });
+const isoDatetime = z.string().refine((v) => !isNaN(Date.parse(v)), {
+  message: "Must be a valid ISO-8601 datetime",
+});
 
 const rruleString = z.string().refine(
   (v) => {

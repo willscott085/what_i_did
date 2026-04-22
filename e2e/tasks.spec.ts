@@ -79,7 +79,10 @@ test.describe("Task Management", () => {
     await expect(dialog).toBeVisible();
 
     await dialog.getByLabel("Title").fill(taskName);
-    await dialog.getByLabel("Start Date").fill("2026-12-31");
+    // Open the date picker popover, type the date into its input, then close.
+    await dialog.getByLabel("Start Date").click();
+    await page.getByPlaceholder("YYYY-MM-DD").fill("2026-12-31");
+    await page.keyboard.press("Escape");
 
     await dialog.getByRole("button", { name: "Create" }).click();
     await expect(dialog).not.toBeVisible();

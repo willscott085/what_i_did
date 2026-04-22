@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as AppTagsRouteImport } from './routes/_app/tags'
+import { Route as AppRemindersRouteImport } from './routes/_app/reminders'
 import { Route as AppNotesRouteImport } from './routes/_app/notes'
 import { Route as AppBacklogRouteImport } from './routes/_app/backlog'
 import { Route as AppTagTagIdRouteImport } from './routes/_app/tag/$tagId'
@@ -29,6 +30,11 @@ const AppIndexRoute = AppIndexRouteImport.update({
 const AppTagsRoute = AppTagsRouteImport.update({
   id: '/tags',
   path: '/tags',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppRemindersRoute = AppRemindersRouteImport.update({
+  id: '/reminders',
+  path: '/reminders',
   getParentRoute: () => AppRoute,
 } as any)
 const AppNotesRoute = AppNotesRouteImport.update({
@@ -56,6 +62,7 @@ export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/backlog': typeof AppBacklogRoute
   '/notes': typeof AppNotesRoute
+  '/reminders': typeof AppRemindersRoute
   '/tags': typeof AppTagsRoute
   '/day/$date': typeof AppDayDateRoute
   '/tag/$tagId': typeof AppTagTagIdRoute
@@ -63,6 +70,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/backlog': typeof AppBacklogRoute
   '/notes': typeof AppNotesRoute
+  '/reminders': typeof AppRemindersRoute
   '/tags': typeof AppTagsRoute
   '/': typeof AppIndexRoute
   '/day/$date': typeof AppDayDateRoute
@@ -73,6 +81,7 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteWithChildren
   '/_app/backlog': typeof AppBacklogRoute
   '/_app/notes': typeof AppNotesRoute
+  '/_app/reminders': typeof AppRemindersRoute
   '/_app/tags': typeof AppTagsRoute
   '/_app/': typeof AppIndexRoute
   '/_app/day/$date': typeof AppDayDateRoute
@@ -84,16 +93,25 @@ export interface FileRouteTypes {
     | '/'
     | '/backlog'
     | '/notes'
+    | '/reminders'
     | '/tags'
     | '/day/$date'
     | '/tag/$tagId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/backlog' | '/notes' | '/tags' | '/' | '/day/$date' | '/tag/$tagId'
+  to:
+    | '/backlog'
+    | '/notes'
+    | '/reminders'
+    | '/tags'
+    | '/'
+    | '/day/$date'
+    | '/tag/$tagId'
   id:
     | '__root__'
     | '/_app'
     | '/_app/backlog'
     | '/_app/notes'
+    | '/_app/reminders'
     | '/_app/tags'
     | '/_app/'
     | '/_app/day/$date'
@@ -125,6 +143,13 @@ declare module '@tanstack/react-router' {
       path: '/tags'
       fullPath: '/tags'
       preLoaderRoute: typeof AppTagsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/reminders': {
+      id: '/_app/reminders'
+      path: '/reminders'
+      fullPath: '/reminders'
+      preLoaderRoute: typeof AppRemindersRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/notes': {
@@ -161,6 +186,7 @@ declare module '@tanstack/react-router' {
 interface AppRouteChildren {
   AppBacklogRoute: typeof AppBacklogRoute
   AppNotesRoute: typeof AppNotesRoute
+  AppRemindersRoute: typeof AppRemindersRoute
   AppTagsRoute: typeof AppTagsRoute
   AppIndexRoute: typeof AppIndexRoute
   AppDayDateRoute: typeof AppDayDateRoute
@@ -170,6 +196,7 @@ interface AppRouteChildren {
 const AppRouteChildren: AppRouteChildren = {
   AppBacklogRoute: AppBacklogRoute,
   AppNotesRoute: AppNotesRoute,
+  AppRemindersRoute: AppRemindersRoute,
   AppTagsRoute: AppTagsRoute,
   AppIndexRoute: AppIndexRoute,
   AppDayDateRoute: AppDayDateRoute,
