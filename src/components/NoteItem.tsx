@@ -3,6 +3,7 @@ import { clsx } from "clsx";
 import {
   ChevronDownIcon,
   ChevronRightIcon,
+  BellIcon,
   GripVertical,
   PencilIcon,
   StickyNoteIcon,
@@ -26,6 +27,7 @@ interface NoteItemProps {
   onEdit?: (note: Note) => void;
   onDelete?: (noteId: string) => void;
   hideTags?: boolean;
+  hasReminder?: boolean;
   dragAttributes?: React.HTMLAttributes<HTMLButtonElement>;
   dragListeners?: React.HTMLAttributes<HTMLButtonElement>;
 }
@@ -36,6 +38,7 @@ export function NoteItem({
   onEdit,
   onDelete,
   hideTags,
+  hasReminder,
   dragAttributes = {},
   dragListeners = {},
 }: NoteItemProps) {
@@ -90,6 +93,12 @@ export function NoteItem({
                   <NoteTagBadge key={tag.id} tag={tag} />
                 ))}
               </div>
+            )}
+            {hasReminder && (
+              <BellIcon
+                className="text-muted-foreground/60 size-3.5 shrink-0"
+                aria-label="Has reminder"
+              />
             )}
             {hasTitle ? (
               <span

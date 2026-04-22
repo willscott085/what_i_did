@@ -5,6 +5,7 @@ import { clsx } from "clsx";
 import {
   ChevronDownIcon,
   ChevronRightIcon,
+  BellIcon,
   GripVertical,
   PencilIcon,
   SquareIcon,
@@ -45,6 +46,7 @@ interface TaskItemProps {
   onDelete?: (taskId: string) => void;
   hideTags?: boolean;
   hideEmptyNotes?: boolean;
+  hasReminder?: boolean;
   dragAttributes?: React.HTMLAttributes<HTMLButtonElement>;
   dragListeners?: React.HTMLAttributes<HTMLButtonElement>;
 }
@@ -57,6 +59,7 @@ export function TaskItem({
   onDelete,
   hideTags,
   hideEmptyNotes,
+  hasReminder,
   dragAttributes = {},
   dragListeners = {},
 }: TaskItemProps) {
@@ -198,6 +201,12 @@ export function TaskItem({
                         <TruncatedTagBadge key={tag.id} tag={tag} />
                       ))}
                     </div>
+                  )}
+                  {hasReminder && (
+                    <BellIcon
+                      className="text-muted-foreground/60 size-3.5 shrink-0"
+                      aria-label="Has reminder"
+                    />
                   )}
                   <Input
                     type="text"

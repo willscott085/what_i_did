@@ -136,8 +136,10 @@ export const myFunction = createServerFn({ method: "GET" })
 
 - All data mutations go through server functions — never call the DB from client code
 - Use Zod for input validation on all server functions
+- **Multi-user ready** — every table has a `userId` column and auth lands in Phase 10. Today the client passes `DEFAULT_USER_ID = '1'` (see each feature's `consts.ts`), but server functions MUST accept `userId` via their Zod input and filter every read/write by it (join through `items.userId` where the table itself doesn't carry one, e.g. `schedules`, `itemTags`). Never hardcode `'1'` inside `server.ts` — it breaks the moment Phase 10 swaps the source of truth for the current user.
 - React Query keys follow the pattern: `{ all: [domain], byType: [domain, type], byId: [domain, id] }`
 - Optimistic updates are the default for mutations affecting UI state
 - Components that need hydration-awareness use `useEffect` state guard
 - Drag-and-drop components use dnd-kit with `useSortable` hook per item
+- **Finishing a (sub)phase** — when you complete a phase or sub-phase from `.github/PLAN.md`, the reply that announces completion MUST include a "How to test" section alongside the summary of changes. Cover: setup (seed / route to open), numbered user actions, expected results, and any cleanup. Keep it scoped to the delta introduced by the phase.
 - **PWA**: The app is a Progressive Web App — `vite-plugin-pwa` generates a Workbox service worker at build time that precaches static assets. The `ReloadPrompt` component in `src/components/ReloadPrompt.tsx` handles SW registration and shows an update prompt when a new version is deployed. SW is disabled in dev mode (`devOptions.enabled: false`). The build script copies `sw.js` and workbox files to `.output/public/` for Nitro compatibility

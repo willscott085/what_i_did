@@ -2,6 +2,17 @@
 
 > **How to use this file**: This plan drives iterative development. Each phase is implemented one at a time, committed in small batches. AI assistants should read this file at the start of every session to understand current state. Update the status checkboxes and notes as work progresses.
 
+### Finishing a (sub)phase
+
+At the end of every phase or sub-phase, the assistant's reply must include a **"How to test"** section alongside the summary of changes. This lets the user manually verify the new functionality before the next phase starts. Each section should contain:
+
+- **Setup** — any prerequisite steps (e.g. `pnpm db:seed`, visiting a route, enabling a flag).
+- **Steps to verify** — a numbered list of concrete user actions (click X, type Y, expect Z).
+- **Expected results** — what the user should see / what state should persist.
+- **Cleanup (if any)** — how to undo demo data so the next phase starts clean.
+
+Keep it short and focused on the delta introduced by the phase — don't re-describe existing behavior.
+
 ## Key Decisions
 
 | Decision        | Choice                                                     | Rationale                                                                                                                                                                                                            |
@@ -773,27 +784,27 @@ The app has a small dataset, the schema is young, and we're about to add a third
 
 > Add snooze/dismiss actions to reminders, the "Past" view, and integration with the tag page. This builds on the CRUD from 9C to add schedule lifecycle management.
 
-- [ ] Build `src/components/SnoozeMenu.tsx` — dropdown with preset options:
+- [x] Build `src/components/SnoozeMenu.tsx` — dropdown with preset options:
   - 5 min, 15 min, 1 hour, Tomorrow 9am
   - Calls `snoozeSchedule` mutation
-- [ ] Update `src/components/ReminderItem.tsx`:
+- [x] Update `src/components/ReminderItem.tsx`:
   - Add Snooze dropdown (SnoozeMenu component)
   - Add Dismiss/Complete action (one-off → dismiss, recurring → advance)
   - Show snoozed state ("Snoozed until 3:30pm")
-- [ ] Update `/reminders` route — add Past section:
+- [x] Update `/reminders` route — add Past section:
   - Paginated history from `scheduleHistory`, ordered by firedAt DESC
   - Shows action taken (notified, task_created, snoozed, dismissed)
   - Links to created tasks when action was `task_created`
-- [ ] Update `src/routes/_app/tag/$tagId.tsx`:
+- [x] Update `src/routes/_app/tag/$tagId.tsx`:
   - Events with schedules render using `ReminderItem`
   - Items with schedules (tasks/notes) show a small bell indicator
-- [ ] E2E test: `e2e/reminders.spec.ts`:
+- [x] E2E test: `e2e/reminders.spec.ts`:
   - Create a one-off reminder, verify it appears in upcoming
   - Create a recurring reminder, verify recurrence description
   - Snooze a reminder, verify state change
   - Dismiss a reminder, verify it moves to past
   - Navigate to /reminders from nav
-- [ ] **Verify**: `pnpm typecheck`, `pnpm test`, `pnpm test:e2e` all pass
+- [x] **Verify**: `pnpm typecheck`, `pnpm test`, `pnpm test:e2e` all pass
 
 #### Outputs
 

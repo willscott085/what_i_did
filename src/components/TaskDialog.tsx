@@ -193,7 +193,7 @@ function TaskDialogForm({
 
       <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
         <div className="scrollbar-hide flex flex-1 flex-col justify-center overflow-x-hidden overflow-y-auto">
-          <div className="space-y-4 pb-6">
+          <div className="space-y-4 pb-16">
             {/* Title */}
             <div className="space-y-1.5 px-4">
               <Label htmlFor="task-title">Title</Label>

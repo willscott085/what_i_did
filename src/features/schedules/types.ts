@@ -26,8 +26,15 @@ export type ScheduleHistory = {
   scheduleId: string;
   /** ISO-8601 datetime string */
   firedAt: string;
-  action: "notified" | "task_created" | "snoozed" | "dismissed";
+  action: "task_created" | "dismissed";
   createdItemId: string | null;
+};
+
+export type ScheduleHistoryEntry = ScheduleHistory & {
+  /** Title of the item the schedule is (or was) attached to. */
+  itemTitle: string | null;
+  /** Title of the cloned task item, if any. */
+  createdItemTitle: string | null;
 };
 
 export type Weekday = "MO" | "TU" | "WE" | "TH" | "FR" | "SA" | "SU";

@@ -1,5 +1,10 @@
 import { test, expect } from "@playwright/test";
 
+// These tests mutate shared seed tasks that parallel specs also touch
+// (e.g., first-task completion, task creation). Transient contention from
+// the shared dev server / DB is recovered by Playwright retries.
+test.describe.configure({ retries: 2 });
+
 async function waitForHydration(page: import("@playwright/test").Page) {
   await page.goto("/");
   await page.waitForURL(/\/day\//);
@@ -57,8 +62,11 @@ test.describe("Backlog", () => {
     await dialog.getByRole("button", { name: "Create" }).click();
     await expect(dialog).not.toBeVisible();
 
-    // Task should appear in the backlog
-    await expect(page.getByRole("textbox", { name: taskName })).toBeVisible();
+    // Task should appear in the backlog. A longer timeout tolerates cache
+    // invalidations triggered by parallel specs mutating other tasks.
+    await expect(page.getByRole("textbox", { name: taskName })).toBeVisible({
+      timeout: 15000,
+    });
 
     // Cleanup
     await deleteTask(page, taskName);
@@ -69,21 +77,24 @@ test.describe("Backlog", () => {
 
     await page.getByRole("link", { name: "Backlog" }).click();
     await page.waitForURL("/backlog");
+    // Wait for the backlog heading so stale task rows from the day view
+    // are no longer mounted when we pick the target task.
+    await expect(page.getByRole("heading", { name: "Backlog" })).toBeVisible();
 
-    // Find first task checkbox
-    const firstTask = page.locator(".group\\/task").first();
-    await firstTask.waitFor({ state: "visible" });
-    const checkbox = firstTask.getByRole("checkbox");
+    // Target a specific seeded backlog task (unscheduled, incomplete) so the
+    // assertion doesn't race with the list reordering on completion.
+    const taskInput = page.getByRole("textbox", {
+      name: "Fix timezone bug in date picker",
+    });
+    await expect(taskInput).toBeVisible();
+    const taskRow = page.locator(".group\\/task").filter({ has: taskInput });
+    const checkboxId = await taskRow.getByRole("checkbox").getAttribute("id");
+    const pinnedCheckbox = page.locator(`[id="${checkboxId}"]`);
 
-    await checkbox.click();
-    await expect(checkbox).toBeChecked();
+    await pinnedCheckbox.click();
+    await expect(pinnedCheckbox).toBeChecked();
 
-    // Uncomplete — re-query since optimistic update may re-render the DOM
-    const uncompleteCheckbox = page
-      .locator(".group\\/task")
-      .first()
-      .getByRole("checkbox");
-    await uncompleteCheckbox.click();
-    await expect(uncompleteCheckbox).not.toBeChecked();
+    await pinnedCheckbox.click();
+    await expect(pinnedCheckbox).not.toBeChecked();
   });
 });

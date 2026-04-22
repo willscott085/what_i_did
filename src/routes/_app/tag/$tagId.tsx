@@ -1,15 +1,25 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { PlusIcon, Trash2Icon } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useAppLayout } from "~/components/AppLayoutContext";
 import { DraggableList } from "~/components/DraggableTaskList";
 import { NoteItem } from "~/components/NoteItem";
+import { ReminderItem } from "~/components/ReminderItem";
 import { TaskItem } from "~/components/TaskItem";
 import { Button } from "~/components/ui/button";
+import { fetchEventsByTagQueryOptions } from "~/features/events/queries";
 import { useDeleteNote, useUpdateNote } from "~/features/notes/mutations";
 import { fetchNotesByTagQueryOptions } from "~/features/notes/queries";
 import { Note } from "~/features/notes/types";
+import type { SnoozeDuration } from "~/features/schedules/consts";
+import {
+  useDeleteSchedule,
+  useDismissSchedule,
+  useSnoozeSchedule,
+} from "~/features/schedules/mutations";
+import { schedulesQueryOptions } from "~/features/schedules/queries";
+import type { ScheduleWithItem } from "~/features/schedules/types";
 import { useDeleteTag, useUpdateTag } from "~/features/tags/mutations";
 import {
   useDeleteTask,
@@ -18,6 +28,7 @@ import {
 } from "~/features/tasks/mutations";
 import { fetchTasksByTagQueryOptions } from "~/features/tasks/queries";
 import { Task } from "~/features/tasks/types";
+import { useNow } from "~/hooks/useNow";
 
 export const Route = createFileRoute("/_app/tag/$tagId")({
   head: () => ({
@@ -31,6 +42,10 @@ export const Route = createFileRoute("/_app/tag/$tagId")({
       context.queryClient.ensureQueryData(
         fetchNotesByTagQueryOptions(params.tagId),
       ),
+      context.queryClient.ensureQueryData(
+        fetchEventsByTagQueryOptions(params.tagId),
+      ),
+      context.queryClient.ensureQueryData(schedulesQueryOptions()),
     ]);
     return null;
   },
@@ -46,6 +61,7 @@ function TagView() {
     setBackLabel,
     handleOpenDialog,
     handleOpenNoteDialog,
+    handleOpenReminderDialog,
   } = useAppLayout();
 
   useEffect(() => {
@@ -60,9 +76,36 @@ function TagView() {
 
   const { data } = useQuery(fetchTasksByTagQueryOptions(tagId));
   const { data: tagNotes = [] } = useQuery(fetchNotesByTagQueryOptions(tagId));
+  const { data: tagEvents = [] } = useQuery(
+    fetchEventsByTagQueryOptions(tagId),
+  );
+  const { data: allSchedules = [] } = useQuery(schedulesQueryOptions());
   const tagName = data?.tag?.name ?? "Tag";
   const tagDescription = data?.tag?.description ?? null;
   const tasks = data?.tasks ?? [];
+
+  // Index schedules by the item they attach to so we can render a bell on
+  // tasks/notes and pull ScheduleWithItem records for events in this tag.
+  const schedulesByItem = useMemo(() => {
+    const map = new Map<string, ScheduleWithItem[]>();
+    for (const s of allSchedules) {
+      const list = map.get(s.itemId) ?? [];
+      list.push(s);
+      map.set(s.itemId, list);
+    }
+    return map;
+  }, [allSchedules]);
+
+  const eventReminders = useMemo(() => {
+    const result: ScheduleWithItem[] = [];
+    for (const event of tagEvents) {
+      const schedules = schedulesByItem.get(event.id);
+      if (schedules) result.push(...schedules);
+    }
+    return result;
+  }, [tagEvents, schedulesByItem]);
+
+  const now = useNow(30_000);
 
   const { mutate: updateTask } = useMutation(
     useUpdateTaskMutationOptions({ onError: () => {} }),
@@ -73,9 +116,13 @@ function TagView() {
   const { mutate: deleteNoteMutation } = useDeleteNote();
   const { mutate: updateNoteMutation } = useUpdateNote();
   const { mutate: deleteTagMutation } = useDeleteTag();
+  const { mutate: deleteScheduleMutation } = useDeleteSchedule();
+  const { mutate: snoozeScheduleMutation } = useSnoozeSchedule();
+  const { mutate: dismissScheduleMutation } = useDismissSchedule();
   const navigate = useNavigate();
 
-  const hasNoAssociations = tasks.length === 0 && tagNotes.length === 0;
+  const hasNoAssociations =
+    tasks.length === 0 && tagNotes.length === 0 && eventReminders.length === 0;
 
   // ─── Inline title editing ─────────────────────────────────────────
   const [editingTitle, setEditingTitle] = useState(false);
@@ -154,6 +201,22 @@ function TagView() {
 
   function handleNoteDropOnDate(noteId: string, date: string) {
     updateNoteMutation({ id: noteId, date });
+  }
+
+  function handleEditReminder(schedule: ScheduleWithItem) {
+    handleOpenReminderDialog(schedule);
+  }
+
+  function handleDeleteReminder(scheduleId: string) {
+    deleteScheduleMutation(scheduleId);
+  }
+
+  function handleSnoozeReminder(scheduleId: string, duration: SnoozeDuration) {
+    snoozeScheduleMutation({ scheduleId, duration });
+  }
+
+  function handleDismissReminder(schedule: ScheduleWithItem) {
+    dismissScheduleMutation(schedule.id);
   }
 
   return (
@@ -263,6 +326,7 @@ function TagView() {
                 dragListeners={dragListeners}
                 hideTags
                 hideEmptyNotes
+                hasReminder={schedulesByItem.has(task.id)}
               />
             )}
           </DraggableList>
@@ -296,10 +360,34 @@ function TagView() {
                   dragAttributes={dragAttributes}
                   dragListeners={dragListeners}
                   hideTags
+                  hasReminder={schedulesByItem.has(note.id)}
                 />
               )}
             </DraggableList>
           </div>
+        )}
+
+        {eventReminders.length > 0 && (
+          <>
+            {(tasks.length > 0 || tagNotes.length > 0) && (
+              <div className="text-muted-foreground/20 py-1 pl-8 tracking-[0.3em] select-none">
+                ·······························································
+              </div>
+            )}
+            <div className="pl-8">
+              {eventReminders.map((schedule) => (
+                <ReminderItem
+                  key={schedule.id}
+                  schedule={schedule}
+                  now={now}
+                  onEdit={handleEditReminder}
+                  onDelete={handleDeleteReminder}
+                  onSnooze={handleSnoozeReminder}
+                  onDismiss={handleDismissReminder}
+                />
+              ))}
+            </div>
+          </>
         )}
 
         {hasNoAssociations && (
