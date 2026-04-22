@@ -646,7 +646,12 @@ export const fetchScheduleHistory = createServerFn({ method: "GET" })
         createdItems,
         eq(createdItems.id, scheduleHistory.createdItemId),
       )
-      .where(eq(items.userId, data.userId))
+      .where(
+        and(
+          eq(items.userId, data.userId),
+          inArray(scheduleHistory.action, ["task_created", "dismissed"]),
+        ),
+      )
       .orderBy(desc(scheduleHistory.firedAt))
       .limit(data.limit)
       .offset(data.offset);

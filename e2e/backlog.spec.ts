@@ -1,10 +1,5 @@
 import { test, expect } from "@playwright/test";
 
-// These tests mutate shared seed tasks that parallel specs also touch
-// (e.g., first-task completion, task creation). Transient contention from
-// the shared dev server / DB is recovered by Playwright retries.
-test.describe.configure({ retries: 2 });
-
 async function waitForHydration(page: import("@playwright/test").Page) {
   await page.goto("/");
   await page.waitForURL(/\/day\//);
@@ -22,27 +17,35 @@ async function deleteTask(
   await expect(taskInput).not.toBeVisible();
 }
 
+async function createBacklogTask(
+  page: import("@playwright/test").Page,
+  taskName: string,
+) {
+  await page.getByRole("button", { name: "Add task" }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toBeVisible();
+  await dialog.getByLabel("Title").fill(taskName);
+  await dialog.getByRole("button", { name: "Create" }).click();
+  await expect(dialog).not.toBeVisible();
+  await expect(page.getByRole("textbox", { name: taskName })).toBeVisible();
+}
+
 test.describe("Backlog", () => {
   test("should navigate to backlog and display tasks", async ({ page }) => {
     await waitForHydration(page);
 
+    // Create a dedicated backlog task so the assertion doesn't depend on
+    // seed data that other specs may mutate or delete.
     await page.getByRole("link", { name: "Backlog" }).click();
     await page.waitForURL("/backlog");
 
-    // Wait for backlog tasks to load
-    await page.locator(".group\\/task").first().waitFor({ state: "visible" });
+    const taskName = `Backlog display ${Date.now()}`;
+    await createBacklogTask(page, taskName);
 
-    // Backlog contains tasks without a start date (unscheduled, incomplete)
-    // From seed: tsk_003, tsk_004, tsk_006, tsk_008, tsk_010 have no startDate
-    await expect(
-      page.getByRole("textbox", { name: "Write unit tests for task utils" }),
-    ).toBeVisible();
-    await expect(
-      page.getByRole("textbox", { name: "Update README deployment section" }),
-    ).toBeVisible();
-    await expect(
-      page.getByRole("textbox", { name: "Fix timezone bug in date picker" }),
-    ).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Backlog" })).toBeVisible();
+    await expect(page.getByRole("textbox", { name: taskName })).toBeVisible();
+
+    await deleteTask(page, taskName);
   });
 
   test("should create a task from backlog", async ({ page }) => {
@@ -52,23 +55,8 @@ test.describe("Backlog", () => {
     await page.waitForURL("/backlog");
 
     const taskName = `Backlog task ${Date.now()}`;
+    await createBacklogTask(page, taskName);
 
-    // Open create dialog
-    await page.getByRole("button", { name: "Add task" }).click();
-    const dialog = page.getByRole("dialog");
-    await expect(dialog).toBeVisible();
-
-    await dialog.getByLabel("Title").fill(taskName);
-    await dialog.getByRole("button", { name: "Create" }).click();
-    await expect(dialog).not.toBeVisible();
-
-    // Task should appear in the backlog. A longer timeout tolerates cache
-    // invalidations triggered by parallel specs mutating other tasks.
-    await expect(page.getByRole("textbox", { name: taskName })).toBeVisible({
-      timeout: 15000,
-    });
-
-    // Cleanup
     await deleteTask(page, taskName);
   });
 
@@ -77,16 +65,14 @@ test.describe("Backlog", () => {
 
     await page.getByRole("link", { name: "Backlog" }).click();
     await page.waitForURL("/backlog");
-    // Wait for the backlog heading so stale task rows from the day view
-    // are no longer mounted when we pick the target task.
     await expect(page.getByRole("heading", { name: "Backlog" })).toBeVisible();
 
-    // Target a specific seeded backlog task (unscheduled, incomplete) so the
-    // assertion doesn't race with the list reordering on completion.
-    const taskInput = page.getByRole("textbox", {
-      name: "Fix timezone bug in date picker",
-    });
-    await expect(taskInput).toBeVisible();
+    // Create a dedicated target task to avoid racing list reorders caused
+    // by other specs mutating seed tasks.
+    const taskName = `Backlog complete ${Date.now()}`;
+    await createBacklogTask(page, taskName);
+
+    const taskInput = page.getByRole("textbox", { name: taskName });
     const taskRow = page.locator(".group\\/task").filter({ has: taskInput });
     const checkboxId = await taskRow.getByRole("checkbox").getAttribute("id");
     const pinnedCheckbox = page.locator(`[id="${checkboxId}"]`);
@@ -96,5 +82,7 @@ test.describe("Backlog", () => {
 
     await pinnedCheckbox.click();
     await expect(pinnedCheckbox).not.toBeChecked();
+
+    await deleteTask(page, taskName);
   });
 });
