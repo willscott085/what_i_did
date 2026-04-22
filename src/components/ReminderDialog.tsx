@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
 import {
   Drawer,
   DrawerContent,
@@ -15,10 +14,11 @@ import { Textarea } from "~/components/ui/textarea";
 import { TagMultiSelect } from "~/components/TagMultiSelect";
 import { RecurrencePicker } from "~/components/RecurrencePicker";
 import { DateTimePicker } from "~/components/DateTimePicker";
-import { useCreateEventWithSchedule } from "~/features/schedules/mutations";
+import {
+  useCreateEventWithSchedule,
+  useUpdateSchedule,
+} from "~/features/schedules/mutations";
 import { useUpdateEvent } from "~/features/events/mutations";
-import { useUpdateSchedule } from "~/features/schedules/mutations";
-import { schedulesForItemQueryOptions } from "~/features/schedules/queries";
 import type { ScheduleWithItem } from "~/features/schedules/types";
 
 interface ReminderDialogProps {
@@ -62,29 +62,23 @@ function ReminderDialogForm({
 }) {
   const isEditing = !!reminder;
 
-  // For editing, fetch the schedule's existing data
-  const { data: existingSchedules } = useQuery({
-    ...schedulesForItemQueryOptions(reminder?.itemId ?? ""),
-    enabled: isEditing && !!reminder?.itemId,
-  });
-  const existingSchedule = existingSchedules?.[0] ?? reminder;
-
+  // `reminder` (a ScheduleWithItem) already carries every field we need to
+  // prefill the form. The reminders list query is invalidated after any
+  // mutation, so this prop is fresh — no secondary fetch required.
   const [title, setTitle] = useState(reminder?.itemTitle ?? "");
   const [content, setContent] = useState("");
   const [reminderTime, setReminderTime] = useState(() => {
-    if (existingSchedule?.reminderTime) {
-      return toLocalDatetimeValue(existingSchedule.reminderTime);
+    if (reminder?.reminderTime) {
+      return toLocalDatetimeValue(reminder.reminderTime);
     }
     // Default to next hour
     const d = new Date();
     d.setHours(d.getHours() + 1, 0, 0, 0);
     return toLocalDatetimeValue(d.toISOString());
   });
-  const [rrule, setRrule] = useState<string | null>(
-    existingSchedule?.rrule ?? null,
-  );
+  const [rrule, setRrule] = useState<string | null>(reminder?.rrule ?? null);
   const [cloneOnFire, setCloneOnFire] = useState(
-    existingSchedule?.cloneOnFire ?? false,
+    reminder?.cloneOnFire ?? false,
   );
   const [tagIds, setTagIds] = useState<string[]>([]);
 
@@ -103,7 +97,7 @@ function ReminderDialogForm({
 
     const isoTime = new Date(reminderTime).toISOString();
 
-    if (isEditing && reminder && existingSchedule) {
+    if (isEditing && reminder) {
       // Update event title/content
       await updateEvent({
         id: reminder.itemId,
@@ -113,7 +107,7 @@ function ReminderDialogForm({
 
       // Update schedule
       await updateSchedule({
-        id: existingSchedule.id,
+        id: reminder.id,
         reminderTime: isoTime,
         rrule: rrule ?? null,
         cloneOnFire,

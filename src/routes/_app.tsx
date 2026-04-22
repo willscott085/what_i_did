@@ -23,6 +23,7 @@ import { NoteDialog } from "~/components/NoteDialog";
 import { ReminderDialog } from "~/components/ReminderDialog";
 import { TaskDialog } from "~/components/TaskDialog";
 import { Note } from "~/features/notes/types";
+import { TIME_SENSITIVE_QUERY_KEYS } from "~/features/queryKeys";
 import type { ScheduleWithItem } from "~/features/schedules/types";
 import { Task } from "~/features/tasks/types";
 
@@ -69,9 +70,9 @@ function AppLayout() {
         navigate({ to: "/day/$date", params: { date: today } });
       }
 
-      // Refresh only time-sensitive data. Tags, metadata, and other stable
-      // queries don't need to refetch on every focus.
-      for (const key of [["tasks"], ["notes"], ["schedules"]] as const) {
+      // Refresh only time-sensitive data. See `TIME_SENSITIVE_QUERY_KEYS`
+      // for the registered list — add new feature keys there, not here.
+      for (const key of TIME_SENSITIVE_QUERY_KEYS) {
         queryClient.invalidateQueries({ queryKey: key });
       }
     }

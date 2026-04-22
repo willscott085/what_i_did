@@ -20,14 +20,14 @@ interface RecurrencePickerProps {
   onChange: (rrule: string | null) => void;
 }
 
-const ALL_DAYS: { value: Weekday; label: string }[] = [
-  { value: "MO", label: "M" },
-  { value: "TU", label: "T" },
-  { value: "WE", label: "W" },
-  { value: "TH", label: "R" },
-  { value: "FR", label: "F" },
-  { value: "SA", label: "S" },
-  { value: "SU", label: "S" },
+const ALL_DAYS: { value: Weekday; label: string; name: string }[] = [
+  { value: "MO", label: "M", name: "Monday" },
+  { value: "TU", label: "T", name: "Tuesday" },
+  { value: "WE", label: "W", name: "Wednesday" },
+  { value: "TH", label: "T", name: "Thursday" },
+  { value: "FR", label: "F", name: "Friday" },
+  { value: "SA", label: "S", name: "Saturday" },
+  { value: "SU", label: "S", name: "Sunday" },
 ];
 
 function rruleToPreset(rrule: string | null): Preset {
@@ -178,6 +178,9 @@ export function RecurrencePicker({ value, onChange }: RecurrencePickerProps) {
                   <button
                     key={day.value}
                     type="button"
+                    aria-label={day.name}
+                    aria-pressed={selected}
+                    title={day.name}
                     onClick={() => {
                       const current = pattern.byDay ?? [];
                       const next = selected

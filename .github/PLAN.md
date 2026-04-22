@@ -39,7 +39,7 @@
 
 Before merging a new feature, walk through this checklist:
 
-- **Focus-refresh invalidation** — [`src/routes/_app.tsx`](../src/routes/_app.tsx) invalidates a hardcoded list of time-sensitive query-key prefixes (`['tasks']`, `['notes']`, `['schedules']`) on window focus and visibility change. If your feature introduces a new top-level query key whose data goes stale with time (date rollover, relative timestamps, scheduled state) add it to that list. Don't add stable/reference data (tags, user settings) — it wastes network on every refocus.
+- **Focus-refresh invalidation** — [`src/routes/_app.tsx`](../src/routes/_app.tsx) invalidates the query-key prefixes listed in [`TIME_SENSITIVE_QUERY_KEYS`](../src/features/queryKeys.ts) on window focus and visibility change. If your feature introduces a new top-level query key whose data goes stale with time (date rollover, relative timestamps, scheduled state) add your feature's `*QueryKeys.all` to that registry. Don't add stable/reference data (tags, user settings) — it wastes network on every refocus.
 - **Time-sensitive UI** — components that render relative time strings (`"in 2 minutes"`, `"Overdue"`) must subscribe to [`useNow`](../src/hooks/useNow.ts) or they will show stale text until the next query invalidation.
 - **Query keys** — put new keys in `src/features/{domain}/consts.ts` following the existing `{ all, byId, byX }` shape so prefix-based invalidation keeps working.
 - **Server functions** — Zod input validation, `userId` filter on every query, no DB access outside `*/server.ts`.

@@ -120,10 +120,19 @@ function PickerBody({ id, mode, selectedDate, onChange }: PickerBodyProps) {
         // Preserve the previously chosen time.
         next.setHours(selectedDate.getHours(), selectedDate.getMinutes(), 0, 0);
       } else {
-        // No prior selection — default to the top of the next hour so the
-        // time is predictable and in the future rather than "right now".
-        const defaultHour = (new Date().getHours() + 1) % 24;
-        next.setHours(defaultHour, 0, 0, 0);
+        // No prior selection — pick a sensible default time-of-day.
+        // For today/future: top of the next hour (predictable, in the future).
+        // For past dates: noon (a neutral mid-day anchor; "next hour from now"
+        // would combine a past date with a future-ish time, which is confusing).
+        const now = new Date();
+        const todayMidnight = new Date(now);
+        todayMidnight.setHours(0, 0, 0, 0);
+        const isPast = next.getTime() < todayMidnight.getTime();
+        if (isPast) {
+          next.setHours(12, 0, 0, 0);
+        } else {
+          next.setHours((now.getHours() + 1) % 24, 0, 0, 0);
+        }
       }
     } else {
       next.setHours(0, 0, 0, 0);
