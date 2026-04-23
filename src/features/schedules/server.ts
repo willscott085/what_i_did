@@ -581,41 +581,33 @@ export const subscribePush = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data }) => {
-    console.info(
-      `[subscribePush] endpoint=${data.endpoint.slice(0, 50)}... userId=${data.userId}`,
-    );
     const now = new Date().toISOString();
+    const id = `psb_${crypto.randomUUID()}`;
 
-    // Upsert by endpoint — endpoints are unique per subscription
-    const [existing] = await db
-      .select({ id: pushSubscriptions.id })
-      .from(pushSubscriptions)
-      .where(eq(pushSubscriptions.endpoint, data.endpoint));
-
-    if (existing) {
-      await db
-        .update(pushSubscriptions)
-        .set({
+    // Atomic upsert on the `endpoint` unique index — avoids a select→insert
+    // race that would otherwise let two concurrent subscribePush calls create
+    // duplicate rows (and `sendPushNotification` double-deliver).
+    const [row] = await db
+      .insert(pushSubscriptions)
+      .values({
+        id,
+        userId: data.userId,
+        endpoint: data.endpoint,
+        p256dh: data.p256dh,
+        auth: data.auth,
+        dateCreated: now,
+      })
+      .onConflictDoUpdate({
+        target: pushSubscriptions.endpoint,
+        set: {
+          userId: data.userId,
           p256dh: data.p256dh,
           auth: data.auth,
-          userId: data.userId,
-        })
-        .where(eq(pushSubscriptions.id, existing.id));
-      console.info(`[subscribePush] updated existing id=${existing.id}`);
-      return { id: existing.id };
-    }
+        },
+      })
+      .returning({ id: pushSubscriptions.id });
 
-    const id = `psb_${crypto.randomUUID()}`;
-    await db.insert(pushSubscriptions).values({
-      id,
-      userId: data.userId,
-      endpoint: data.endpoint,
-      p256dh: data.p256dh,
-      auth: data.auth,
-      dateCreated: now,
-    });
-    console.info(`[subscribePush] inserted new id=${id}`);
-    return { id };
+    return { id: row.id };
   });
 
 export const unsubscribePush = createServerFn({ method: "POST" })

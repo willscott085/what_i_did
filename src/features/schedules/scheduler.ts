@@ -6,36 +6,57 @@ import { sendPushNotification } from "./push";
 
 const POLL_INTERVAL_MS = 30_000;
 let started = false;
-let timer: ReturnType<typeof setInterval> | null = null;
+let stopped = false;
+let timer: ReturnType<typeof setTimeout> | null = null;
 
 /**
  * Kick off the server-side scheduler. Safe to call many times — only the
- * first invocation wires up the interval.
+ * first invocation wires up the loop.
  *
  * On each tick, any active/snoozed schedule whose effective fire time has
  * elapsed is fired (task clone + history entry) and a push notification is
  * dispatched to the owning user. Missed schedules during downtime fire
  * immediately on the next tick.
+ *
+ * Implementation note: we use a self-scheduling `setTimeout` loop rather
+ * than `setInterval` to guarantee a tick cannot start while the previous
+ * one is still running. FCM delivery + DB writes can easily exceed the
+ * poll interval at scale, and overlapping ticks would let the same
+ * schedule be fired twice (tick B's SELECT runs before tick A's UPDATE
+ * transitions the row out of `active`/`snoozed`).
  */
 export function startScheduler(): void {
   if (started) return;
   started = true;
+  stopped = false;
   console.info(
     `[scheduler] Starting — polling every ${POLL_INTERVAL_MS / 1000}s`,
   );
   // Fire immediately on boot so schedules missed during downtime catch up
-  void runTick();
-  timer = setInterval(() => {
-    void runTick();
-  }, POLL_INTERVAL_MS);
+  void loop();
 }
 
 export function stopScheduler(): void {
+  stopped = true;
   if (timer) {
-    clearInterval(timer);
+    clearTimeout(timer);
     timer = null;
   }
   started = false;
+}
+
+async function loop(): Promise<void> {
+  if (stopped) return;
+  try {
+    await runTick();
+  } catch (err) {
+    // runTick already logs — belt-and-braces so a throw can't kill the loop
+    console.error("[scheduler] Unhandled tick error:", err);
+  }
+  if (stopped) return;
+  timer = setTimeout(() => {
+    void loop();
+  }, POLL_INTERVAL_MS);
 }
 
 async function runTick(): Promise<void> {

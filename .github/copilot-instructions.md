@@ -20,7 +20,7 @@
 - **Testing:** Vitest, React Testing Library, MSW (mocking)
 - **Linting/Formatting:** ESLint, Prettier
 - **Build Tooling:** Vite
-- **PWA:** vite-plugin-pwa + Workbox (service worker generation, precaching, update prompt)
+- **PWA:** Hand-rolled service worker (`public/sw.js`) for push notifications and update prompt
 - **AI:** Provider-agnostic abstraction (OpenAI default, swappable)
 
 ## Architecture
@@ -142,4 +142,4 @@ export const myFunction = createServerFn({ method: "GET" })
 - Components that need hydration-awareness use `useEffect` state guard
 - Drag-and-drop components use dnd-kit with `useSortable` hook per item
 - **Finishing a (sub)phase** — when you complete a phase or sub-phase from `.github/PLAN.md`, the reply that announces completion MUST include a "How to test" section alongside the summary of changes. Cover: setup (seed / route to open), numbered user actions, expected results, and any cleanup. Keep it scoped to the delta introduced by the phase.
-- **PWA**: The app is a Progressive Web App — `vite-plugin-pwa` generates a Workbox service worker at build time that precaches static assets. The `ReloadPrompt` component in `src/components/ReloadPrompt.tsx` handles SW registration and shows an update prompt when a new version is deployed. SW is disabled in dev mode (`devOptions.enabled: false`). The build script copies `sw.js` and workbox files to `.output/public/` for Nitro compatibility
+- **PWA**: The app is a Progressive Web App with a hand-rolled service worker at `public/sw.js` (copied to `.output/public/` during build). It handles `push` / `notificationclick` events and SKIP_WAITING for reload prompts. The `ReloadPrompt` component in `src/components/ReloadPrompt.tsx` registers the SW and shows an update prompt when a new version takes control. The SW is not registered in dev mode.
