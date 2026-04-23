@@ -5,6 +5,7 @@ import {
   primaryKey,
   customType,
   boolean,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
@@ -116,14 +117,22 @@ export const scheduleHistory = pgTable("schedule_history", {
 
 // --- Push Subscriptions ---
 
-export const pushSubscriptions = pgTable("push_subscriptions", {
-  id: text("id").primaryKey(),
-  userId: text("user_id").notNull(),
-  endpoint: text("endpoint").notNull(),
-  p256dh: text("p256dh").notNull(),
-  auth: text("auth").notNull(),
-  dateCreated: text("date_created").notNull(),
-});
+export const pushSubscriptions = pgTable(
+  "push_subscriptions",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id").notNull(),
+    endpoint: text("endpoint").notNull(),
+    p256dh: text("p256dh").notNull(),
+    auth: text("auth").notNull(),
+    dateCreated: text("date_created").notNull(),
+  },
+  (t) => ({
+    endpointUnique: uniqueIndex("push_subscriptions_endpoint_unique").on(
+      t.endpoint,
+    ),
+  }),
+);
 
 // =====================
 // Relations
