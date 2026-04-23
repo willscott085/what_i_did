@@ -1,6 +1,5 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { format, isValid, parseISO } from "date-fns";
-import { useEffect } from "react";
 import { useAppLayout } from "~/components/AppLayoutContext";
 import { DayView } from "~/components/DayView";
 import { fetchNotesForDateQueryOptions } from "~/features/notes/queries";
@@ -35,14 +34,9 @@ export const Route = createFileRoute("/_app/day/$date")({
 
 function DayRoute() {
   const { date } = Route.useParams();
-  const { setDragOverDate, setDefaultStartDate, handleOpenDialog } =
-    useAppLayout();
+  const { setDragOverDate, handleOpenDialog } = useAppLayout();
 
   const selectedDate = parseISO(date);
-
-  useEffect(() => {
-    setDefaultStartDate(date);
-  }, [date, setDefaultStartDate]);
 
   return (
     <DayView

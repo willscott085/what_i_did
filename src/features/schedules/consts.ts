@@ -6,6 +6,7 @@ export const schedulesQueryKeys = {
   byItem: (itemId: string) => ["schedules", "byItem", itemId] as const,
   upcoming: ["schedules", "upcoming"] as const,
   recurring: ["schedules", "recurring"] as const,
+  history: ["schedules", "history"] as const,
 };
 
 /** Preset snooze durations in milliseconds */

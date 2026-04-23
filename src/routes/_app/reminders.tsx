@@ -1,14 +1,18 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { PlusIcon } from "lucide-react";
-import { useEffect } from "react";
 import { isToday, isTomorrow, isThisWeek, isPast } from "date-fns";
 import { useAppLayout } from "~/components/AppLayoutContext";
 import { ReminderItem } from "~/components/ReminderItem";
 import { Button } from "~/components/ui/button";
-import { useDeleteSchedule } from "~/features/schedules/mutations";
+import {
+  useDeleteSchedule,
+  useDismissSchedule,
+  useSnoozeSchedule,
+} from "~/features/schedules/mutations";
 import { schedulesQueryOptions } from "~/features/schedules/queries";
 import type { ScheduleWithItem } from "~/features/schedules/types";
+import type { SnoozeDuration } from "~/features/schedules/consts";
 import { useNow } from "~/hooks/useNow";
 
 export const Route = createFileRoute("/_app/reminders")({
@@ -72,16 +76,12 @@ const GROUP_ORDER: GroupKey[] = [
 ];
 
 function RemindersView() {
-  const { setDefaultStartDate, setDefaultTagIds, handleOpenReminderDialog } =
-    useAppLayout();
-
-  useEffect(() => {
-    setDefaultStartDate(undefined);
-    setDefaultTagIds(undefined);
-  }, [setDefaultStartDate, setDefaultTagIds]);
+  const { handleOpenReminderDialog } = useAppLayout();
 
   const { data: schedules = [] } = useQuery(schedulesQueryOptions());
   const { mutate: deleteSchedule } = useDeleteSchedule();
+  const { mutate: snoozeSchedule } = useSnoozeSchedule();
+  const { mutate: dismissSchedule } = useDismissSchedule();
 
   // One ticking clock for the whole view — passed down to every ReminderItem
   // so we don't spin up a timer per row.
@@ -95,6 +95,14 @@ function RemindersView() {
 
   function handleDelete(scheduleId: string) {
     deleteSchedule(scheduleId);
+  }
+
+  function handleSnooze(scheduleId: string, duration: SnoozeDuration) {
+    snoozeSchedule({ scheduleId, duration });
+  }
+
+  function handleDismiss(schedule: ScheduleWithItem) {
+    dismissSchedule(schedule.id);
   }
 
   const hasAny = schedules.length > 0;
@@ -141,6 +149,8 @@ function RemindersView() {
                         now={now}
                         onEdit={handleEdit}
                         onDelete={handleDelete}
+                        onSnooze={handleSnooze}
+                        onDismiss={handleDismiss}
                       />
                     ))}
                   </div>

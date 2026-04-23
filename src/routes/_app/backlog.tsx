@@ -2,7 +2,6 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { PlusIcon } from "lucide-react";
 import { useSyncExternalStore } from "react";
-import { useEffect } from "react";
 import { useAppLayout } from "~/components/AppLayoutContext";
 import { SortableTaskList } from "~/components/SortableTaskList";
 import { TaskItem } from "~/components/TaskItem";
@@ -28,12 +27,7 @@ export const Route = createFileRoute("/_app/backlog")({
 });
 
 function Backlog() {
-  const { setDragOverDate, setDefaultStartDate, handleOpenDialog } =
-    useAppLayout();
-
-  useEffect(() => {
-    setDefaultStartDate(undefined);
-  }, [setDefaultStartDate]);
+  const { setDragOverDate, handleOpenDialog } = useAppLayout();
 
   const { data: tasks = [] } = useQuery(fetchBacklogTasksQueryOptions());
 

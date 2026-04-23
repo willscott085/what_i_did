@@ -100,6 +100,7 @@ export function useSnoozeSchedule() {
       queryClient.invalidateQueries({
         queryKey: schedulesQueryKeys.byId(variables.scheduleId),
       });
+      queryClient.invalidateQueries({ queryKey: schedulesQueryKeys.history });
     },
   });
 }
@@ -117,6 +118,7 @@ export function useDismissSchedule() {
       queryClient.invalidateQueries({
         queryKey: schedulesQueryKeys.byId(scheduleId),
       });
+      queryClient.invalidateQueries({ queryKey: schedulesQueryKeys.history });
     },
   });
 }
@@ -131,6 +133,7 @@ export function useFireSchedule() {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: schedulesQueryKeys.all });
+      queryClient.invalidateQueries({ queryKey: schedulesQueryKeys.history });
     },
   });
 }

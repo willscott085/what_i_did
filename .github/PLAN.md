@@ -2,6 +2,17 @@
 
 > **How to use this file**: This plan drives iterative development. Each phase is implemented one at a time, committed in small batches. AI assistants should read this file at the start of every session to understand current state. Update the status checkboxes and notes as work progresses.
 
+### Finishing a (sub)phase
+
+At the end of every phase or sub-phase, the assistant's reply must include a **"How to test"** section alongside the summary of changes. This lets the user manually verify the new functionality before the next phase starts. Each section should contain:
+
+- **Setup** — any prerequisite steps (e.g. `pnpm db:seed`, visiting a route, enabling a flag).
+- **Steps to verify** — a numbered list of concrete user actions (click X, type Y, expect Z).
+- **Expected results** — what the user should see / what state should persist.
+- **Cleanup (if any)** — how to undo demo data so the next phase starts clean.
+
+Keep it short and focused on the delta introduced by the phase — don't re-describe existing behavior.
+
 ## Key Decisions
 
 | Decision        | Choice                                                     | Rationale                                                                                                                                                                                                            |
@@ -77,7 +88,7 @@ Before merging a new feature, walk through this checklist:
 - [x] Create `playwright.config.ts`:
   - Base URL: `http://localhost:55001`
   - Web server command: `pnpm dev` with auto-wait
-  - Projects: Chromium, Firefox, WebKit
+  - Projects: Chromium, WebKit
   - Reporter: HTML + list
   - Test directory: `e2e/`
   - Retries: 1 on CI, 0 locally
@@ -773,27 +784,27 @@ The app has a small dataset, the schema is young, and we're about to add a third
 
 > Add snooze/dismiss actions to reminders, the "Past" view, and integration with the tag page. This builds on the CRUD from 9C to add schedule lifecycle management.
 
-- [ ] Build `src/components/SnoozeMenu.tsx` — dropdown with preset options:
+- [x] Build `src/components/SnoozeMenu.tsx` — dropdown with preset options:
   - 5 min, 15 min, 1 hour, Tomorrow 9am
   - Calls `snoozeSchedule` mutation
-- [ ] Update `src/components/ReminderItem.tsx`:
+- [x] Update `src/components/ReminderItem.tsx`:
   - Add Snooze dropdown (SnoozeMenu component)
   - Add Dismiss/Complete action (one-off → dismiss, recurring → advance)
   - Show snoozed state ("Snoozed until 3:30pm")
-- [ ] Update `/reminders` route — add Past section:
+- [x] Update `/reminders` route — add Past section:
   - Paginated history from `scheduleHistory`, ordered by firedAt DESC
   - Shows action taken (notified, task_created, snoozed, dismissed)
   - Links to created tasks when action was `task_created`
-- [ ] Update `src/routes/_app/tag/$tagId.tsx`:
+- [x] Update `src/routes/_app/tag/$tagId.tsx`:
   - Events with schedules render using `ReminderItem`
   - Items with schedules (tasks/notes) show a small bell indicator
-- [ ] E2E test: `e2e/reminders.spec.ts`:
+- [x] E2E test: `e2e/reminders.spec.ts`:
   - Create a one-off reminder, verify it appears in upcoming
   - Create a recurring reminder, verify recurrence description
   - Snooze a reminder, verify state change
   - Dismiss a reminder, verify it moves to past
   - Navigate to /reminders from nav
-- [ ] **Verify**: `pnpm typecheck`, `pnpm test`, `pnpm test:e2e` all pass
+- [x] **Verify**: `pnpm typecheck`, `pnpm test`, `pnpm test:e2e` all pass
 
 #### Outputs
 
@@ -805,7 +816,7 @@ The app has a small dataset, the schema is young, and we're about to add a third
 
 ### Phase 9E: Schedule-on-Item Integration
 
-> Allow setting reminders on existing tasks and notes from their edit dialogs. Also add keyboard shortcut for quick reminder creation.
+> Allow setting reminders on existing tasks and notes from their edit dialogs.
 
 - [ ] Add "Set Reminder" section to `TaskDialog.tsx`:
   - Collapsible section with datetime + optional recurrence
@@ -815,12 +826,11 @@ The app has a small dataset, the schema is young, and we're about to add a third
   - Same pattern — schedule attached to the note item
 - [ ] Add bell indicator on `TaskItem.tsx` for tasks that have schedules
 - [ ] Add bell indicator on `NoteItem.tsx` for notes that have schedules
-- [ ] Add keyboard shortcut: Cmd/Ctrl+R → open ReminderDialog (in `_app.tsx`)
 - [ ] **Verify**: `pnpm typecheck`, `pnpm test`, `pnpm test:e2e` all pass
 
 #### Outputs
 
-- Updated: `TaskDialog.tsx`, `NoteDialog.tsx`, `TaskItem.tsx`, `NoteItem.tsx`, `_app.tsx`
+- Updated: `TaskDialog.tsx`, `NoteDialog.tsx`, `TaskItem.tsx`, `NoteItem.tsx`
 
 ---
 
@@ -885,7 +895,88 @@ The app has a small dataset, the schema is young, and we're about to add a third
 
 ---
 
-## Phase 10: Multi-User & Auth (Future)
+## Phase 10: Keyboard Navigation & Shortcuts
+
+> Make the entire app drivable from the keyboard. Global shortcuts for the most common creation flows, plus first-class focus management across lists, dialogs, and navigation.
+
+### Goals
+
+- Zero-mouse creation for tasks, notes, and reminders
+- Predictable focus order through the app shell (sidebar → main content → item lists)
+- Discoverable shortcuts via a help overlay (`?`)
+- No regressions to screen-reader behavior — shortcuts layer on top of existing Radix/ARIA semantics, they don't replace them
+
+### Sub-phases
+
+#### 10A: Shortcut Infrastructure
+
+- [ ] Add `src/hooks/useHotkey.ts` — thin wrapper around keydown listeners with:
+  - Modifier normalization (`Cmd` on macOS, `Ctrl` elsewhere via `navigator.platform`)
+  - Automatic ignore when focus is in an editable target (`input`, `textarea`, `[contenteditable]`) unless the shortcut opts in
+  - Scope support (global vs dialog-local) so dialog shortcuts don't fire on the shell
+- [ ] Add `src/features/shortcuts/registry.ts` — single source of truth for `{ id, keys, description, scope, handler }` bindings
+- [ ] Add `ShortcutsProvider` in `_app.tsx` that wires the registry to a single global `keydown` listener
+- [ ] Unit tests: modifier detection, editable-target skip, scope isolation
+
+#### 10B: Global Creation Shortcuts
+
+- [ ] `C` then `T` (or `Cmd/Ctrl+Shift+T`) → open TaskDialog for current day
+- [ ] `C` then `N` (or `Cmd/Ctrl+Shift+N`) → open NoteDialog
+- [ ] `C` then `R` → open ReminderDialog
+- [ ] `C` then `E` → open event-with-reminder variant
+- [ ] All creation dialogs autofocus the title field and submit on `Enter` / close on `Esc` (audit existing dialogs for consistency)
+- [ ] Show the active leader-key hint in the bottom-right when `C` is pressed (timeout: 1.5s)
+
+#### 10C: Navigation Shortcuts
+
+- [ ] `G` then `D` → Day view (today)
+- [ ] `G` then `B` → Backlog
+- [ ] `G` then `N` → Notes
+- [ ] `G` then `R` → Reminders
+- [ ] `[` / `]` → previous / next day on day view
+- [ ] `T` → jump to today on day view
+- [ ] `/` → focus global search (once search exists; otherwise skip)
+- [ ] Update sidebar link aria-labels to include the shortcut hint (e.g. "Backlog (g b)")
+
+#### 10D: List & Item Keyboard Flow
+
+- [ ] `J` / `K` (or `↓` / `↑`) → move focus between items in the active list (day view, backlog, notes, reminders)
+- [ ] `Space` → toggle completion on the focused task/subtask
+- [ ] `Enter` → open edit dialog for the focused item
+- [ ] `E` → focus the inline title input of the focused item
+- [ ] `Delete` / `Backspace` → delete focused item (with confirm for items that have subtasks/content)
+- [ ] `Shift+↑` / `Shift+↓` → reorder focused item (wires into existing dnd-kit ordering)
+- [ ] Ensure every item row has `tabIndex={0}` and a visible focus ring using existing tokens (no new colors)
+
+#### 10E: Dialog & Form Keyboard Flow
+
+- [ ] Audit all dialogs (`TaskDialog`, `NoteDialog`, `ReminderDialog`, `NoteItem` inline editor) for:
+  - `Esc` closes without saving
+  - `Cmd/Ctrl+Enter` submits
+  - Trap focus within the dialog (Radix already does this — verify it holds after our changes)
+  - Tab order matches visual order
+- [ ] Subtask list in `TaskDialog`: `Enter` on last subtask creates a new one; `Backspace` on an empty subtask removes it and refocuses the previous row
+- [ ] Date/time pickers (`DateTimePicker`, `RecurrencePicker`) navigable entirely via arrow keys + `Enter`
+
+#### 10F: Help Overlay & Discoverability
+
+- [ ] `?` (shift+/) → open a modal listing every registered shortcut grouped by scope
+- [ ] Overlay reads from the registry so new shortcuts are documented automatically
+- [ ] `Esc` closes the overlay
+- [ ] Add a "Keyboard shortcuts" link at the bottom of the sidebar
+
+### Decisions (Phase 10)
+
+- **Leader-key sequences (`c`, `g`) over deep modifier chords** — keeps shortcuts memorable and avoids clashing with browser/OS bindings. Single-letter chords still available for the hottest paths (`J/K`, `Space`, `Enter`, `Esc`)
+- **`Cmd/Ctrl+Shift+<letter>` for creation fallbacks** — covers users who dislike leader keys. Avoids plain `Cmd/Ctrl+N` because browsers reserve it for new window
+- **Registry-driven, not scattered listeners** — one source of truth makes the help overlay, docs, and tests trivial. Prevents shortcut drift between features
+- **Respect editable targets by default** — no shortcut fires while typing unless it explicitly opts in (`Cmd/Ctrl+Enter` submit is the main exception)
+- **Platform-aware modifiers** — `useHotkey` translates `Mod` to `Cmd` on macOS and `Ctrl` elsewhere; shortcut descriptions in the help overlay render the right glyph per-platform
+- **Don't re-invent Radix** — dialog focus trapping, menu arrow-key navigation, and roving tabindex on existing primitives stay. New code only handles app-level navigation and list focus
+
+---
+
+## Phase 11: Multi-User & Auth (Future)
 
 > Add authentication so it can be shared or self-hosted for multiple users.
 

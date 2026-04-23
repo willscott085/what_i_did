@@ -517,10 +517,14 @@ export const fetchBacklogTasks = createServerFn({ method: "GET" })
           eq(items.type, "task"),
           isNull(items.parentItemId),
           isNull(items.date),
-          isNull(items.dateCompleted),
         ),
       )
-      .orderBy(asc(items.sortOrder));
+      .orderBy(
+        desc(isNull(items.dateCompleted)),
+        sql`CASE WHEN ${items.dateCompleted} IS NOT NULL THEN 1 ELSE 0 END`,
+        asc(items.sortOrder),
+        asc(items.dateCompleted),
+      );
     return rows.map(toTask);
   });
 

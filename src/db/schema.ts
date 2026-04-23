@@ -108,7 +108,7 @@ export const scheduleHistory = pgTable("schedule_history", {
     .notNull()
     .references(() => schedules.id, { onDelete: "cascade" }),
   firedAt: text("fired_at").notNull(),
-  action: text("action").notNull(), // 'notified' | 'task_created' | 'snoozed' | 'dismissed'
+  action: text("action").notNull(), // 'task_created' | 'dismissed'
   createdItemId: text("created_item_id").references(() => items.id, {
     onDelete: "set null",
   }),

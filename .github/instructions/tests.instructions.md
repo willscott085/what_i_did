@@ -39,7 +39,7 @@ applyTo: "**/*.test.*"
 
 ## E2E Testing (Playwright)
 
-- Playwright for end-to-end tests across Chromium, Firefox, and WebKit
+- Playwright for end-to-end tests across Chromium and WebKit
 - E2E tests live in `e2e/` at the project root — not in `src/tests/`
 - Name test files `{feature}.spec.ts`
 - Use `test` and `expect` from `@playwright/test`

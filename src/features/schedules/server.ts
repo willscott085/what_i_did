@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
-import { and, asc, eq, gt, inArray, isNull, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
+import { and, asc, desc, eq, gt, inArray, isNull, sql } from "drizzle-orm";
 import { generateKeyBetween } from "fractional-indexing";
 import { RRule } from "rrule";
 import z from "zod";
@@ -7,7 +8,7 @@ import { db } from "~/db";
 import { items, itemTags, schedules, scheduleHistory } from "~/db/schema";
 import { SNOOZE_DURATIONS, type SnoozeDuration } from "./consts";
 import { getNextOccurrence } from "./recurrence";
-import type { Schedule, ScheduleWithItem } from "./types";
+import type { Schedule, ScheduleHistoryEntry, ScheduleWithItem } from "./types";
 
 const isoDatetime = z.string().refine((v) => !isNaN(Date.parse(v)), {
   message: "Must be a valid ISO-8601 datetime",
@@ -305,15 +306,9 @@ export const snoozeSchedule = createServerFn({ method: "POST" })
       .where(eq(schedules.id, data.scheduleId))
       .returning();
 
-    if (result) {
-      await db.insert(scheduleHistory).values({
-        id: `shx_${crypto.randomUUID()}`,
-        scheduleId: data.scheduleId,
-        firedAt: now,
-        action: "snoozed",
-        createdItemId: null,
-      });
-    }
+    // Snoozes are not logged to history — the snooze state is already visible
+    // on the active reminder row, and historical snooze entries add noise
+    // without telling you anything useful after the reminder fires again.
 
     return result ? toSchedule(result) : null;
   });
@@ -489,14 +484,17 @@ export const fireSchedule = createServerFn({ method: "POST" })
       });
     }
 
-    // Log to history
-    await db.insert(scheduleHistory).values({
-      id: `shx_${crypto.randomUUID()}`,
-      scheduleId: data.scheduleId,
-      firedAt: now,
-      action: schedule.cloneOnFire ? "task_created" : "notified",
-      createdItemId,
-    });
+    // Log to history — only when firing actually produced something real
+    // (a cloned task). Plain notifications are ephemeral and don't earn a row.
+    if (schedule.cloneOnFire) {
+      await db.insert(scheduleHistory).values({
+        id: `shx_${crypto.randomUUID()}`,
+        scheduleId: data.scheduleId,
+        firedAt: now,
+        action: "task_created",
+        createdItemId,
+      });
+    }
 
     // Advance recurring or complete one-off
     if (schedule.rrule) {
@@ -620,4 +618,53 @@ export const createEventWithSchedule = createServerFn({ method: "POST" })
     });
 
     return result;
+  });
+
+// ─── Schedule History ────────────────────────────────────────────────
+
+export const fetchScheduleHistory = createServerFn({ method: "GET" })
+  .inputValidator(
+    z.object({
+      userId: z.string().min(1),
+      limit: z.number().int().min(1).max(100).default(50),
+      offset: z.number().int().min(0).default(0),
+    }),
+  )
+  .handler(async ({ data }) => {
+    const createdItems = alias(items, "created_items");
+
+    const results = await db
+      .select({
+        history: scheduleHistory,
+        itemTitle: items.title,
+        createdItemTitle: createdItems.title,
+      })
+      .from(scheduleHistory)
+      .innerJoin(schedules, eq(schedules.id, scheduleHistory.scheduleId))
+      .innerJoin(items, eq(items.id, schedules.itemId))
+      .leftJoin(
+        createdItems,
+        eq(createdItems.id, scheduleHistory.createdItemId),
+      )
+      .where(
+        and(
+          eq(items.userId, data.userId),
+          inArray(scheduleHistory.action, ["task_created", "dismissed"]),
+        ),
+      )
+      .orderBy(desc(scheduleHistory.firedAt))
+      .limit(data.limit)
+      .offset(data.offset);
+
+    return results.map(
+      (r): ScheduleHistoryEntry => ({
+        id: r.history.id,
+        scheduleId: r.history.scheduleId,
+        firedAt: r.history.firedAt,
+        action: r.history.action as ScheduleHistoryEntry["action"],
+        createdItemId: r.history.createdItemId,
+        itemTitle: r.itemTitle,
+        createdItemTitle: r.createdItemTitle,
+      }),
+    );
   });

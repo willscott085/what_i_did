@@ -2,6 +2,7 @@ import { queryOptions } from "@tanstack/react-query";
 import { schedulesQueryKeys, DEFAULT_USER_ID } from "./consts";
 import {
   fetchSchedule,
+  fetchScheduleHistory,
   fetchSchedules,
   fetchSchedulesForItem,
   fetchUpcomingSchedules,
@@ -37,5 +38,13 @@ export function upcomingSchedulesQueryOptions() {
     queryKey: schedulesQueryKeys.upcoming,
     queryFn: () =>
       fetchUpcomingSchedules({ data: { userId: DEFAULT_USER_ID } }),
+  });
+}
+
+export function scheduleHistoryQueryOptions(limit = 50) {
+  return queryOptions({
+    queryKey: [...schedulesQueryKeys.history, { limit }],
+    queryFn: () =>
+      fetchScheduleHistory({ data: { userId: DEFAULT_USER_ID, limit } }),
   });
 }
