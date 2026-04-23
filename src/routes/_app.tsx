@@ -24,6 +24,8 @@ import { ReminderDialog } from "~/components/ReminderDialog";
 import { TaskDialog } from "~/components/TaskDialog";
 import { Note } from "~/features/notes/types";
 import { TIME_SENSITIVE_QUERY_KEYS } from "~/features/queryKeys";
+import { schedulesQueryKeys } from "~/features/schedules/consts";
+import { initForegroundReminderListener } from "~/features/schedules/sw-registration";
 import type { ScheduleWithItem } from "~/features/schedules/types";
 import { Task } from "~/features/tasks/types";
 
@@ -98,6 +100,17 @@ function AppLayout() {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [dateParam, navigate, queryClient]);
+
+  // ─── Foreground reminder listener ────────────────────────────────
+  // When the notification SW receives a push while the app is visible it
+  // posts a message instead of showing a system notification. We translate
+  // that into a sonner toast (inside the listener) and invalidate schedule
+  // queries so the UI reflects the newly-fired schedule.
+  useEffect(() => {
+    return initForegroundReminderListener(() => {
+      queryClient.invalidateQueries({ queryKey: schedulesQueryKeys.all });
+    });
+  }, [queryClient]);
 
   // ─── Drag state ──────────────────────────────────────────────────
   const [dragOverDate, setDragOverDate] = useState<string | null>(null);

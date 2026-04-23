@@ -3,6 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { PlusIcon } from "lucide-react";
 import { isToday, isTomorrow, isThisWeek, isPast } from "date-fns";
 import { useAppLayout } from "~/components/AppLayoutContext";
+import { PushPermissionBanner } from "~/components/PushPermissionBanner";
 import { ReminderItem } from "~/components/ReminderItem";
 import { Button } from "~/components/ui/button";
 import {
@@ -121,6 +122,8 @@ function RemindersView() {
             <PlusIcon className="size-5" />
           </Button>
         </header>
+
+        <PushPermissionBanner />
 
         {!hasAny && (
           <div className="text-muted-foreground mt-12 text-center text-sm">

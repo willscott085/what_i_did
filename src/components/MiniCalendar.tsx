@@ -54,18 +54,34 @@ export function MiniCalendar({
     generateMonths(selectedDate, INITIAL_RANGE, INITIAL_RANGE),
   );
 
-  // Scroll the selected month to center on mount
+  // Center the selected month inside the scroll container by setting
+  // `scrollTop` directly. `Element.scrollIntoView({ block: 'center' })` is
+  // unreliable here: the container is `snap-mandatory`, and on a cold
+  // production load Chromium snaps back to the first child (January of the
+  // rendered range) before our scroll request lands. Manually computing the
+  // target scrollTop sidesteps the snap race entirely.
   useLayoutEffect(() => {
     if (hasScrolled.current) return;
-    if (!currentMonthRef.current) return;
-    // Double rAF ensures the scroll container is fully laid out before scrolling
+    const scrollEl = scrollRef.current;
+    const target = currentMonthRef.current;
+    if (!scrollEl || !target) return;
+
+    const centerScrollTop = Math.max(
+      0,
+      target.offsetTop - (scrollEl.clientHeight - target.offsetHeight) / 2,
+    );
+
+    // Run twice across two frames: the first pass lands the scroll; the
+    // second re-applies it after the browser's snap-mandatory realignment so
+    // we don't drift back to the first snap point.
+    const apply = () => {
+      scrollEl.scrollTop = centerScrollTop;
+    };
+    apply();
     requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        currentMonthRef.current?.scrollIntoView({
-          block: "center",
-        });
-        hasScrolled.current = true;
-      });
+      apply();
+      requestAnimationFrame(apply);
+      hasScrolled.current = true;
     });
   }, []);
 

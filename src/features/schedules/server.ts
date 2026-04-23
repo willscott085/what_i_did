@@ -5,10 +5,27 @@ import { generateKeyBetween } from "fractional-indexing";
 import { RRule } from "rrule";
 import z from "zod";
 import { db } from "~/db";
-import { items, itemTags, schedules, scheduleHistory } from "~/db/schema";
+import {
+  items,
+  itemTags,
+  pushSubscriptions,
+  schedules,
+  scheduleHistory,
+} from "~/db/schema";
 import { SNOOZE_DURATIONS, type SnoozeDuration } from "./consts";
 import { getNextOccurrence } from "./recurrence";
 import type { Schedule, ScheduleHistoryEntry, ScheduleWithItem } from "./types";
+
+// Boot the server-side scheduler once per Node process.
+// `import.meta.env.SSR` is statically `false` in client builds, so Vite
+// dead-code-eliminates this entire branch and never follows `scheduler.ts`
+// (which pulls in `web-push` and `postgres`) into the browser bundle.
+if (import.meta.env.SSR && process.env.NODE_ENV !== "test") {
+  console.info("[scheduler] Booting via server.ts module load");
+  void import("./start-scheduler")
+    .then((m) => m.bootScheduler())
+    .catch((err) => console.error("[scheduler] Boot failed:", err));
+}
 
 const isoDatetime = z.string().refine((v) => !isNaN(Date.parse(v)), {
   message: "Must be a valid ISO-8601 datetime",
@@ -25,9 +42,6 @@ const rruleString = z.string().refine(
   },
   { message: "Must be a valid RRULE string" },
 );
-
-const toLocalDateString = (d: Date) =>
-  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
 // ─── Helpers ─────────────────────────────────────────────────────────
 
@@ -413,125 +427,11 @@ export const fireSchedule = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data }) => {
-    const now = new Date().toISOString();
-    const todayStr = toLocalDateString(new Date());
-    console.info(`Firing schedule ${data.scheduleId}...`);
-
-    const [current] = await db
-      .select()
-      .from(schedules)
-      .innerJoin(items, eq(items.id, schedules.itemId))
-      .where(
-        and(eq(schedules.id, data.scheduleId), eq(items.userId, data.userId)),
-      );
-
-    if (!current) return { fired: false, createdItemId: null };
-
-    const schedule = current.schedules;
-    const item = current.items;
-
-    let createdItemId: string | null = null;
-
-    // If cloneOnFire, create a new task from the parent item
-    if (schedule.cloneOnFire) {
-      createdItemId = `tsk_${crypto.randomUUID()}`;
-
-      await db.transaction(async (tx) => {
-        // Get max sort order for today's tasks
-        const [maxRow] = await tx
-          .select({ max: sql<string | null>`MAX(${items.sortOrder})` })
-          .from(items)
-          .where(
-            and(
-              eq(items.userId, data.userId),
-              eq(items.type, "task"),
-              isNull(items.parentItemId),
-              isNull(items.dateCompleted),
-              eq(items.date, todayStr),
-            ),
-          );
-
-        const nextSortOrder = generateKeyBetween(maxRow?.max ?? null, null);
-
-        await tx.insert(items).values({
-          id: createdItemId!,
-          type: "task",
-          title: item.title,
-          content: item.content,
-          date: todayStr,
-          dateCompleted: null,
-          parentItemId: null,
-          sortOrder: nextSortOrder,
-          userId: data.userId,
-          dateCreated: now,
-          dateUpdated: now,
-        });
-
-        // Copy tags from parent item
-        const parentTags = await tx
-          .select({ tagId: itemTags.tagId })
-          .from(itemTags)
-          .where(eq(itemTags.itemId, item.id));
-
-        if (parentTags.length > 0) {
-          await tx.insert(itemTags).values(
-            parentTags.map((t) => ({
-              itemId: createdItemId!,
-              tagId: t.tagId,
-            })),
-          );
-        }
-      });
-    }
-
-    // Log to history — only when firing actually produced something real
-    // (a cloned task). Plain notifications are ephemeral and don't earn a row.
-    if (schedule.cloneOnFire) {
-      await db.insert(scheduleHistory).values({
-        id: `shx_${crypto.randomUUID()}`,
-        scheduleId: data.scheduleId,
-        firedAt: now,
-        action: "task_created",
-        createdItemId,
-      });
-    }
-
-    // Advance recurring or complete one-off
-    if (schedule.rrule) {
-      const afterDate = new Date(
-        Math.max(Date.parse(schedule.reminderTime), Date.now()),
-      );
-      const nextDate = getNextOccurrence(schedule.rrule, afterDate);
-      const userOwnsSchedule = sql`EXISTS (SELECT 1 FROM ${items} WHERE ${items.id} = ${schedules.itemId} AND ${items.userId} = ${data.userId})`;
-
-      if (nextDate) {
-        await db
-          .update(schedules)
-          .set({
-            reminderTime: nextDate.toISOString(),
-            snoozedUntil: null,
-            status: "active",
-            dateUpdated: now,
-          })
-          .where(and(eq(schedules.id, data.scheduleId), userOwnsSchedule));
-      } else {
-        // No more occurrences — complete
-        await db
-          .update(schedules)
-          .set({ status: "completed", dateUpdated: now })
-          .where(and(eq(schedules.id, data.scheduleId), userOwnsSchedule));
-      }
-    } else {
-      const userOwnsSchedule = sql`EXISTS (SELECT 1 FROM ${items} WHERE ${items.id} = ${schedules.itemId} AND ${items.userId} = ${data.userId})`;
-
-      // One-off — mark completed
-      await db
-        .update(schedules)
-        .set({ status: "completed", dateUpdated: now })
-        .where(and(eq(schedules.id, data.scheduleId), userOwnsSchedule));
-    }
-
-    return { fired: true, createdItemId };
+    // Dynamic import so tanstack-start can strip the impl (and its `db` use)
+    // from the client bundle. A static top-level import would defeat the
+    // tree-shaking that keeps `postgres` out of the browser build.
+    const { fireScheduleImpl } = await import("./fire-impl");
+    return fireScheduleImpl(data.scheduleId, data.userId);
   });
 
 // ─── Convenience: Create Event + Schedule ────────────────────────────
@@ -667,4 +567,71 @@ export const fetchScheduleHistory = createServerFn({ method: "GET" })
         createdItemTitle: r.createdItemTitle,
       }),
     );
+  });
+
+// ─── Push Subscriptions ──────────────────────────────────────────────
+
+export const subscribePush = createServerFn({ method: "POST" })
+  .inputValidator(
+    z.object({
+      endpoint: z.string().min(1),
+      p256dh: z.string().min(1),
+      auth: z.string().min(1),
+      userId: z.string().min(1),
+    }),
+  )
+  .handler(async ({ data }) => {
+    console.info(
+      `[subscribePush] endpoint=${data.endpoint.slice(0, 50)}... userId=${data.userId}`,
+    );
+    const now = new Date().toISOString();
+
+    // Upsert by endpoint — endpoints are unique per subscription
+    const [existing] = await db
+      .select({ id: pushSubscriptions.id })
+      .from(pushSubscriptions)
+      .where(eq(pushSubscriptions.endpoint, data.endpoint));
+
+    if (existing) {
+      await db
+        .update(pushSubscriptions)
+        .set({
+          p256dh: data.p256dh,
+          auth: data.auth,
+          userId: data.userId,
+        })
+        .where(eq(pushSubscriptions.id, existing.id));
+      console.info(`[subscribePush] updated existing id=${existing.id}`);
+      return { id: existing.id };
+    }
+
+    const id = `psb_${crypto.randomUUID()}`;
+    await db.insert(pushSubscriptions).values({
+      id,
+      userId: data.userId,
+      endpoint: data.endpoint,
+      p256dh: data.p256dh,
+      auth: data.auth,
+      dateCreated: now,
+    });
+    console.info(`[subscribePush] inserted new id=${id}`);
+    return { id };
+  });
+
+export const unsubscribePush = createServerFn({ method: "POST" })
+  .inputValidator(
+    z.object({
+      endpoint: z.string().min(1),
+      userId: z.string().min(1),
+    }),
+  )
+  .handler(async ({ data }) => {
+    await db
+      .delete(pushSubscriptions)
+      .where(
+        and(
+          eq(pushSubscriptions.endpoint, data.endpoint),
+          eq(pushSubscriptions.userId, data.userId),
+        ),
+      );
   });

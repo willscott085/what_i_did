@@ -1,9 +1,16 @@
 import { z } from "zod";
 
 const serverSchema = z.object({
-  NODE_ENV: z.enum(["development", "production", "test"]),
+  NODE_ENV: z
+    .enum(["development", "production", "test"])
+    .optional()
+    .default("production"),
   AI_PROVIDER: z.enum(["xai"]).optional().default("xai"),
   AI_API_KEY: z.string().min(1).optional(),
+  // Web Push (VAPID) — all optional; push notifications stay disabled if unset
+  VAPID_PUBLIC_KEY: z.string().min(1).optional(),
+  VAPID_PRIVATE_KEY: z.string().min(1).optional(),
+  VAPID_SUBJECT: z.string().min(1).optional(),
 });
 
 export const serverEnv = (() => {
