@@ -11,7 +11,7 @@ import { Toaster } from "sonner";
 import { DefaultCatchBoundary } from "~/components/DefaultCatchBoundary";
 import { NotFound } from "~/components/NotFound";
 import { ReloadPrompt } from "~/components/ReloadPrompt";
-import appCss from "~/styles/app.css?url";
+import "~/styles/app.css";
 import { seo } from "~/utils/seo";
 
 export const Route = createRootRouteWithContext<{
@@ -51,7 +51,6 @@ export const Route = createRootRouteWithContext<{
       }),
     ],
     links: [
-      { rel: "stylesheet", href: appCss },
       {
         rel: "apple-touch-icon",
         sizes: "180x180",
