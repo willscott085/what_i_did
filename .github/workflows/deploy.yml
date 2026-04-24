@@ -30,8 +30,7 @@ jobs:
           context: .
           file: Dockerfile
           push: true
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          no-cache: true
           build-args: |
             VITE_APP_NAME=whatIdid
             VITE_VAPID_PUBLIC_KEY=${{ vars.VAPID_PUBLIC_KEY }}
