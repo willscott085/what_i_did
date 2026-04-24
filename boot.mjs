@@ -2,7 +2,7 @@
  * Production entry point.
  *
  * The Nitro server lazy-loads SSR modules, so the background scheduler
- * (which lives in the SSR bundle) won't start until the first HTTP request.
+ * (which lives in the SSR bundle) won't load until the first HTTP request.
  * This wrapper starts the server and immediately fires a warmup request so
  * the scheduler boots within seconds of container start — not whenever the
  * first real user happens to visit.
