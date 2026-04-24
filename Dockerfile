@@ -12,7 +12,7 @@ ARG VITE_VAPID_PUBLIC_KEY
 ENV VITE_APP_NAME=$VITE_APP_NAME
 ENV VITE_VAPID_PUBLIC_KEY=$VITE_VAPID_PUBLIC_KEY
 COPY . .
-RUN pnpm build
+RUN rm -rf .output && pnpm build
 
 # -------- Production Runtime --------
 FROM node:22-alpine AS runtime
