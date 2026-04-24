@@ -1,4 +1,18 @@
+import { readFileSync } from "node:fs";
 import { z } from "zod";
+
+/**
+ * Read a Docker secret from /run/secrets/<name>.
+ * Returns undefined if the file doesn't exist (not running in Swarm/Compose
+ * secrets mode, or the secret wasn't mounted).
+ */
+function readSecret(name: string): string | undefined {
+  try {
+    return readFileSync(`/run/secrets/${name}`, "utf-8").trim();
+  } catch {
+    return undefined;
+  }
+}
 
 const serverSchema = z.object({
   NODE_ENV: z
@@ -18,7 +32,18 @@ export const serverEnv = (() => {
     throw new Error("serverEnv imported in a client bundle");
   }
 
-  const parsed = serverSchema.safeParse(process.env);
+  // Docker secrets: file at /run/secrets/<name> takes precedence over env var
+  const secretOverrides: Record<string, string | undefined> = {
+    VAPID_PRIVATE_KEY: readSecret("vapid_private_key"),
+    AI_API_KEY: readSecret("ai_api_key"),
+  };
+
+  const env = { ...process.env };
+  for (const [key, value] of Object.entries(secretOverrides)) {
+    if (value) env[key] = value;
+  }
+
+  const parsed = serverSchema.safeParse(env);
 
   if (!parsed.success) {
     console.error(parsed.error.flatten().fieldErrors);

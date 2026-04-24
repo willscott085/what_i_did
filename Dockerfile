@@ -7,6 +7,10 @@ RUN npm install -g pnpm && pnpm install --frozen-lockfile
 
 # -------- Build --------
 FROM deps AS builder
+ARG VITE_APP_NAME
+ARG VITE_VAPID_PUBLIC_KEY
+ENV VITE_APP_NAME=$VITE_APP_NAME
+ENV VITE_VAPID_PUBLIC_KEY=$VITE_VAPID_PUBLIC_KEY
 COPY . .
 RUN pnpm build
 
