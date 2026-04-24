@@ -22,6 +22,17 @@ export default tseslint.config(
     },
   },
   {
+    files: ["boot.mjs"],
+    languageOptions: {
+      globals: {
+        process: "readonly",
+        fetch: "readonly",
+        console: "readonly",
+        setTimeout: "readonly",
+      },
+    },
+  },
+  {
     ignores: [
       "dist/",
       ".output/",

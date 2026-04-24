@@ -5,9 +5,11 @@ import { fireScheduleImpl } from "./fire-impl";
 import { sendPushNotification } from "./push";
 
 const POLL_INTERVAL_MS = 30_000;
+const HEALTH_LOG_INTERVAL = 100; // Log health every N ticks (~50 min)
 let started = false;
 let stopped = false;
 let timer: ReturnType<typeof setTimeout> | null = null;
+let tickCount = 0;
 
 /**
  * Kick off the server-side scheduler. Safe to call many times — only the
@@ -49,6 +51,10 @@ async function loop(): Promise<void> {
   if (stopped) return;
   try {
     await runTick();
+    tickCount++;
+    if (tickCount % HEALTH_LOG_INTERVAL === 0) {
+      console.info(`[scheduler] Health: ${tickCount} ticks completed`);
+    }
   } catch (err) {
     // runTick already logs — belt-and-braces so a throw can't kill the loop
     console.error("[scheduler] Unhandled tick error:", err);

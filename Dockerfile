@@ -26,6 +26,8 @@ ENV NODE_ENV=production
 
 # Copy Nitro server output (self-contained, no node_modules needed)
 COPY --from=builder /app/.output ./.output
+# Production boot wrapper — eagerly starts the scheduler
+COPY --from=builder /app/boot.mjs ./
 # Migration assets: SQL files + source runner
 COPY --from=builder /app/drizzle ./drizzle
 COPY --from=builder /app/src/db/migrate.ts ./src/db/migrate.ts
@@ -39,4 +41,4 @@ EXPOSE 3000
 
 # Migrations run as a separate one-off container:
 #   entrypoint: ["node"], command: ["--experimental-strip-types", "src/db/migrate.ts"]
-CMD ["node", ".output/server/index.mjs"]
+CMD ["node", "boot.mjs"]
