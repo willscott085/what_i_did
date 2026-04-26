@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Drawer,
@@ -13,6 +14,10 @@ import { Label } from "~/components/ui/label";
 import { TagMultiSelect } from "~/components/TagMultiSelect";
 import { MarkdownEditor } from "~/components/MarkdownEditor";
 import { DateTimePicker } from "~/components/DateTimePicker";
+import {
+  ItemSchedulesSection,
+  type ItemSchedulesSectionHandle,
+} from "~/components/ItemSchedulesSection";
 import { SubtaskList } from "~/components/SubtaskList";
 import {
   useCreateTask,
@@ -122,6 +127,8 @@ function TaskDialogForm({
   const { mutate: completeSubtask } = useCompleteTask();
   const { mutate: deleteSubtask } = useDeleteTask();
 
+  const schedulesSectionRef = useRef<ItemSchedulesSectionHandle>(null);
+
   const isPending = isCreating || isUpdating;
 
   async function handleSubmit(e: React.FormEvent) {
@@ -136,6 +143,9 @@ function TaskDialogForm({
         startDate: startDate || null,
         tagIds,
       });
+      // Persist any in-progress reminder the user typed but didn't
+      // explicitly click "Add reminder" for.
+      await schedulesSectionRef.current?.commitPending();
     } else {
       await createTask({
         title: title.trim(),
@@ -258,6 +268,16 @@ function TaskDialogForm({
                   onAdd={handleAddSubtask}
                   onComplete={handleCompleteSubtask}
                   onDelete={handleDeleteSubtask}
+                />
+              </div>
+            )}
+
+            {/* Reminders (only in edit mode — schedules attach to existing items) */}
+            {isEditing && task && (
+              <div className="space-y-1.5 px-4">
+                <ItemSchedulesSection
+                  ref={schedulesSectionRef}
+                  itemId={task.id}
                 />
               </div>
             )}

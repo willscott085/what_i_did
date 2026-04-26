@@ -1,7 +1,7 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { PlusIcon } from "lucide-react";
-import { useSyncExternalStore } from "react";
+import { useMemo, useSyncExternalStore } from "react";
 import { useAppLayout } from "~/components/AppLayoutContext";
 import { SortableTaskList } from "~/components/SortableTaskList";
 import { TaskItem } from "~/components/TaskItem";
@@ -14,6 +14,7 @@ import {
 } from "~/features/tasks/mutations";
 import { fetchBacklogTasksQueryOptions } from "~/features/tasks/queries";
 import { Task } from "~/features/tasks/types";
+import { schedulesQueryOptions } from "~/features/schedules/queries";
 
 export const Route = createFileRoute("/_app/backlog")({
   head: () => ({
@@ -30,6 +31,11 @@ function Backlog() {
   const { setDragOverDate, handleOpenDialog } = useAppLayout();
 
   const { data: tasks = [] } = useQuery(fetchBacklogTasksQueryOptions());
+  const { data: allSchedules = [] } = useQuery(schedulesQueryOptions());
+  const itemsWithReminder = useMemo(
+    () => new Set(allSchedules.map((s) => s.itemId)),
+    [allSchedules],
+  );
 
   const { mutate: updateTask } = useMutation(
     useUpdateTaskMutationOptions({ onError: () => {} }),
@@ -90,6 +96,7 @@ function Backlog() {
                   hideEmptyNotes
                   dragAttributes={dragAttributes}
                   dragListeners={dragListeners}
+                  hasReminder={itemsWithReminder.has(task.id)}
                 />
               )}
             </SortableTaskList>
@@ -103,6 +110,7 @@ function Backlog() {
                   onEdit={handleEdit}
                   onDelete={handleDelete}
                   isDragging={false}
+                  hasReminder={itemsWithReminder.has(task.id)}
                 />
               ))}
             </ul>
