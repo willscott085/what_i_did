@@ -24,6 +24,16 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Verify build-time variables
+        run: |
+          pub="${{ vars.VAPID_PUBLIC_KEY }}"
+          echo "VAPID_PUBLIC_KEY length: ${#pub}"
+          echo "VAPID_PUBLIC_KEY prefix: ${pub:0:12}"
+          if [ -z "$pub" ]; then
+            echo "::error::vars.VAPID_PUBLIC_KEY is empty. Set it in Repo → Settings → Secrets and variables → Actions → Variables tab."
+            exit 1
+          fi
+
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
