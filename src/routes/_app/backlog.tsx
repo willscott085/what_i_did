@@ -21,7 +21,10 @@ export const Route = createFileRoute("/_app/backlog")({
     meta: [{ title: "Backlog - whatIdid" }],
   }),
   loader: async ({ context }) => {
-    await context.queryClient.ensureQueryData(fetchBacklogTasksQueryOptions());
+    await Promise.all([
+      context.queryClient.ensureQueryData(fetchBacklogTasksQueryOptions()),
+      context.queryClient.ensureQueryData(schedulesQueryOptions()),
+    ]);
     return null;
   },
   component: Backlog,

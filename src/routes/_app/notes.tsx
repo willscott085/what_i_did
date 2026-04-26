@@ -20,7 +20,10 @@ export const Route = createFileRoute("/_app/notes")({
     meta: [{ title: "Notes - whatIdid" }],
   }),
   loader: async ({ context }) => {
-    await context.queryClient.ensureQueryData(fetchNotesQueryOptions(1));
+    await Promise.all([
+      context.queryClient.ensureQueryData(fetchNotesQueryOptions(1)),
+      context.queryClient.ensureQueryData(schedulesQueryOptions()),
+    ]);
     return null;
   },
   component: NotesView,
