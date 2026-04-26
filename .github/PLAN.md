@@ -834,47 +834,65 @@ The app has a small dataset, the schema is young, and we're about to add a third
 
 ---
 
-### Phase 9F: Push Notifications & Server-Side Scheduler
+### Phase 9F: Push Notifications & Server-Side Scheduler ✅
 
 > The final piece — system-level push notifications and the server-side scheduler that fires due schedules. This is the most complex sub-phase but is isolated from all previous UI work.
 
-- [ ] Generate VAPID key pair, store in env vars
-- [ ] Install `web-push` npm package
-- [ ] Add env vars to `src/config/env.server.ts`: `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`
-- [ ] Add `VAPID_PUBLIC_KEY` to `src/config/env.client.ts`
-- [ ] Server functions for push subscriptions:
+- [x] Generate VAPID key pair, store in env vars
+- [x] Install `web-push` npm package
+- [x] Add env vars to `src/config/env.server.ts`: `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`
+- [x] Add `VAPID_PUBLIC_KEY` to `src/config/env.client.ts`
+- [x] Server functions for push subscriptions:
   - `subscribePush({ endpoint, p256dh, auth })` — save to `pushSubscriptions`
   - `unsubscribePush(endpoint)` — remove subscription
-- [ ] Create `src/features/schedules/push.ts` — `sendPushNotification(userId, { title, body, url? })` using `web-push`
-- [ ] Create `src/features/schedules/scheduler.ts` — server-side schedule checker:
+- [x] Create `src/features/schedules/push.ts` — `sendPushNotification(userId, { title, body, url? })` using `web-push`
+- [x] Create `src/features/schedules/scheduler.ts` — server-side schedule checker:
   - Runs on an interval (every 30s) checking for due schedules
   - Query: `WHERE (reminderTime <= now OR snoozedUntil <= now) AND status IN ('active', 'snoozed')`
   - For each due schedule: call `fireSchedule()`, then `sendPushNotification()`
   - Handles missed schedules (fires immediately on next check)
-- [ ] Integrate scheduler into app bootstrap (server-side only)
-- [ ] In-app foreground detection:
+- [x] Integrate scheduler into app bootstrap (server-side only)
+- [x] In-app foreground detection:
   - App focused → show sonner toast with snooze/dismiss actions
   - App in background → Web Push notification
-  - Use `document.visibilityState` to determine foreground state
-- [ ] Create `public/notification-sw.js` — notification service worker:
-  - `push` event → `self.registration.showNotification()`
-  - `notificationclick` → `clients.openWindow()` or focus existing
-- [ ] Create `src/features/schedules/sw-registration.ts`:
-  - Register notification SW on app load
-  - Request notification permission
+- [x] Create `public/sw.js` — hand-rolled service worker (replaced earlier `notification-sw.js` plan):
+  - `push` event → forward to visible clients via postMessage, otherwise `showNotification()`
+  - `notificationclick` → focus existing window or `clients.openWindow()`
+  - Doubles as the update-prompt SW (handles `SKIP_WAITING`)
+- [x] Create `src/features/schedules/sw-registration.ts`:
   - Subscribe to push with VAPID public key
-  - Send subscription to server
-  - Handle permission denied gracefully
-- [ ] Push permission prompt — inline banner on `/reminders` if notifications not granted
-- [ ] **Verify**: `pnpm typecheck`, `pnpm test`, `pnpm test:e2e` all pass
-- [ ] **Verify**: Push subscription flow works in Chromium
+  - Send subscription to server (`subscribePush`)
+  - Handle permission denied gracefully + auto-resubscribe when permission already granted
+- [x] Push permission prompt — inline banner on `/reminders` if notifications not granted
+- [x] **Verify**: `pnpm typecheck`, `pnpm test`, `pnpm test:e2e` all pass
+- [x] **Verify**: Push subscription flow works in Safari (PWA) and Chromium
 
 #### Outputs
 
-- `src/features/schedules/push.ts`, `scheduler.ts`, `sw-registration.ts`
-- `public/notification-sw.js`
-- Updated: `env.server.ts`, `env.client.ts`, `reminders.tsx`
+- `src/features/schedules/push.ts`, `scheduler.ts`, `sw-registration.ts`, `start-scheduler.ts`
+- `public/sw.js` (hand-rolled, replaces earlier `notification-sw.js` plan)
+- Updated: `env.server.ts`, `env.client.ts`, `reminders.tsx`, `_app.tsx` (foreground listener)
 - Dependency: `web-push`
+
+---
+
+### Phase 9G: Production Hardening ✅
+
+> Lessons learned from the first prod deploy. Push works end-to-end on Safari PWA + Chromium. Several silent-failure traps were patched so the next environment doesn't repeat them.
+
+- [x] Eager scheduler boot via `boot.mjs` wrapper — Nitro lazy-loads SSR modules, so the scheduler wouldn't start until the first HTTP request. Wrapper warmups `/reminders` to force-boot within ~1.5s of container start
+- [x] Periodic `[scheduler] Health: N ticks completed` log so operators can confirm the loop is alive
+- [x] CI guard in `.github/workflows/deploy.yml` — fails the build loudly if `vars.VAPID_PUBLIC_KEY` is empty (silent empty-string substitution previously shipped a broken client bundle)
+- [x] Added dev `.env`, `.env.local`, `.env.*.local` to `.dockerignore` — prevented dev VAPID/AI/DB credentials from being baked into prod images
+
+#### Open follow-ups
+
+- [ ] **Auto-run migrations on deploy** — migration `0007_clumsy_johnny_storm.sql` (unique index on `push_subscriptions.endpoint`) was missing on prod, causing every subscribe to throw. Need a one-shot migrate service in prod compose, or a workflow step that runs migrations after image push, gated before the app container starts
+- [ ] Document Brave-on-desktop quirk: web push silently no-ops without "Use Google services for push messaging" enabled and PWA install. Safari requires Add to Home Screen (iOS) / Add to Dock (macOS Sonoma+)
+
+#### Outputs
+
+- `boot.mjs`, updated `Dockerfile`, updated `.github/workflows/deploy.yml`, updated `.dockerignore`, updated `src/features/schedules/scheduler.ts`
 
 ---
 
