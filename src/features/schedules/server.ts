@@ -147,14 +147,24 @@ export const fetchSchedulesForItem = createServerFn({ method: "GET" })
     }),
   )
   .handler(async ({ data }) => {
+    // Only surface schedules that still affect the user (active or snoozed).
+    // Dismissed/completed rows stay in the DB for history but shouldn't drive
+    // the inline reminders list — that would diverge from the bell indicator,
+    // which is computed from the active+snoozed list via `fetchSchedules`.
+    // Order by the effective fire time (snoozedUntil takes precedence) so
+    // a snoozed schedule shows up where it will actually fire next.
     const results = await db
       .select()
       .from(schedules)
       .innerJoin(items, eq(items.id, schedules.itemId))
       .where(
-        and(eq(schedules.itemId, data.itemId), eq(items.userId, data.userId)),
+        and(
+          eq(schedules.itemId, data.itemId),
+          eq(items.userId, data.userId),
+          inArray(schedules.status, ["active", "snoozed"]),
+        ),
       )
-      .orderBy(asc(schedules.reminderTime));
+      .orderBy(asc(effectiveFireTime));
 
     return results.map((r) => toSchedule(r.schedules));
   });

@@ -25,8 +25,14 @@ export function useCreateSchedule() {
   return useMutation({
     mutationFn: (input: CreateScheduleInput) =>
       createSchedule({ data: { ...input, userId: DEFAULT_USER_ID } }),
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: schedulesQueryKeys.all });
+      // Explicit per-item invalidation — `all` already prefix-matches
+      // `byItem`, but spell it out so callers (e.g. ItemSchedulesSection)
+      // are guaranteed a refetch even if key shapes change later.
+      queryClient.invalidateQueries({
+        queryKey: schedulesQueryKeys.byItem(variables.itemId),
+      });
     },
   });
 }

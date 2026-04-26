@@ -3,6 +3,7 @@ import { format, isValid, parseISO } from "date-fns";
 import { useAppLayout } from "~/components/AppLayoutContext";
 import { DayView } from "~/components/DayView";
 import { fetchNotesForDateQueryOptions } from "~/features/notes/queries";
+import { schedulesQueryOptions } from "~/features/schedules/queries";
 import { fetchTasksForDateQueryOptions } from "~/features/tasks/queries";
 
 const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
@@ -26,6 +27,7 @@ export const Route = createFileRoute("/_app/day/$date")({
       context.queryClient.ensureQueryData(
         fetchNotesForDateQueryOptions(params.date),
       ),
+      context.queryClient.ensureQueryData(schedulesQueryOptions()),
     ]);
     return null;
   },

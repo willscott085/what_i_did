@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { PlusIcon } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAppLayout } from "~/components/AppLayoutContext";
 import { DraggableList } from "~/components/DraggableTaskList";
 import { NoteItem } from "~/components/NoteItem";
@@ -13,13 +13,17 @@ import {
   searchNotesQueryOptions,
 } from "~/features/notes/queries";
 import { Note } from "~/features/notes/types";
+import { schedulesQueryOptions } from "~/features/schedules/queries";
 
 export const Route = createFileRoute("/_app/notes")({
   head: () => ({
     meta: [{ title: "Notes - whatIdid" }],
   }),
   loader: async ({ context }) => {
-    await context.queryClient.ensureQueryData(fetchNotesQueryOptions(1));
+    await Promise.all([
+      context.queryClient.ensureQueryData(fetchNotesQueryOptions(1)),
+      context.queryClient.ensureQueryData(schedulesQueryOptions()),
+    ]);
     return null;
   },
   component: NotesView,
@@ -57,6 +61,12 @@ function NotesView() {
 
   const { mutate: deleteNoteMutation } = useDeleteNote();
   const { mutate: updateNoteMutation } = useUpdateNote();
+
+  const { data: allSchedules = [] } = useQuery(schedulesQueryOptions());
+  const itemsWithReminder = useMemo(
+    () => new Set(allSchedules.map((s) => s.itemId)),
+    [allSchedules],
+  );
 
   function handleEdit(note: Note) {
     handleOpenNoteDialog(note);
@@ -112,6 +122,7 @@ function NotesView() {
                   isDragging={isDragging}
                   dragAttributes={dragAttributes}
                   dragListeners={dragListeners}
+                  hasReminder={itemsWithReminder.has(note.id)}
                 />
               )}
             </DraggableList>

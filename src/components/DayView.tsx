@@ -1,7 +1,7 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { PlusIcon } from "lucide-react";
-import { useSyncExternalStore } from "react";
+import { useMemo, useSyncExternalStore } from "react";
 import { useAppLayout } from "~/components/AppLayoutContext";
 import { DraggableList } from "~/components/DraggableTaskList";
 import { NoteItem } from "~/components/NoteItem";
@@ -19,6 +19,7 @@ import {
 } from "~/features/tasks/mutations";
 import { fetchTasksForDateQueryOptions } from "~/features/tasks/queries";
 import { Task } from "~/features/tasks/types";
+import { schedulesQueryOptions } from "~/features/schedules/queries";
 
 interface DayViewProps {
   selectedDate: Date;
@@ -38,6 +39,11 @@ export function DayView({
   const { data: tasks = [] } = useQuery(fetchTasksForDateQueryOptions(dateStr));
   const { data: dayNotes = [] } = useQuery(
     fetchNotesForDateQueryOptions(dateStr),
+  );
+  const { data: allSchedules = [] } = useQuery(schedulesQueryOptions());
+  const itemsWithReminder = useMemo(
+    () => new Set(allSchedules.map((s) => s.itemId)),
+    [allSchedules],
   );
 
   const { mutate: updateTask } = useMutation(
@@ -116,6 +122,7 @@ export function DayView({
                   onDelete={handleDelete}
                   isDragging={false}
                   hideEmptyNotes
+                  hasReminder={itemsWithReminder.has(task.id)}
                 />
               )}
             >
@@ -130,6 +137,7 @@ export function DayView({
                   dragAttributes={dragAttributes}
                   dragListeners={dragListeners}
                   hideEmptyNotes
+                  hasReminder={itemsWithReminder.has(task.id)}
                 />
               )}
             </SortableTaskList>
@@ -144,6 +152,7 @@ export function DayView({
                   onDelete={handleDelete}
                   isDragging={false}
                   hideEmptyNotes
+                  hasReminder={itemsWithReminder.has(task.id)}
                 />
               ))}
             </ul>
@@ -172,6 +181,7 @@ export function DayView({
                   isDragging={isDragging}
                   dragAttributes={dragAttributes}
                   dragListeners={dragListeners}
+                  hasReminder={itemsWithReminder.has(note.id)}
                 />
               )}
             </DraggableList>

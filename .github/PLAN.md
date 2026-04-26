@@ -656,12 +656,12 @@ The app has a small dataset, the schema is young, and we're about to add a third
 
 > Create the thin events adapter over the unified items table. No UI, no routes — just the data layer following the exact same pattern as `features/tasks/` and `features/notes/`.
 
-- [ ] Create `src/features/events/types.ts`:
+- [x] Create `src/features/events/types.ts`:
   - `Event` type (narrowed from `Item` where `type === 'event'`)
   - `EventWithSchedule` type — event with its attached schedule(s)
-- [ ] Create `src/features/events/consts.ts`:
+- [x] Create `src/features/events/consts.ts`:
   - Query keys: `eventsQueryKeys` (all, byId, byDate, byTag)
-- [ ] Create `src/features/events/server.ts`:
+- [x] Create `src/features/events/server.ts`:
   - `fetchEvents(userId)` — all events, ordered by dateCreated DESC
   - `fetchEventsForDate(userId, date)` — events where `date` matches
   - `fetchEventsByTag(userId, tagId)` — events with a specific tag
@@ -669,12 +669,12 @@ The app has a small dataset, the schema is young, and we're about to add a third
   - `createEvent({ title, content?, date?, tagIds? })` — creates item with `type: 'event'`, `evt_` prefixed ID
   - `updateEvent({ id, title?, content?, date?, tagIds? })` — tag sync in transaction
   - `deleteEvent(eventId)` — hard delete
-- [ ] Create `src/features/events/queries.ts` — React Query option factories wrapping server functions
-- [ ] Create `src/features/events/mutations.ts` — React Query mutations with optimistic updates (same pattern as tasks/notes)
-- [ ] Update `src/db/seed.ts` — add sample event items (2-3 events with tags)
-- [ ] **Verify**: `pnpm typecheck` passes
-- [ ] **Verify**: `pnpm test` passes (no regressions)
-- [ ] **Verify**: `pnpm db:seed` creates sample events
+- [x] Create `src/features/events/queries.ts` — React Query option factories wrapping server functions
+- [x] Create `src/features/events/mutations.ts` — React Query mutations with optimistic updates (same pattern as tasks/notes)
+- [x] Update `src/db/seed.ts` — add sample event items (2-3 events with tags)
+- [x] **Verify**: `pnpm typecheck` passes
+- [x] **Verify**: `pnpm test` passes (no regressions)
+- [x] **Verify**: `pnpm db:seed` creates sample events
 
 #### Outputs
 
@@ -736,7 +736,7 @@ The app has a small dataset, the schema is young, and we're about to add a third
 
 > Build the `/reminders` route and the core UI components. This is the first visible change — users can see, create, edit, and delete reminders. No push notifications yet — just CRUD and display.
 
-- [ ] Build `src/components/ReminderItem.tsx` — list item for reminders:
+- [x] Build `src/components/ReminderItem.tsx` — list item for reminders:
   - Bell icon (plain event) or checkbox-clock icon (cloneOnFire)
   - Title as primary text
   - Next occurrence datetime (relative: "in 2 hours", "tomorrow at 9am")
@@ -744,13 +744,13 @@ The app has a small dataset, the schema is young, and we're about to add a third
   - Tag badges (same styling as TaskItem)
   - Actions: Edit, Delete
   - Missed indicator for past-due (muted "Overdue" badge)
-- [ ] Build `src/components/RecurrencePicker.tsx` — embedded in ReminderDialog:
+- [x] Build `src/components/RecurrencePicker.tsx` — embedded in ReminderDialog:
   - Preset buttons: None, Daily, Weekly, Monthly, Custom
   - Weekly → day-of-week checkboxes (Mon–Sun)
   - Monthly → day-of-month select
   - Custom → interval number + unit (days/weeks/months)
   - Human-readable preview below
-- [ ] Build `src/components/ReminderDialog.tsx` — create/edit reminder:
+- [x] Build `src/components/ReminderDialog.tsx` — create/edit reminder:
   - **Title** (text input, required)
   - **Description** (textarea, optional → stored as `content`)
   - **Generates task** toggle — sets `cloneOnFire`. Explanation: "Creates a new task each time this fires"
@@ -758,19 +758,19 @@ The app has a small dataset, the schema is young, and we're about to add a third
   - **RecurrencePicker** component
   - **Tags** — `TagMultiSelect` (reused)
   - On save: calls `createEventWithSchedule` or updates existing
-- [ ] Create `/reminders` route (`src/routes/_app/reminders.tsx`):
+- [x] Create `/reminders` route (`src/routes/_app/reminders.tsx`):
   - Upcoming section: chronological list of events with active schedules, grouped by day (Today, Tomorrow, This Week, Later)
   - "+" button → ReminderDialog
   - Route loader: `ensureQueryData` for upcoming schedules
   - Page head: `title: "Reminders - whatIdid"`
-- [ ] Update `src/routes/_app.tsx`:
+- [x] Update `src/routes/_app.tsx`:
   - Add "Reminders" to `navItems`: `{ to: '/reminders', label: 'Reminders' }`
-- [ ] Update `src/components/AppLayoutContext.tsx`:
+- [x] Update `src/components/AppLayoutContext.tsx`:
   - Add `reminderDialogOpen`, `editingEvent`, `handleOpenReminderDialog` to layout context
-- [ ] **Verify**: `pnpm typecheck` passes
-- [ ] **Verify**: `pnpm test` passes
-- [ ] **Verify**: `pnpm test:e2e` passes (existing tests — no new E2E yet)
-- [ ] **Verify**: Can create, view, edit, and delete reminders via the UI
+- [x] **Verify**: `pnpm typecheck` passes
+- [x] **Verify**: `pnpm test` passes
+- [x] **Verify**: `pnpm test:e2e` passes (existing tests — no new E2E yet)
+- [x] **Verify**: Can create, view, edit, and delete reminders via the UI
 
 #### Outputs
 
@@ -818,19 +818,21 @@ The app has a small dataset, the schema is young, and we're about to add a third
 
 > Allow setting reminders on existing tasks and notes from their edit dialogs.
 
-- [ ] Add "Set Reminder" section to `TaskDialog.tsx`:
+- [x] Add "Set Reminder" section to `TaskDialog.tsx`:
   - Collapsible section with datetime + optional recurrence
   - Creates a schedule attached to the task item (no new event created)
   - Shows existing schedules on the task if any
-- [ ] Add "Set Reminder" section to `NoteDialog.tsx`:
+- [x] Add "Set Reminder" section to `NoteDialog.tsx`:
   - Same pattern — schedule attached to the note item
-- [ ] Add bell indicator on `TaskItem.tsx` for tasks that have schedules
-- [ ] Add bell indicator on `NoteItem.tsx` for notes that have schedules
-- [ ] **Verify**: `pnpm typecheck`, `pnpm test`, `pnpm test:e2e` all pass
+- [x] Add bell indicator on `TaskItem.tsx` for tasks that have schedules
+- [x] Add bell indicator on `NoteItem.tsx` for notes that have schedules
+- [x] **Verify**: `pnpm typecheck`, `pnpm test`, `pnpm test:e2e` all pass
 
 #### Outputs
 
+- New: `src/components/ItemSchedulesSection.tsx` — reusable list + add-form for schedules attached to an item
 - Updated: `TaskDialog.tsx`, `NoteDialog.tsx`, `TaskItem.tsx`, `NoteItem.tsx`
+- Updated: `DayView.tsx`, `routes/_app/backlog.tsx`, `routes/_app/notes.tsx` — wire `hasReminder` from `schedulesQueryOptions()`
 
 ---
 

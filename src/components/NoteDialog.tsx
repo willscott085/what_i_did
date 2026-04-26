@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Drawer,
@@ -13,6 +13,10 @@ import { Label } from "~/components/ui/label";
 import { TagMultiSelect } from "~/components/TagMultiSelect";
 import { MarkdownEditor } from "~/components/MarkdownEditor";
 import { DateTimePicker } from "~/components/DateTimePicker";
+import {
+  ItemSchedulesSection,
+  type ItemSchedulesSectionHandle,
+} from "~/components/ItemSchedulesSection";
 import {
   useCreateNote,
   useProcessNoteWithAI,
@@ -116,6 +120,8 @@ function NoteDialogForm({
   const { mutateAsync: updateNote, isPending: isUpdating } = useUpdateNote();
   const { mutate: triggerAI } = useProcessNoteWithAI();
 
+  const schedulesSectionRef = useRef<ItemSchedulesSectionHandle>(null);
+
   const isPending = isCreating || isUpdating;
 
   async function handleSubmit(e: React.FormEvent) {
@@ -130,6 +136,10 @@ function NoteDialogForm({
         date: date || null,
         tagIds,
       });
+
+      // Persist any in-progress reminder the user typed but didn't
+      // explicitly click "Add reminder" for.
+      await schedulesSectionRef.current?.commitPending();
 
       // Re-trigger AI if content changed and title was AI-generated (user didn't set one)
       if (content.trim() !== note.content && !title.trim()) {
@@ -214,6 +224,16 @@ function NoteDialogForm({
               <Label>Tags</Label>
               <TagMultiSelect selectedTagIds={tagIds} onChange={setTagIds} />
             </div>
+
+            {/* Reminders (only in edit mode — schedules attach to existing items) */}
+            {isEditing && note && (
+              <div className="space-y-1.5 px-4">
+                <ItemSchedulesSection
+                  ref={schedulesSectionRef}
+                  itemId={note.id}
+                />
+              </div>
+            )}
           </div>
         </div>
 
