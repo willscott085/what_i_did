@@ -39,6 +39,7 @@ USER nodejs
 
 EXPOSE 3000
 
-# Migrations run as a separate one-off container:
-#   entrypoint: ["node"], command: ["--experimental-strip-types", "src/db/migrate.ts"]
+# boot.mjs applies pending Drizzle migrations against DATABASE_URL before
+# starting the server. To run migrations standalone (e.g. CI smoke check):
+#   node --experimental-strip-types src/db/migrate.ts
 CMD ["node", "boot.mjs"]

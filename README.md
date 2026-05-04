@@ -70,6 +70,29 @@ pnpm build && pnpm start
 
 Then open in Chrome, check the Application tab in DevTools for the service worker and manifest.
 
+### Browser support for push notifications
+
+Web Push works in all modern browsers but has platform-specific quirks. If a subscription appears to succeed but no notification ever arrives, check the matrix below:
+
+| Browser                         | Requirement                                                                                                                                                |
+| ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Chrome / Edge (desktop)         | Works out of the box.                                                                                                                                      |
+| Firefox (desktop)               | Works out of the box.                                                                                                                                      |
+| **Brave (desktop)**             | Enable `brave://settings/privacy` → "Use Google services for push messaging" **and** install the app as a PWA. Without both, subscriptions silently no-op. |
+| **Safari (iOS / iPadOS 16.4+)** | Must be installed via Share → **Add to Home Screen**. Push is not delivered to tabs in mobile Safari.                                                      |
+| **Safari (macOS Sonoma+)**      | Must be installed via File → **Add to Dock**. Push is not delivered to regular Safari windows.                                                             |
+| Chrome / Edge (Android)         | Works out of the box.                                                                                                                                      |
+
+The `/reminders` page surfaces a permission banner that walks users through granting permission and subscribing.
+
+## Production Deployment
+
+The image is published to GHCR by `.github/workflows/deploy.yml` on every push to `main`. The runtime container expects:
+
+- `DATABASE_URL` — required. Migrations are applied automatically on container start by `boot.mjs` (idempotent — drizzle tracks applied migrations via the `__drizzle_migrations` table).
+- `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` — required for push notifications. The CI build fails loudly if `VAPID_PUBLIC_KEY` is missing because empty-string substitution would silently ship a broken client bundle.
+- `AI_API_KEY` (optional) — AI title/keyword generation degrades gracefully when absent.
+
 ## Environment Variables
 
 Create a `.env.local` file in the project root:

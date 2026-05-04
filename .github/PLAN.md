@@ -889,8 +889,8 @@ The app has a small dataset, the schema is young, and we're about to add a third
 
 #### Open follow-ups
 
-- [ ] **Auto-run migrations on deploy** — migration `0007_clumsy_johnny_storm.sql` (unique index on `push_subscriptions.endpoint`) was missing on prod, causing every subscribe to throw. Need a one-shot migrate service in prod compose, or a workflow step that runs migrations after image push, gated before the app container starts
-- [ ] Document Brave-on-desktop quirk: web push silently no-ops without "Use Google services for push messaging" enabled and PWA install. Safari requires Add to Home Screen (iOS) / Add to Dock (macOS Sonoma+)
+- [x] **Auto-run migrations on deploy** — `boot.mjs` now applies pending Drizzle migrations against `DATABASE_URL` before starting the Nitro server. Idempotent via `__drizzle_migrations`. Closes the silent-failure gap where missing migrations (e.g. `0007` unique index on `push_subscriptions.endpoint`) broke push subscribe in prod.
+- [x] Document Brave-on-desktop quirk and Safari Add-to-Home-Screen / Add-to-Dock requirement — added to `README.md` under "Browser support for push notifications".
 
 #### Outputs
 

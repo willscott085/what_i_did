@@ -1,12 +1,37 @@
 /**
  * Production entry point.
  *
- * The Nitro server lazy-loads SSR modules, so the background scheduler
- * (which lives in the SSR bundle) won't load until the first HTTP request.
- * This wrapper starts the server and immediately fires a warmup request so
- * the scheduler boots within seconds of container start — not whenever the
- * first real user happens to visit.
+ * Responsibilities, in order:
+ *   1. Apply any pending Drizzle migrations against DATABASE_URL (idempotent —
+ *      drizzle tracks applied migrations in `__drizzle_migrations`). This used
+ *      to be a separate one-off container; running it inline guarantees the
+ *      schema is current before the server accepts traffic and avoids silent
+ *      failures when an operator forgets the manual step.
+ *   2. Boot the Nitro SSR server.
+ *   3. Warm up `/reminders` so the lazy-loaded background scheduler starts
+ *      within seconds of container start, not whenever the first user visits.
  */
+
+import postgres from "postgres";
+import { drizzle } from "drizzle-orm/postgres-js";
+import { migrate } from "drizzle-orm/postgres-js/migrator";
+
+async function runMigrations() {
+  const url = process.env.DATABASE_URL;
+  if (!url) {
+    throw new Error("[boot] DATABASE_URL is required to run migrations");
+  }
+  const client = postgres(url, { max: 1 });
+  try {
+    const start = Date.now();
+    await migrate(drizzle(client), { migrationsFolder: "./drizzle" });
+    console.info(`[boot] Migrations applied in ${Date.now() - start}ms`);
+  } finally {
+    await client.end();
+  }
+}
+
+await runMigrations();
 
 await import("./.output/server/index.mjs");
 
