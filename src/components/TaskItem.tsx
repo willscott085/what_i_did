@@ -136,7 +136,7 @@ export function TaskItem({
     >
       <div className="flex min-w-0 items-start gap-2">
         {/* Drag Handle */}
-        {task.dateCompleted ? (
+        {task.dateCompleted && Object.keys(dragListeners).length === 0 ? (
           <span className="-ml-2 size-8 shrink-0" aria-hidden="true" />
         ) : (
           <div className="flex h-7.5 items-center">

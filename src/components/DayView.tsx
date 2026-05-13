@@ -74,7 +74,23 @@ export function DayView({
   }
 
   function handleDropOnDate(taskId: string, date: string) {
-    moveTaskToDate({ taskId, date });
+    const task = tasks.find((t) => t.id === taskId);
+    if (task?.dateCompleted) {
+      const today = format(new Date(), "yyyy-MM-dd");
+      if (date > today) {
+        // Future date: uncomplete the task and move it
+        moveTaskToDate({ taskId, date, dateCompleted: null });
+      } else {
+        // Past or today: keep completed, change completion date
+        moveTaskToDate({
+          taskId,
+          date,
+          dateCompleted: `${date}T00:00:00.000Z`,
+        });
+      }
+    } else {
+      moveTaskToDate({ taskId, date });
+    }
   }
 
   function handleEditNote(note: Note) {
@@ -113,14 +129,21 @@ export function DayView({
               onDragActiveChange={onDragActiveChange}
               onDropOnDate={handleDropOnDate}
               onDragOverDate={onDragOverDate}
-              completedChildren={(task) => (
+              completedChildren={(
+                task,
+                isDragging,
+                dragAttributes,
+                dragListeners,
+              ) => (
                 <TaskItem
                   key={task.id}
                   task={task}
                   onUpdate={updateTask}
                   onEdit={handleEdit}
                   onDelete={handleDelete}
-                  isDragging={false}
+                  isDragging={isDragging}
+                  dragAttributes={dragAttributes}
+                  dragListeners={dragListeners}
                   hideEmptyNotes
                   hasReminder={itemsWithReminder.has(task.id)}
                 />

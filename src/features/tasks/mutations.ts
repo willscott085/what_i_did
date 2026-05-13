@@ -169,9 +169,19 @@ export const useMoveTaskToDate = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ taskId, date }: { taskId: string; date: string | null }) =>
-      moveTaskToDate({ data: { taskId, date, userId: DEFAULT_USER_ID } }),
-    onMutate: async ({ taskId, date }) => {
+    mutationFn: ({
+      taskId,
+      date,
+      dateCompleted,
+    }: {
+      taskId: string;
+      date: string | null;
+      dateCompleted?: string | null;
+    }) =>
+      moveTaskToDate({
+        data: { taskId, date, userId: DEFAULT_USER_ID, dateCompleted },
+      }),
+    onMutate: async ({ taskId, date, dateCompleted }) => {
       await queryClient.cancelQueries({ queryKey: tasksQueryKeys.all });
 
       // Snapshot all affected caches for rollback
@@ -226,7 +236,12 @@ export const useMoveTaskToDate = () => {
 
             queryClient.setQueryData<Task[]>(targetKey, [
               ...targetData,
-              { ...movedTask, startDate: date, sortOrder: newKey },
+              {
+                ...movedTask,
+                startDate: date,
+                sortOrder: newKey,
+                ...(dateCompleted !== undefined ? { dateCompleted } : {}),
+              },
             ]);
           }
         }
