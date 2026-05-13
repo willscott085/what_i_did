@@ -346,6 +346,7 @@ export const moveTaskToDate = createServerFn({ method: "POST" })
         .string()
         .regex(/^\d{4}-\d{2}-\d{2}$/)
         .or(z.null()),
+      dateCompleted: z.string().or(z.null()).optional(),
       userId: z.string().min(1),
     }),
   )
@@ -371,13 +372,18 @@ export const moveTaskToDate = createServerFn({ method: "POST" })
 
     const newKey = generateKeyBetween(maxRow?.max ?? null, null);
 
+    const updates: Record<string, unknown> = {
+      date: data.date,
+      sortOrder: newKey,
+      dateUpdated: new Date().toISOString(),
+    };
+    if (data.dateCompleted !== undefined) {
+      updates.dateCompleted = data.dateCompleted;
+    }
+
     const [result] = await db
       .update(items)
-      .set({
-        date: data.date,
-        sortOrder: newKey,
-        dateUpdated: new Date().toISOString(),
-      })
+      .set(updates)
       .where(
         and(
           eq(items.id, data.taskId),

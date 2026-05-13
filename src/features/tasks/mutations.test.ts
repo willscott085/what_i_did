@@ -6,6 +6,7 @@ import {
   useCompleteTask,
   useCreateTask,
   useDeleteTask,
+  useMoveTaskToDate,
   useReorderTasks,
   useUpdateFullTask,
 } from "./mutations";
@@ -25,6 +26,7 @@ import {
   completeTask,
   createTask,
   deleteTask,
+  moveTaskToDate,
   reorderTasks,
   updateTask,
 } from "./server";
@@ -32,6 +34,7 @@ import {
 const mockedCompleteTask = vi.mocked(completeTask);
 const mockedCreateTask = vi.mocked(createTask);
 const mockedDeleteTask = vi.mocked(deleteTask);
+const mockedMoveTaskToDate = vi.mocked(moveTaskToDate);
 const mockedReorderTasks = vi.mocked(reorderTasks);
 const mockedUpdateTask = vi.mocked(updateTask);
 
@@ -375,5 +378,121 @@ describe("useCreateTask", () => {
         userId: "1",
       },
     });
+  });
+});
+
+describe("useMoveTaskToDate", () => {
+  it("should optimistically move an incomplete task to a new date", async () => {
+    const task = makeFakeTask({ id: "tsk_1", startDate: "2026-05-10" });
+    const sourceKey = ["tasks", "byDate", "2026-05-10"] as const;
+    const targetKey = ["tasks", "byDate", "2026-05-12"] as const;
+    queryClient.setQueryData(sourceKey, [task]);
+    queryClient.setQueryData(targetKey, []);
+    seedInbox([task]);
+    mockedMoveTaskToDate.mockResolvedValue(undefined as never);
+
+    const { result } = renderHook(() => useMoveTaskToDate(), { wrapper });
+
+    act(() => {
+      result.current.mutate({ taskId: "tsk_1", date: "2026-05-12" });
+    });
+
+    await waitFor(() => {
+      const source = queryClient.getQueryData<Task[]>(sourceKey);
+      expect(source).toHaveLength(0);
+      const target = queryClient.getQueryData<Task[]>(targetKey);
+      expect(target).toHaveLength(1);
+      expect(target?.[0]?.startDate).toBe("2026-05-12");
+      expect(target?.[0]?.dateCompleted).toBeNull();
+    });
+  });
+
+  it("should move a completed task and update dateCompleted", async () => {
+    const task = makeFakeTask({
+      id: "tsk_1",
+      startDate: "2026-05-10",
+      dateCompleted: "2026-05-10T14:30:00Z",
+    });
+    const sourceKey = ["tasks", "byDate", "2026-05-10"] as const;
+    const targetKey = ["tasks", "byDate", "2026-05-08"] as const;
+    queryClient.setQueryData(sourceKey, [task]);
+    queryClient.setQueryData(targetKey, []);
+    seedInbox([]);
+    mockedMoveTaskToDate.mockResolvedValue(undefined as never);
+
+    const { result } = renderHook(() => useMoveTaskToDate(), { wrapper });
+
+    act(() => {
+      result.current.mutate({
+        taskId: "tsk_1",
+        date: "2026-05-08",
+        dateCompleted: "2026-05-08T00:00:00.000Z",
+      });
+    });
+
+    await waitFor(() => {
+      const target = queryClient.getQueryData<Task[]>(targetKey);
+      expect(target).toHaveLength(1);
+      expect(target?.[0]?.dateCompleted).toBe("2026-05-08T00:00:00.000Z");
+      expect(target?.[0]?.startDate).toBe("2026-05-08");
+    });
+  });
+
+  it("should uncomplete a completed task when moved to a future date", async () => {
+    const task = makeFakeTask({
+      id: "tsk_1",
+      startDate: "2026-05-10",
+      dateCompleted: "2026-05-10T14:30:00Z",
+    });
+    const sourceKey = ["tasks", "byDate", "2026-05-10"] as const;
+    const targetKey = ["tasks", "byDate", "2026-05-20"] as const;
+    queryClient.setQueryData(sourceKey, [task]);
+    queryClient.setQueryData(targetKey, []);
+    seedInbox([]);
+    mockedMoveTaskToDate.mockResolvedValue(undefined as never);
+
+    const { result } = renderHook(() => useMoveTaskToDate(), { wrapper });
+
+    act(() => {
+      result.current.mutate({
+        taskId: "tsk_1",
+        date: "2026-05-20",
+        dateCompleted: null,
+      });
+    });
+
+    await waitFor(() => {
+      const target = queryClient.getQueryData<Task[]>(targetKey);
+      expect(target).toHaveLength(1);
+      expect(target?.[0]?.dateCompleted).toBeNull();
+      expect(target?.[0]?.startDate).toBe("2026-05-20");
+    });
+  });
+
+  it("should rollback all caches on error", async () => {
+    const task = makeFakeTask({ id: "tsk_1", startDate: "2026-05-10" });
+    const sourceKey = ["tasks", "byDate", "2026-05-10"] as const;
+    const targetKey = ["tasks", "byDate", "2026-05-12"] as const;
+    queryClient.setQueryData(sourceKey, [task]);
+    queryClient.setQueryData(targetKey, []);
+    seedInbox([task]);
+    mockedMoveTaskToDate.mockRejectedValue(new Error("Server error"));
+
+    const { result } = renderHook(() => useMoveTaskToDate(), { wrapper });
+
+    act(() => {
+      result.current.mutate({ taskId: "tsk_1", date: "2026-05-12" });
+    });
+
+    await waitFor(() => {
+      expect(result.current.isError).toBe(true);
+    });
+
+    const source = queryClient.getQueryData<Task[]>(sourceKey);
+    expect(source).toHaveLength(1);
+    expect(source?.[0]?.id).toBe("tsk_1");
+
+    const target = queryClient.getQueryData<Task[]>(targetKey);
+    expect(target).toHaveLength(0);
   });
 });

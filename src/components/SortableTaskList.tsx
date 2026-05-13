@@ -5,6 +5,7 @@ import {
   DragStartEvent,
   KeyboardSensor,
   PointerSensor,
+  useDraggable,
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
@@ -41,7 +42,12 @@ interface SortableTaskListProps {
     dragAttributes: React.HTMLAttributes<HTMLElement>,
     dragListeners: DraggableSyntheticListeners,
   ) => React.ReactNode;
-  completedChildren?: (task: Task) => React.ReactNode;
+  completedChildren?: (
+    task: Task,
+    isDragging: boolean,
+    dragAttributes: React.HTMLAttributes<HTMLElement>,
+    dragListeners: DraggableSyntheticListeners,
+  ) => React.ReactNode;
 }
 
 // ─── Component ───────────────────────────────────────────────────────
@@ -225,16 +231,22 @@ export function SortableTaskList({
         {activeTask ? children(activeTask, true, {}, undefined) : null}
       </DragOverlay>
 
-      {/* Completed section — not sortable */}
+      {/* Completed section — draggable (for cross-date drops) but not sortable */}
       {completedTasks.length > 0 && (
         <div>
-          {completedTasks.map((task) =>
-            completedChildren ? (
-              completedChildren(task)
-            ) : (
-              <div key={task.id}>{children(task, false, {}, undefined)}</div>
-            ),
-          )}
+          {completedTasks.map((task) => (
+            <DraggableCompletedItem key={task.id} id={task.id}>
+              {({ isDragging, attributes, listeners }) => {
+                const render = completedChildren ?? children;
+                return render(
+                  task,
+                  isDragging || task.id === activeId,
+                  attributes,
+                  listeners,
+                );
+              }}
+            </DraggableCompletedItem>
+          ))}
         </div>
       )}
     </DndContext>
@@ -276,6 +288,29 @@ function SortableItem({ id, children }: SortableItemProps) {
 
   return (
     <div ref={setNodeRef} style={style}>
+      {children({ isDragging, attributes, listeners })}
+    </div>
+  );
+}
+
+// ─── Draggable Completed Item Wrapper ────────────────────────────────
+
+interface DraggableCompletedItemProps {
+  id: string;
+  children: (props: {
+    isDragging: boolean;
+    attributes: React.HTMLAttributes<HTMLElement>;
+    listeners: DraggableSyntheticListeners;
+  }) => React.ReactNode;
+}
+
+function DraggableCompletedItem({ id, children }: DraggableCompletedItemProps) {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id,
+  });
+
+  return (
+    <div ref={setNodeRef} className={isDragging ? "opacity-0" : undefined}>
       {children({ isDragging, attributes, listeners })}
     </div>
   );

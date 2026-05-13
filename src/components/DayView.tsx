@@ -113,14 +113,21 @@ export function DayView({
               onDragActiveChange={onDragActiveChange}
               onDropOnDate={handleDropOnDate}
               onDragOverDate={onDragOverDate}
-              completedChildren={(task) => (
+              completedChildren={(
+                task,
+                isDragging,
+                dragAttributes,
+                dragListeners,
+              ) => (
                 <TaskItem
                   key={task.id}
                   task={task}
                   onUpdate={updateTask}
                   onEdit={handleEdit}
                   onDelete={handleDelete}
-                  isDragging={false}
+                  isDragging={isDragging}
+                  dragAttributes={dragAttributes}
+                  dragListeners={dragListeners}
                   hideEmptyNotes
                   hasReminder={itemsWithReminder.has(task.id)}
                 />

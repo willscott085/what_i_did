@@ -3,6 +3,7 @@ import {
   useMutation,
   useQueryClient,
 } from "@tanstack/react-query";
+import { format } from "date-fns";
 import { generateKeyBetween, generateNKeysBetween } from "fractional-indexing";
 import { DEFAULT_USER_ID, tasksQueryKeys } from "./consts";
 import { fetchInboxTasksQueryOptions } from "./queries";
@@ -169,9 +170,21 @@ export const useMoveTaskToDate = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ taskId, date }: { taskId: string; date: string | null }) =>
-      moveTaskToDate({ data: { taskId, date, userId: DEFAULT_USER_ID } }),
-    onMutate: async ({ taskId, date }) => {
+    mutationFn: ({
+      taskId,
+      date,
+      dateCompleted,
+    }: {
+      taskId: string;
+      date: string | null;
+      dateCompleted?: string | null;
+    }) =>
+      moveTaskToDate({
+        data: { taskId, date, userId: DEFAULT_USER_ID, dateCompleted },
+      }),
+    onMutate: async (vars) => {
+      let { dateCompleted } = vars;
+      const { taskId, date } = vars;
       await queryClient.cancelQueries({ queryKey: tasksQueryKeys.all });
 
       // Snapshot all affected caches for rollback
@@ -194,6 +207,18 @@ export const useMoveTaskToDate = () => {
           movedTask = data.find((t) => t.id === taskId);
           if (movedTask) break;
         }
+      }
+
+      // Auto-detect dateCompleted when caller doesn't specify it
+      if (movedTask?.dateCompleted && dateCompleted === undefined && date) {
+        const today = format(new Date(), "yyyy-MM-dd");
+        if (date > today) {
+          dateCompleted = null;
+        } else {
+          dateCompleted = `${date}T00:00:00.000Z`;
+        }
+        // Update the server call payload
+        vars.dateCompleted = dateCompleted;
       }
 
       if (movedTask) {
@@ -226,7 +251,12 @@ export const useMoveTaskToDate = () => {
 
             queryClient.setQueryData<Task[]>(targetKey, [
               ...targetData,
-              { ...movedTask, startDate: date, sortOrder: newKey },
+              {
+                ...movedTask,
+                startDate: date,
+                sortOrder: newKey,
+                ...(dateCompleted !== undefined ? { dateCompleted } : {}),
+              },
             ]);
           }
         }

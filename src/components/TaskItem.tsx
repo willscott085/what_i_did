@@ -136,7 +136,7 @@ export function TaskItem({
     >
       <div className="flex min-w-0 items-start gap-2">
         {/* Drag Handle */}
-        {task.dateCompleted ? (
+        {task.dateCompleted && Object.keys(dragListeners).length === 0 ? (
           <span className="-ml-2 size-8 shrink-0" aria-hidden="true" />
         ) : (
           <div className="flex h-7.5 items-center">
@@ -145,7 +145,7 @@ export function TaskItem({
               {...dragAttributes}
               {...dragListeners}
               className="-ml-2 cursor-grab touch-none p-2 text-(--task-drag-handle) opacity-0 transition-opacity group-hover/task:opacity-100 hover:text-(--task-drag-handle-hover)"
-              aria-label="Drag to reorder"
+              aria-label="Drag to move"
             >
               <GripVertical className="size-4" />
             </button>
