@@ -310,7 +310,7 @@ function DraggableCompletedItem({ id, children }: DraggableCompletedItemProps) {
   });
 
   return (
-    <div ref={setNodeRef} style={{ opacity: isDragging ? 0 : undefined }}>
+    <div ref={setNodeRef} className={isDragging ? "opacity-0" : undefined}>
       {children({ isDragging, attributes, listeners })}
     </div>
   );

@@ -74,23 +74,7 @@ export function DayView({
   }
 
   function handleDropOnDate(taskId: string, date: string) {
-    const task = tasks.find((t) => t.id === taskId);
-    if (task?.dateCompleted) {
-      const today = format(new Date(), "yyyy-MM-dd");
-      if (date > today) {
-        // Future date: uncomplete the task and move it
-        moveTaskToDate({ taskId, date, dateCompleted: null });
-      } else {
-        // Past or today: keep completed, change completion date
-        moveTaskToDate({
-          taskId,
-          date,
-          dateCompleted: `${date}T00:00:00.000Z`,
-        });
-      }
-    } else {
-      moveTaskToDate({ taskId, date });
-    }
+    moveTaskToDate({ taskId, date });
   }
 
   function handleEditNote(note: Note) {
