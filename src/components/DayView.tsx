@@ -93,7 +93,7 @@ export function DayView({
     <div className="flex min-h-full flex-col justify-center">
       <section>
         <header className="flex items-center justify-start gap-2">
-          <h2 className="pl-8 text-lg font-medium">
+          <h2 className="text-lg font-medium lg:pl-8">
             {format(selectedDate, "EEEE, d MMMM yyyy")}
           </h2>
           <Button

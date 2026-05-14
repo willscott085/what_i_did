@@ -31,7 +31,7 @@ export const processNoteWithAI = createServerFn({ method: "POST" })
       // Short one-liners don't need a summary title
       const content = note.content ?? "";
       const needsTitle =
-        (!note.title || note.title === "Untitled") && content.includes("\n");
+        (!note.title || note.title === "Untitled") && content.length > 80;
       let title: string | undefined;
       if (needsTitle) {
         title = await provider.generateTitle(content);

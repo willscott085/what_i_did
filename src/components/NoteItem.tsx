@@ -71,7 +71,7 @@ export function NoteItem({
             type="button"
             {...dragAttributes}
             {...dragListeners}
-            className="-ml-2 cursor-grab touch-none p-2 text-(--task-drag-handle) opacity-0 transition-opacity group-hover/task:opacity-100 hover:text-(--task-drag-handle-hover)"
+            className="hover-show -ml-2 cursor-grab touch-none p-2 text-(--task-drag-handle) transition-opacity group-hover/task:opacity-100 hover:text-(--task-drag-handle-hover)"
             aria-label="Drag to reorder"
           >
             <GripVertical className="size-4" />
@@ -143,7 +143,7 @@ export function NoteItem({
             <button
               type="button"
               onClick={() => setExpanded(!expanded)}
-              className="text-muted-foreground hover:text-foreground shrink-0 p-1 opacity-0 transition-opacity group-hover/task:opacity-100"
+              className="text-muted-foreground hover:text-foreground hover-show shrink-0 p-2 transition-opacity group-hover/task:opacity-100"
               aria-label={expanded ? "Collapse note" : "Expand note"}
             >
               {expanded ? (
@@ -162,7 +162,7 @@ export function NoteItem({
               type="button"
               variant="ghost"
               size="icon-sm"
-              className="size-7 opacity-0 group-hover/task:opacity-100"
+              className="hover-show group-hover/task:opacity-100"
               onClick={() => onEdit(note)}
               aria-label="Edit note"
             >
@@ -175,7 +175,7 @@ export function NoteItem({
             type="button"
             variant="ghost"
             size="icon-sm"
-            className="hover:text-destructive size-7 opacity-0 group-hover/task:opacity-100"
+            className="hover:text-destructive hover-show group-hover/task:opacity-100"
             onClick={handleDelete}
             aria-label="Delete note"
           >

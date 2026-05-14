@@ -2,12 +2,19 @@ import {
   Link,
   Outlet,
   createFileRoute,
+  useMatches,
   useNavigate,
   useParams,
 } from "@tanstack/react-router";
-import { ArrowLeftIcon } from "lucide-react";
+import {
+  ArrowLeftIcon,
+  CalendarIcon,
+  PlusIcon,
+  StickyNoteIcon,
+} from "lucide-react";
 import { format, isValid, parseISO } from "date-fns";
-import { StickyNoteIcon } from "lucide-react";
+import { BottomNav } from "~/components/BottomNav";
+import { Drawer, DrawerContent, DrawerTitle } from "~/components/ui/drawer";
 import {
   useCallback,
   useEffect,
@@ -197,6 +204,46 @@ function AppLayout() {
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [handleOpenDialog, dialogOpen]);
 
+  // ─── Mobile top bar context ──────────────────────────────────
+  const matches = useMatches();
+  const currentPath = matches[matches.length - 1]?.fullPath ?? "";
+
+  const mobilePageTitle = useMemo(() => {
+    if (currentPath.startsWith("/day/") && parsedDate && isValid(parsedDate)) {
+      return format(parsedDate, "EEE, d MMM yyyy");
+    }
+    if (currentPath.startsWith("/backlog")) return "Backlog";
+    if (currentPath.startsWith("/notes")) return "Notes";
+    if (currentPath.startsWith("/reminders")) return "Reminders";
+    if (currentPath.startsWith("/tags")) return "Tags";
+    if (currentPath.startsWith("/tag/")) return "Tag";
+    return "whatIdid";
+  }, [currentPath, parsedDate]);
+
+  // ─── Mobile "+" create handler (per-page primary type) ────────
+  const handleMobileCreate = useCallback(() => {
+    if (currentPath.startsWith("/day/") || currentPath.startsWith("/backlog")) {
+      handleOpenDialog(null);
+    } else if (currentPath.startsWith("/notes")) {
+      handleOpenNoteDialog(null);
+    } else if (currentPath.startsWith("/reminders")) {
+      handleOpenReminderDialog(null);
+    }
+    // Tags page uses inline creation — no dialog
+  }, [
+    currentPath,
+    handleOpenDialog,
+    handleOpenNoteDialog,
+    handleOpenReminderDialog,
+  ]);
+
+  const [calendarDrawerOpen, setCalendarDrawerOpen] = useState(false);
+
+  function handleMobileSelectDate(date: Date) {
+    handleSelectDate(date);
+    setCalendarDrawerOpen(false);
+  }
+
   const layoutCtx = useMemo(
     () => ({
       dragOverDate,
@@ -233,7 +280,8 @@ function AppLayout() {
         <div className="flex flex-1 flex-col overflow-hidden">
           {/* Top nav */}
           <nav className="flex items-center justify-between px-4 py-2">
-            <div>
+            {/* Left: back button */}
+            <div className="min-w-0 flex-1">
               {backLabel && (
                 <button
                   type="button"
@@ -245,23 +293,54 @@ function AppLayout() {
                 </button>
               )}
             </div>
-            <div className="flex items-center">
-              {navItems.map((item, i) => (
-                <span key={item.to} className="flex items-center">
-                  {i > 0 && <span className="bg-border mx-3 h-4 w-px" />}
-                  <Link
-                    to={item.to}
-                    className="text-muted-foreground hover:text-foreground [&.active]:text-foreground text-sm transition-colors [&.active]:font-medium"
+
+            {/* Center: page title (mobile only) */}
+            <span className="text-foreground truncate text-sm font-medium lg:hidden">
+              {mobilePageTitle}
+            </span>
+
+            {/* Right: desktop nav links + mobile action icons */}
+            <div className="flex flex-1 items-center justify-end gap-1">
+              {/* Desktop nav links */}
+              <div className="hidden items-center lg:flex">
+                {navItems.map((item, i) => (
+                  <span key={item.to} className="flex items-center">
+                    {i > 0 && <span className="bg-border mx-3 h-4 w-px" />}
+                    <Link
+                      to={item.to}
+                      className="text-muted-foreground hover:text-foreground [&.active]:text-foreground text-sm transition-colors [&.active]:font-medium"
+                    >
+                      {item.label}
+                    </Link>
+                  </span>
+                ))}
+              </div>
+
+              {/* Mobile: create + calendar buttons */}
+              {!currentPath.startsWith("/tags") &&
+                !currentPath.startsWith("/tag/") && (
+                  <button
+                    type="button"
+                    onClick={handleMobileCreate}
+                    className="text-muted-foreground hover:text-foreground flex size-9 items-center justify-center rounded-md transition-colors lg:hidden"
+                    aria-label="Create new item"
                   >
-                    {item.label}
-                  </Link>
-                </span>
-              ))}
+                    <PlusIcon className="size-5" />
+                  </button>
+                )}
+              <button
+                type="button"
+                onClick={() => setCalendarDrawerOpen(true)}
+                className="text-muted-foreground hover:text-foreground flex size-9 items-center justify-center rounded-md transition-colors lg:hidden"
+                aria-label="Open calendar"
+              >
+                <CalendarIcon className="size-5" />
+              </button>
             </div>
           </nav>
 
           <main className="flex-1 overflow-y-auto">
-            <div className="mx-auto h-full max-w-2xl px-4 pb-24">
+            <div className="mx-auto h-full max-w-2xl px-4 pb-20">
               <Outlet />
             </div>
           </main>
@@ -289,16 +368,31 @@ function AppLayout() {
           reminder={editingReminder}
         />
 
-        {/* Hot corner — fixed bottom-right note button */}
+        {/* Hot corner — fixed bottom-right note button (desktop only) */}
         <button
           type="button"
           onClick={() => handleOpenNoteDialog(null)}
-          className="bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground fixed right-4 bottom-4 z-40 flex size-10 items-center justify-center rounded-full shadow-md transition-all hover:scale-110"
+          className="bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground fixed right-4 bottom-4 z-40 hidden size-10 items-center justify-center rounded-full shadow-md transition-all hover:scale-110 lg:flex"
           aria-label="New note (Ctrl+N)"
           title="New note (Ctrl+N)"
         >
           <StickyNoteIcon className="size-5" />
         </button>
+
+        {/* Bottom nav — mobile only */}
+        <BottomNav />
+
+        {/* Calendar drawer — mobile only */}
+        <Drawer open={calendarDrawerOpen} onOpenChange={setCalendarDrawerOpen}>
+          <DrawerContent showCloseButton={false}>
+            <DrawerTitle className="sr-only">Calendar</DrawerTitle>
+            <MiniCalendar
+              selectedDate={selectedDate}
+              onSelectDate={handleMobileSelectDate}
+              hideTodayButton
+            />
+          </DrawerContent>
+        </Drawer>
       </div>
     </AppLayoutProvider>
   );

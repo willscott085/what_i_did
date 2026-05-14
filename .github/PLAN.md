@@ -996,7 +996,145 @@ The app has a small dataset, the schema is young, and we're about to add a third
 
 ---
 
-## Phase 11: Multi-User & Auth (Future)
+## Phase 11: Mobile UX Overhaul
+
+> Fix the broken mobile experience: swipeable calendar drawer, bottom tab navigation, always-visible action icons, proper tap targets, and responsive spacing. The app currently hides core navigation affordances on touch devices and wastes screen space with desktop-only padding.
+
+### Implementation Order
+
+11D (bottom nav + layout shell) → 11A (spacing/targets) → 11B (icon visibility) → 11C (calendar drawer) → 11E (polish + E2E)
+
+---
+
+### 11D: Bottom Tab Navigation & Mobile Layout Shell
+
+> Establish the mobile layout chrome first — everything else builds on this foundation.
+
+- [ ] Create `src/components/BottomNav.tsx` — fixed bottom bar, hidden on `lg:+` breakpoint
+  - Five tabs with icon + short label (`text-[10px]`): Today (calendar-check), Backlog (inbox), Notes (file-text), Reminders (bell), Tags (tag)
+  - Active tab highlighted with `text-primary` and subtle indicator
+  - Tab taps navigate to corresponding routes (`/day/{today}`, `/backlog`, `/notes`, `/reminders`, `/tags`)
+  - `env(safe-area-inset-bottom)` padding for notched iPhones
+- [ ] Restructure mobile top bar (below `lg:` breakpoint):
+  - Page title centered (day view shows formatted date, other pages show route name)
+  - Calendar trigger icon (right side) — opens calendar drawer (wired in 11C, button added now as placeholder)
+  - "+" create button (right side, before calendar icon) — creates page's primary item type directly (day=task, backlog=task, notes=note, reminders=reminder, tags=tag)
+  - Back button (conditional, for tag drill-in)
+  - Hide existing horizontal nav links on mobile (keep for `lg:+`)
+- [ ] Hide FAB on mobile (`hidden lg:fixed` or similar) — creation handled by per-page "+" button
+- [ ] Adjust main content bottom padding to account for bottom nav height (~64px + safe area)
+- [ ] **Verify**: `pnpm typecheck`, `pnpm test`, `pnpm test:e2e` all pass
+- [ ] **Verify**: Manual test at 375px — tabs navigate, active state visible, no overlap
+
+#### Outputs
+
+- New: `src/components/BottomNav.tsx`
+- Updated: `src/routes/_app.tsx` (top bar restructure, FAB hidden on mobile, bottom padding)
+
+---
+
+### 11A: Responsive Spacing & Tap Target Fixes
+
+> Fix wasted space and undersized touch targets across the app.
+
+- [ ] Remove desktop-only `pl-8` padding from DayView and other content pages — replace with `pl-0 lg:pl-8` or remove entirely (the `max-w-2xl px-4` container handles centering)
+- [ ] Increase icon button tap areas on TaskItem, NoteItem, ReminderItem from `size-4` to minimum 44×44px (keep icon visually small at `size-4`, increase clickable padding wrapper to `p-2.5`)
+- [ ] Increase checkbox tap targets in SubtaskList
+- [ ] Increase expand/collapse chevron tap targets
+- [ ] Hide keyboard shortcut tooltips on touch devices (Tailwind v4 `hover:` compiles to `@media (hover: hover)`)
+- [ ] **Verify**: `pnpm typecheck`, `pnpm test`, `pnpm test:e2e` all pass
+- [ ] **Verify**: Manual test at 375px — no horizontal overflow, tap targets comfortable
+
+#### Outputs
+
+- Updated: `src/components/DayView.tsx`, `src/components/TaskItem.tsx`, `src/components/NoteItem.tsx`, `src/components/ReminderItem.tsx`, `src/components/SubtaskList.tsx`
+
+---
+
+### 11B: Always-Visible Action Icons on Mobile
+
+> Make edit/delete/drag actions discoverable on touch devices.
+
+- [ ] Gate `opacity-0 group-hover:opacity-100` pattern behind `@media (hover: hover)` — on touch devices, action icons are always visible in `text-muted-foreground`
+- [ ] Drag handles: always visible on mobile (muted), hide-until-hover on desktop only
+- [ ] Add `activationConstraint: { delay: 200, tolerance: 5 }` to dnd-kit `PointerSensor` for touch — requires 200ms long-press on drag handle to initiate drag (prevents accidental drags while scrolling)
+- [ ] Apply same visibility pattern to TaskItem, NoteItem, and SortableList/SortableTaskList drag handles
+- [ ] **Verify**: `pnpm typecheck`, `pnpm test` pass
+- [ ] **Verify**: Manual test — icons visible without hovering on touch; hidden until hover on desktop; drag requires long-press
+
+#### Outputs
+
+- Updated: `src/components/TaskItem.tsx`, `src/components/NoteItem.tsx`, `src/components/SortableList.tsx` or `src/components/SortableTaskList.tsx`
+
+---
+
+### 11C: Mobile Calendar Drawer
+
+> Provide date navigation on mobile via a drawer from the right edge.
+
+- [ ] Wire the calendar trigger button added in 11D to open a right-side vaul drawer containing `MiniCalendar`
+- [ ] Drawer only rendered below `lg:` (desktop keeps sidebar calendar)
+- [ ] When user taps a day in the drawer calendar → navigate to `/day/$date` and auto-close the drawer
+- [ ] Drawer dismissible by swiping right or tapping overlay (vaul built-in)
+- [ ] Pass `hideTodayButton` prop to MiniCalendar inside drawer (redundant with bottom nav "Today" tab)
+- [ ] **Verify**: `pnpm typecheck`, `pnpm test`, `pnpm test:e2e` pass
+- [ ] **Verify**: Manual test at 375px — calendar button opens drawer, day selection navigates and closes
+
+#### Decisions
+
+- Open via trigger button only (not edge-swipe) — vaul doesn't support swipe-to-open natively
+- No drag-to-calendar on mobile — date changes via TaskDialog edit flow. Drag-to-calendar remains a desktop power-user feature
+
+#### Outputs
+
+- Updated: `src/routes/_app.tsx` (drawer wrapper + trigger wiring)
+- Updated: `src/components/MiniCalendar.tsx` (optional `hideTodayButton` prop)
+
+---
+
+### 11E: Touch Polish & Mobile E2E Tests
+
+> Final polish for the installed PWA experience + automated regression coverage.
+
+- [ ] Ensure calendar drawer doesn't conflict with iOS back-swipe gesture (drawer from right, iOS back from left — verify)
+- [ ] Fix overflow/scroll in drawer when MiniCalendar is taller than viewport
+- [ ] Optional: `navigator.vibrate(10)` haptic feedback on task completion toggle (feature-detect, no-op if unavailable)
+- [ ] Test overscroll behavior — ensure pull-to-refresh doesn't interfere with vaul drawer gestures
+- [ ] Add `mobile` project to `playwright.config.ts` (iPhone 14 viewport: 390×844)
+- [ ] Write mobile E2E tests (`e2e/mobile.spec.ts`):
+  - Bottom nav navigation (tap each tab, verify route change)
+  - Calendar drawer open/close/select-date
+  - No horizontal overflow check (assert `document.body.scrollWidth <= viewport.width`)
+- [ ] **Verify**: `pnpm typecheck`, `pnpm test`, `pnpm test:e2e` all pass (including new mobile tests)
+- [ ] **Verify**: Installed PWA on iOS — safe areas respected, no gesture conflicts
+
+#### Outputs
+
+- Updated: `playwright.config.ts` (mobile project)
+- New: `e2e/mobile.spec.ts`
+- Updated: `src/components/MiniCalendar.tsx`, `src/routes/_app.tsx` (polish fixes)
+
+---
+
+### Decisions (Phase 11)
+
+- **Calendar as right drawer with trigger button** — vaul doesn't support swipe-to-open, only swipe-to-dismiss. Trigger button is reliable; edge-swipe deferred
+- **No drag-to-calendar on mobile** — date reassignment via TaskDialog edit. Desktop drag-to-calendar unchanged
+- **Always-visible icons over swipe-to-reveal** — simpler, more discoverable, consistent with existing UI
+- **Long-press (200ms) to activate drag** — prevents scroll/drag conflict on touch devices
+- **5-tab bottom nav with icon + label** — Today, Backlog, Notes, Reminders, Tags. Covers all primary routes
+- **No FAB on mobile** — per-page "+" button in top bar handles creation. FAB remains on desktop
+- **"+" creates page's primary type directly** — no type picker menu. Day=task, Notes=note, Reminders=reminder, etc.
+- **Day view note creation via Notes page** — create note there, set date in dialog. Keeps day view "+" simple (task-only)
+- **`lg:` (1024px) as single breakpoint** — tablets in portrait get mobile layout. Consistent with existing sidebar breakpoint
+- **Page title centered in mobile top bar** — gives context (formatted date on day view, route name elsewhere)
+- **Completed tasks stay visible inline** — day view lists are short enough; no collapse toggle needed
+- **Mobile Playwright project** — 2-3 focused E2E tests at 390×844 viewport for regression coverage
+- **Independent of Phase 10** (Keyboard Shortcuts) — no dependencies, can implement in either order
+
+---
+
+## Phase 12: Multi-User & Auth (Future)
 
 > Add authentication so it can be shared or self-hosted for multiple users.
 
