@@ -23,6 +23,7 @@ interface MiniCalendarProps {
   selectedDate: Date;
   onSelectDate: (date: Date) => void;
   dragOverDate?: string | null;
+  hideTodayButton?: boolean;
 }
 
 const INITIAL_RANGE = 3;
@@ -44,6 +45,7 @@ export function MiniCalendar({
   selectedDate,
   onSelectDate,
   dragOverDate,
+  hideTodayButton,
 }: MiniCalendarProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const currentMonthRef = useRef<HTMLDivElement>(null);
@@ -171,7 +173,8 @@ export function MiniCalendar({
   const todayMonthRef = useRef<HTMLDivElement | null>(null);
   const todayObserverRef = useRef<IntersectionObserver | null>(null);
   const todayMonthInList = months.some((m) => monthKey(m) === todayMonthKey);
-  const showTodayButton = !todayMonthInList || !isTodayMonthVisible;
+  const showTodayButton =
+    !hideTodayButton && (!todayMonthInList || !isTodayMonthVisible);
 
   const setTodayMonthRef = useCallback(
     (node: HTMLDivElement | null) => {

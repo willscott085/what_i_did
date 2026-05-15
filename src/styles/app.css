@@ -26,6 +26,15 @@
       display: none;
     }
   }
+
+  /* Hide element only on devices that support hover (desktop).
+     On touch devices, the element stays visible but muted. */
+  .hover-show {
+    @apply text-muted-foreground;
+    @media (hover: hover) {
+      opacity: 0;
+    }
+  }
 }
 
 @theme inline {

@@ -31,6 +31,12 @@ export default defineConfig({
       use: { ...devices["Desktop Safari"] },
       dependencies: ["seed-webkit"],
     },
+    {
+      name: "mobile",
+      testMatch: /mobile\.spec\.ts/,
+      use: { ...devices["iPhone 14"] },
+      dependencies: ["seed-chromium"],
+    },
   ],
   webServer: {
     command: "pnpm db:migrate && pnpm dev",

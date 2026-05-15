@@ -97,7 +97,7 @@ export function ReminderItem({
           <div className="flex h-7.5 items-center">
             <SnoozeMenu
               onSnooze={(duration) => onSnooze(schedule.id, duration)}
-              triggerClassName="size-7 opacity-0 group-hover/reminder:opacity-100 data-[state=open]:opacity-100"
+              triggerClassName="hover-show group-hover/reminder:opacity-100 data-[state=open]:opacity-100"
             />
           </div>
         )}
@@ -106,7 +106,7 @@ export function ReminderItem({
             <Button
               variant="ghost"
               size="icon-sm"
-              className="size-7 opacity-0 group-hover/reminder:opacity-100"
+              className="hover-show group-hover/reminder:opacity-100"
               onClick={() => onDismiss(schedule)}
               aria-label={dismissLabel}
               title={dismissLabel}
@@ -120,7 +120,7 @@ export function ReminderItem({
             <Button
               variant="ghost"
               size="icon-sm"
-              className="size-7 opacity-0 group-hover/reminder:opacity-100"
+              className="hover-show group-hover/reminder:opacity-100"
               onClick={() => onEdit(schedule)}
               aria-label="Edit reminder"
             >
@@ -133,7 +133,7 @@ export function ReminderItem({
             <Button
               variant="ghost"
               size="icon-sm"
-              className="hover:text-destructive size-7 opacity-0 group-hover/reminder:opacity-100"
+              className="hover:text-destructive hover-show group-hover/reminder:opacity-100"
               onClick={() => onDelete(schedule.id)}
               aria-label="Delete reminder"
             >

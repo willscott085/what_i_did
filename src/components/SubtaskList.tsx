@@ -58,7 +58,7 @@ export function SubtaskList({
               onCheckedChange={(checked) =>
                 onComplete(subtask.id, checked === true)
               }
-              className="size-4"
+              className="size-5"
             />
             <span
               className={cn(
@@ -72,7 +72,7 @@ export function SubtaskList({
               type="button"
               variant="ghost"
               size="icon-sm"
-              className="size-6 opacity-0 group-hover:opacity-100"
+              className="hover-show group-hover:opacity-100"
               onClick={() => onDelete(subtask.id)}
               aria-label={`Delete subtask: ${subtask.title}`}
             >

@@ -51,7 +51,11 @@ export function DraggableList<T extends { id: string }>({
     [onDragOverDate],
   );
 
-  const sensors = useSensors(useSensor(PointerSensor));
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { delay: 200, tolerance: 5 },
+    }),
+  );
 
   const handleDragStart = useCallback(
     (event: DragStartEvent) => {

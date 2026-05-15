@@ -144,7 +144,7 @@ export function TaskItem({
               type="button"
               {...dragAttributes}
               {...dragListeners}
-              className="-ml-2 cursor-grab touch-none p-2 text-(--task-drag-handle) opacity-0 transition-opacity group-hover/task:opacity-100 hover:text-(--task-drag-handle-hover)"
+              className="hover-show -ml-2 cursor-grab touch-none p-2 text-(--task-drag-handle) transition-opacity group-hover/task:opacity-100 hover:text-(--task-drag-handle-hover)"
               aria-label="Drag to move"
             >
               <GripVertical className="size-4" />
@@ -357,7 +357,7 @@ export function TaskItem({
           <button
             type="button"
             onClick={() => setExpanded(!expanded)}
-            className="text-muted-foreground hover:text-foreground shrink-0 p-1 opacity-0 transition-opacity group-hover/task:opacity-100"
+            className="text-muted-foreground hover:text-foreground hover-show shrink-0 p-2 transition-opacity group-hover/task:opacity-100"
             aria-label={expanded ? "Collapse subtasks" : "Expand subtasks"}
           >
             {expanded ? (
@@ -375,7 +375,7 @@ export function TaskItem({
               type="button"
               variant="ghost"
               size="icon-sm"
-              className="size-7 opacity-0 group-hover/task:opacity-100"
+              className="hover-show group-hover/task:opacity-100"
               onClick={() => onEdit(task)}
               aria-label="Edit task"
             >
@@ -389,7 +389,7 @@ export function TaskItem({
               type="button"
               variant="ghost"
               size="icon-sm"
-              className="hover:text-destructive size-7 opacity-0 group-hover/task:opacity-100"
+              className="hover:text-destructive hover-show group-hover/task:opacity-100"
               onClick={() => onDelete(task.id)}
               aria-label="Delete task"
             >
